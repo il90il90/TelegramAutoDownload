@@ -1,0 +1,16 @@
+{
+  "version": 2,
+  "dgSpecHash": "2ahOREye6Qs7VP0wQHDkfHNNTR7ymWAABV+81w20/tmyoGd+fesj3zJLk21ln9VlpMYXhy2EtbC8262U/1zZjg==",
+  "success": true,
+  "projectFilePath": "C:\\Users\\il90i\\source\\repos\\RunnerApp\\TelegramClient\\TelegramClient.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\il90i\\.nuget\\packages\\indexrange\\1.0.2\\indexrange.1.0.2.nupkg.sha512",
+    "C:\\Users\\il90i\\.nuget\\packages\\system.collections.immutable\\6.0.0\\system.collections.immutable.6.0.0.nupkg.sha512",
+    "C:\\Users\\il90i\\.nuget\\packages\\system.memory\\4.5.5\\system.memory.4.5.5.nupkg.sha512",
+    "C:\\Users\\il90i\\.nuget\\packages\\system.runtime.compilerservices.unsafe\\6.0.0\\system.runtime.compilerservices.unsafe.6.0.0.nupkg.sha512",
+    "C:\\Users\\il90i\\.nuget\\packages\\system.text.encodings.web\\6.0.0\\system.text.encodings.web.6.0.0.nupkg.sha512",
+    "C:\\Users\\il90i\\.nuget\\packages\\system.text.json\\6.0.5\\system.text.json.6.0.5.nupkg.sha512",
+    "C:\\Users\\il90i\\.nuget\\packages\\wtelegramclient\\4.1.1\\wtelegramclient.4.1.1.nupkg.sha512"
+  ],
+  "logs": []
+}

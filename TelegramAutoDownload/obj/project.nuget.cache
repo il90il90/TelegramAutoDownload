@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "dgSpecHash": "ikTQChKN0DAL2m+xsS2q0O2PpAB8M1cCkg3AahelAMyFkM0F1LK1xMmb3M2KhJkgCmOGzKH/X+4RD82hH1MbBg==",
+  "success": true,
+  "projectFilePath": "C:\\Users\\il90i\\source\\repos\\RunnerApp\\TelegramAutoDownload\\TelegramAutoDownload.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\il90i\\.nuget\\packages\\newtonsoft.json\\13.0.3\\newtonsoft.json.13.0.3.nupkg.sha512",
+    "C:\\Users\\il90i\\.nuget\\packages\\wtelegramclient\\4.1.1\\wtelegramclient.4.1.1.nupkg.sha512"
+  ],
+  "logs": []
+}

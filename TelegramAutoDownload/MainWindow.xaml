@@ -1,0 +1,80 @@
+﻿<Window x:Class="TelegramAutoDownload.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:TelegramAutoDownload"
+        mc:Ignorable="d"
+        Title="MainWindow" Height="450" Width="800">
+
+    <Grid Margin="0,0,0,0">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0">
+            <TextBox x:Name="SearchTextBox" Width="200" Margin="10" 
+                     Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" TextChanged="SearchTextBox_TextChanged" />
+        </StackPanel>
+
+        <ListView  x:Name="ItemsListView" SelectionMode="Extended" Margin="10" Grid.Row="1" >
+            <ListView.Resources>
+                <Style TargetType="GridViewColumnHeader">
+                    <Setter Property="HorizontalContentAlignment" Value="Left"/>
+                </Style>
+            </ListView.Resources>
+            <ListView.InputBindings>
+                <KeyBinding Key="Space" Command="{Binding Selected}" />
+            </ListView.InputBindings>
+            <ListView.View>
+                <GridView>
+                    <GridViewColumn Header="" Width="50">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <CheckBox Name="SelectChatId" Unchecked="SelectChatId_Checked" Checked="SelectChatId_Checked" IsChecked="{Binding Selected, Mode=TwoWay}" VerticalAlignment="Center"/>
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+                    <GridViewColumn Header="ID" Width="100">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Id}" VerticalAlignment="Center" Margin="5,0"/>
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+                    <GridViewColumn Header="Name" Width="150">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Name}" VerticalAlignment="Center" Margin="5,0"/>
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+                    <GridViewColumn Header="Username" Width="150">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Username}" VerticalAlignment="Center" Margin="5,0"/>
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+                    <GridViewColumn Header="Type" Width="150">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Type}" VerticalAlignment="Center" Margin="5,0"/>
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+                </GridView>
+            </ListView.View>
+        </ListView>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="10">
+            <Button  x:Name="BtnSelectPath" Content="Select Path to save" Click="BtnSelectPath_Click" Width="171" Height="20" Margin="0,0,10,0"/>
+        </StackPanel>
+
+        <TextBlock  HorizontalAlignment="Left" Margin="10,10,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Grid.Row="2" Width="594">
+            <Hyperlink  IsEnabled="false" x:Name="hlOpenFolder" Click="HlOpenFolder_Click">Loading</Hyperlink>
+        </TextBlock>
+    </Grid>
+</Window>

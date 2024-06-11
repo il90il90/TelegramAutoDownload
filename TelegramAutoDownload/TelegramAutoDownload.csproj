@@ -1,0 +1,32 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <ApplicationIcon>044a51cf-2359-480c-8c20-bf372f8a4cab.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="044a51cf-2359-480c-8c20-bf372f8a4cab.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="044a51cf-2359-480c-8c20-bf372f8a4cab.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\TelegramClient\TelegramClient.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="044a51cf-2359-480c-8c20-bf372f8a4cab.ico" />
+  </ItemGroup>
+
+</Project>
