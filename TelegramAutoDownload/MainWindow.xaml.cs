@@ -17,11 +17,11 @@ namespace TelegramAutoDownload
         private readonly TelegramApp TelegramApp;
         private readonly ConfigFile ConfigFile;
         private IList<ChatDto> _chats;
-        public MainWindow(TelegramApp telegram)
+        public MainWindow(TelegramApp telegram, ConfigFile config)
         {
             InitializeComponent();
             TelegramApp = telegram;
-            ConfigFile = new ConfigFile();
+            ConfigFile = config;
             Loaded += MainWindow_Loaded;
         }
 
