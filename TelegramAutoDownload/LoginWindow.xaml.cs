@@ -1,4 +1,5 @@
 ﻿using System.Windows;
+using TelegramAutoDownload.Models;
 using TelegramClient;
 
 namespace TelegramAutoDownload
@@ -8,19 +9,22 @@ namespace TelegramAutoDownload
     /// </summary>
     public partial class LoginWindow : Window
     {
+        readonly TelegramApp telegram;
+        private ConfigFile _configFile;
         public LoginWindow()
         {
             InitializeComponent();
+            _configFile = new ConfigFile();
+            var _configParams = _configFile.Read();
+            telegram = new TelegramApp(_configParams.AppId, _configParams.ApiHash);
             MoveToMainWindowIfConnected();
         }
-
-        readonly TelegramApp telegram = new();
 
         private void MoveToMainWindowIfConnected()
         {
             if (telegram.Client.UserId == 0) return;
 
-            var mainWindow = new MainWindow(telegram);
+            var mainWindow = new MainWindow(telegram, _configFile);
             mainWindow.Show();
             Close();
         }
