@@ -3,6 +3,8 @@
 **Overview:**
 Telegram Auto Download is a versatile software designed to automatically download videos, music, and photos when new files are received in selected Telegram channels. It simplifies the process of gathering multimedia content from Telegram channels.
 
+![](https://github.com/il90il90/TelegramAutoDownload/assets/5620005/eb098047-1c36-4b4f-934f-2d2dd4482625)
+
 **Key Features:**
 - Automatic downloading of videos, music, and photos from specified Telegram channels.
 - Enables easy access to downloaded content across various devices.
@@ -27,3 +29,4 @@ Telegram Auto Download is a versatile software designed to automatically downloa
 4. Access downloaded files on your PC or share the folder over the local network for wider accessibility.
 
 **Enhance Your Multimedia Experience with Telegram Auto Download!**
+
