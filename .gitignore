@@ -1,0 +1,6 @@
+
+TelegramAutoDownload/bin/Debug/net8.0-windows/config.txt
+*.bin
+*.vsidx
+*.dat
+*.dll

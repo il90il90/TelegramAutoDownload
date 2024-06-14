@@ -21,9 +21,9 @@ namespace TelegramClient
             this.factoryUserService = factoryUserService;
         }
 
-        public TelegramApp()
+        public TelegramApp(int appId, string apiHash)
         {
-            Client = new Client(2099700, "01d3e78323318d2d0a0b8766060d9152", "session.dat");
+            Client = new Client(appId, apiHash, "session.dat");
             Client.LoginUserIfNeeded();
             Client.OnUpdates += Client_OnUpdates;
         }

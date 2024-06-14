@@ -8,3 +8,4 @@ C:\Users\il90i\source\repos\RunnerApp\TelegramClient\obj\Debug\netcoreapp3.1\Tel
 C:\Users\il90i\source\repos\RunnerApp\TelegramClient\obj\Debug\netcoreapp3.1\TelegramClient.csproj.CoreCompileInputs.cache
 C:\Users\il90i\source\repos\RunnerApp\TelegramClient\obj\Debug\netcoreapp3.1\TelegramClient.dll
 C:\Users\il90i\source\repos\RunnerApp\TelegramClient\obj\Debug\netcoreapp3.1\TelegramClient.pdb
+C:\Users\il90i\source\repos\RunnerApp\TelegramClient\obj\Debug\netcoreapp3.1\TelegramClient.sourcelink.json
