@@ -98,11 +98,11 @@ namespace TelegramAutoDownload
         private void SearchTextBox_TextChanged(object sender, TextChangedEventArgs e)
         {
             TextBox? textBox = sender as TextBox;
-            string textContent = textBox.Text.ToLower();
+            string textSearch = textBox.Text.ToLower();
             if (_chats == null) return;
 
-            var chats = _chats.Cast<ChatDto>().Where(c => c.Name.ToLower().Contains(textContent) ||
-            c.Username != null && c.Username.Contains(textContent.ToLower())).OrderByDescending(a => a.Selected);
+            var chats = _chats.Cast<ChatDto>().Where(c => c.Name.ToLower().Contains(textSearch) ||
+            c.Username != null && c.Username.Contains(textSearch.ToLower()) || c.Type.ToLower().Contains(textSearch.ToLower())).OrderByDescending(a => a.Selected);
             ItemsListView.ItemsSource = chats;
             tbCountChats.Text = chats.Count().ToString();
         }
