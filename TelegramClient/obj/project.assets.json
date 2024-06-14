@@ -113,6 +113,16 @@
             "related": ".xml"
           }
         }
+      },
+      "YoutubePlugin/1.0.0": {
+        "type": "project",
+        "framework": "Unsupported,Version=v0.0",
+        "compile": {
+          "bin/placeholder/YoutubePlugin.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/YoutubePlugin.dll": {}
+        }
       }
     }
   },
@@ -305,11 +315,17 @@
         "wtelegramclient.4.1.1.nupkg.sha512",
         "wtelegramclient.nuspec"
       ]
+    },
+    "YoutubePlugin/1.0.0": {
+      "type": "project",
+      "path": "../YoutubePlugin/YoutubePlugin.csproj",
+      "msbuildProject": "../YoutubePlugin/YoutubePlugin.csproj"
     }
   },
   "projectFileDependencyGroups": {
     ".NETCoreApp,Version=v3.1": [
-      "WTelegramClient >= 4.1.1"
+      "WTelegramClient >= 4.1.1",
+      "YoutubePlugin >= 1.0.0"
     ]
   },
   "packageFolders": {
@@ -338,7 +354,11 @@
       "frameworks": {
         "netcoreapp3.1": {
           "targetAlias": "netcoreapp3.1",
-          "projectReferences": {}
+          "projectReferences": {
+            "C:\\Users\\il90i\\source\\repos\\RunnerApp\\YoutubePlugin\\YoutubePlugin.csproj": {
+              "projectPath": "C:\\Users\\il90i\\source\\repos\\RunnerApp\\YoutubePlugin\\YoutubePlugin.csproj"
+            }
+          }
         }
       },
       "warningProperties": {
@@ -380,5 +400,16 @@
         "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.204\\RuntimeIdentifierGraph.json"
       }
     }
-  }
+  },
+  "logs": [
+    {
+      "code": "NU1201",
+      "level": "Error",
+      "message": "Project YoutubePlugin is not compatible with netcoreapp3.1 (.NETCoreApp,Version=v3.1). Project YoutubePlugin supports: net8.0 (.NETCoreApp,Version=v8.0)",
+      "libraryId": "YoutubePlugin",
+      "targetGraphs": [
+        ".NETCoreApp,Version=v3.1"
+      ]
+    }
+  ]
 }

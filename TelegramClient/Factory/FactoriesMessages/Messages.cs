@@ -22,7 +22,9 @@ namespace TelegramClient.Factory.Factories
 
         public override Task ExecuteAsync(TL.Message message, ChatDto chatDto)
         {
-            Console.WriteLine(message.message);
+            //if (message.message.StartsWith("https://youtu"))
+            //{
+            //}
             return Task.CompletedTask;
         }
     }

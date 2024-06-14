@@ -1,7 +1,7 @@
 {
   "version": 2,
-  "dgSpecHash": "2ahOREye6Qs7VP0wQHDkfHNNTR7ymWAABV+81w20/tmyoGd+fesj3zJLk21ln9VlpMYXhy2EtbC8262U/1zZjg==",
-  "success": true,
+  "dgSpecHash": "q9YADqlSIutscCWLrY5ZUauXziUx6yFcdC9jZV8RQDTA88q/eos6Ud+QSILJAJ6MYXgPeEu11UWuZbNuqm5CWA==",
+  "success": false,
   "projectFilePath": "C:\\Users\\il90i\\source\\repos\\RunnerApp\\TelegramClient\\TelegramClient.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\il90i\\.nuget\\packages\\indexrange\\1.0.2\\indexrange.1.0.2.nupkg.sha512",
@@ -12,5 +12,15 @@
     "C:\\Users\\il90i\\.nuget\\packages\\system.text.json\\6.0.5\\system.text.json.6.0.5.nupkg.sha512",
     "C:\\Users\\il90i\\.nuget\\packages\\wtelegramclient\\4.1.1\\wtelegramclient.4.1.1.nupkg.sha512"
   ],
-  "logs": []
+  "logs": [
+    {
+      "code": "NU1201",
+      "level": "Error",
+      "message": "Project YoutubePlugin is not compatible with netcoreapp3.1 (.NETCoreApp,Version=v3.1). Project YoutubePlugin supports: net8.0 (.NETCoreApp,Version=v8.0)",
+      "libraryId": "YoutubePlugin",
+      "targetGraphs": [
+        ".NETCoreApp,Version=v3.1"
+      ]
+    }
+  ]
 }

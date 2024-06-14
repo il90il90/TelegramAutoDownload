@@ -9,10 +9,22 @@
       "TelegramAutoDownload/1.0.0": {
         "dependencies": {
           "Newtonsoft.Json": "13.0.3",
-          "TelegramClient": "1.0.0"
+          "TelegramClient": "1.0.0",
+          "YoutubePlugin": "1.0.0"
         },
         "runtime": {
           "TelegramAutoDownload.dll": {}
+        }
+      },
+      "AngleSharp/1.1.2": {
+        "dependencies": {
+          "System.Text.Encoding.CodePages": "8.0.0"
+        },
+        "runtime": {
+          "lib/net8.0/AngleSharp.dll": {
+            "assemblyVersion": "1.1.2.0",
+            "fileVersion": "1.1.2.0"
+          }
         }
       },
       "Newtonsoft.Json/13.0.3": {
@@ -23,11 +35,30 @@
           }
         }
       },
+      "System.Text.Encoding.CodePages/8.0.0": {},
+      "System.Text.Encodings.Web/8.0.0": {},
+      "System.Text.Json/8.0.3": {
+        "dependencies": {
+          "System.Text.Encodings.Web": "8.0.0"
+        }
+      },
       "WTelegramClient/4.1.1": {
         "runtime": {
           "lib/net8.0/WTelegramClient.dll": {
             "assemblyVersion": "4.1.1.0",
             "fileVersion": "4.1.1.0"
+          }
+        }
+      },
+      "YoutubeExplode/6.3.16": {
+        "dependencies": {
+          "AngleSharp": "1.1.2",
+          "System.Text.Json": "8.0.3"
+        },
+        "runtime": {
+          "lib/net8.0/YoutubeExplode.dll": {
+            "assemblyVersion": "6.3.16.0",
+            "fileVersion": "6.3.16.0"
           }
         }
       },
@@ -38,6 +69,14 @@
         "runtime": {
           "TelegramClient.dll": {}
         }
+      },
+      "YoutubePlugin/1.0.0": {
+        "dependencies": {
+          "YoutubeExplode": "6.3.16"
+        },
+        "runtime": {
+          "YoutubePlugin.dll": {}
+        }
       }
     }
   },
@@ -47,12 +86,40 @@
       "serviceable": false,
       "sha512": ""
     },
+    "AngleSharp/1.1.2": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-aRFpAqixbuj1Vmqy2hsWPF0PJygo1SfjvmpBvVWZv6i+/u+C/L4wDdwFIzyCGUbjqr61NsZdPNPqDE8wlmG2qA==",
+      "path": "anglesharp/1.1.2",
+      "hashPath": "anglesharp.1.1.2.nupkg.sha512"
+    },
     "Newtonsoft.Json/13.0.3": {
       "type": "package",
       "serviceable": true,
       "sha512": "sha512-HrC5BXdl00IP9zeV+0Z848QWPAoCr9P3bDEZguI+gkLcBKAOxix/tLEAAHC+UvDNPv4a2d18lOReHMOagPa+zQ==",
       "path": "newtonsoft.json/13.0.3",
       "hashPath": "newtonsoft.json.13.0.3.nupkg.sha512"
+    },
+    "System.Text.Encoding.CodePages/8.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-OZIsVplFGaVY90G2SbpgU7EnCoOO5pw1t4ic21dBF3/1omrJFpAGoNAVpPyMVOC90/hvgkGG3VFqR13YgZMQfg==",
+      "path": "system.text.encoding.codepages/8.0.0",
+      "hashPath": "system.text.encoding.codepages.8.0.0.nupkg.sha512"
+    },
+    "System.Text.Encodings.Web/8.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-yev/k9GHAEGx2Rg3/tU6MQh4HGBXJs70y7j1LaM1i/ER9po+6nnQ6RRqTJn1E7Xu0fbIFK80Nh5EoODxrbxwBQ==",
+      "path": "system.text.encodings.web/8.0.0",
+      "hashPath": "system.text.encodings.web.8.0.0.nupkg.sha512"
+    },
+    "System.Text.Json/8.0.3": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-hpagS9joOwv6efWfrMmV9MjQXpiXZH72PgN067Ysfr6AWMSD1/1hEcvh/U5mUpPLezEWsOJSuVrmqDIVD958iA==",
+      "path": "system.text.json/8.0.3",
+      "hashPath": "system.text.json.8.0.3.nupkg.sha512"
     },
     "WTelegramClient/4.1.1": {
       "type": "package",
@@ -61,7 +128,19 @@
       "path": "wtelegramclient/4.1.1",
       "hashPath": "wtelegramclient.4.1.1.nupkg.sha512"
     },
+    "YoutubeExplode/6.3.16": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-DalkDhIMiypnENMDaNhHgmnKENqVT76JNBX/Fu/3CbItudrNIYcgolE7rfPi2sUO4jfeiqn5ztduwm+awq9L3g==",
+      "path": "youtubeexplode/6.3.16",
+      "hashPath": "youtubeexplode.6.3.16.nupkg.sha512"
+    },
     "TelegramClient/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "YoutubePlugin/1.0.0": {
       "type": "project",
       "serviceable": false,
       "sha512": ""

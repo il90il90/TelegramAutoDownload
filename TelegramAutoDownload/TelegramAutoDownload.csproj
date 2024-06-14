@@ -23,6 +23,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\TelegramClient\TelegramClient.csproj" />
+    <ProjectReference Include="..\YoutubePlugin\YoutubePlugin.csproj" />
   </ItemGroup>
 
   <ItemGroup>

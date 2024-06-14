@@ -31,6 +31,7 @@ namespace TelegramAutoDownload
             await LoadDataAsync();
             ItemsListView.IsEnabled = true;
             Init();
+
         }
 
         private void Init()
