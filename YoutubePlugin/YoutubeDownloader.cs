@@ -5,7 +5,7 @@ namespace YoutubePlugin
 {
     public class YoutubeDownloader
     {
-        public async Task DownloadYouTubeVideoAsync(string videoUrl, string path)
+        public async Task DownloadYouTubeVideoAsync(string path, string videoUrl)
         {
             var youtube = new YoutubeClient();
             var video = await youtube.Videos.GetAsync(videoUrl);

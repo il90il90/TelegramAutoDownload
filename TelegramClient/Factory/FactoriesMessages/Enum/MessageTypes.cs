@@ -6,6 +6,7 @@
         Videos,
         Music,
         Photos,
-        Files
+        Files,
+        YouTube,
     }
 }

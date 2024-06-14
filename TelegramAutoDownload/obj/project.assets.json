@@ -126,7 +126,7 @@
       },
       "TelegramClient/1.0.0": {
         "type": "project",
-        "framework": ".NETCoreApp,Version=v3.1",
+        "framework": ".NETCoreApp,Version=v8.0",
         "dependencies": {
           "WTelegramClient": "4.1.1",
           "YoutubePlugin": "1.0.0"

@@ -9,8 +9,7 @@
       "TelegramAutoDownload/1.0.0": {
         "dependencies": {
           "Newtonsoft.Json": "13.0.3",
-          "TelegramClient": "1.0.0",
-          "YoutubePlugin": "1.0.0"
+          "TelegramClient": "1.0.0"
         },
         "runtime": {
           "TelegramAutoDownload.dll": {}
@@ -64,7 +63,8 @@
       },
       "TelegramClient/1.0.0": {
         "dependencies": {
-          "WTelegramClient": "4.1.1"
+          "WTelegramClient": "4.1.1",
+          "YoutubePlugin": "1.0.0"
         },
         "runtime": {
           "TelegramClient.dll": {}
