@@ -64,9 +64,19 @@ namespace TelegramClient
 
         private async Task ReactToMessage(UpdatesBase updates, Message message)
         {
-            var channel = ((Channel)((Updates)updates).Chats.First().Value);
 
-            var inputPeer = new InputPeerChannel(channel.ID, channel.access_hash);
+            InputPeer inputPeer = null;
+            var isCahnnel = updates?.Chats?.FirstOrDefault().Value?.IsChannel;
+            if (isCahnnel == true)
+            {
+                var channel = ((Channel)((Updates)updates).Chats.First().Value);
+                inputPeer = new InputPeerChannel(channel.ID, channel.access_hash);
+            }
+            else
+            {
+                var user = updates.Users.FirstOrDefault().Value;
+                inputPeer = new InputUser(user.id, user.access_hash);
+            }
             await Client.Messages_SendReaction(inputPeer, message.ID, new[] { new ReactionEmoji { emoticon = _configParams.ReactionIcon } });
         }
 
