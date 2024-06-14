@@ -24,6 +24,8 @@ namespace TelegramClient.Factory.FactoriesMessages
 
         public override string FileExtension => "";
 
+        public override MessageTypes TypeMessage { get => MessageTypes.Music; set => throw new NotImplementedException(); }
+
         public override async Task ExecuteAsync(Message message, ChatDto chatDto)
         {
             if (message.media is MessageMediaDocument mediaDocument)

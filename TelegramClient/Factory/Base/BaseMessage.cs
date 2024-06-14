@@ -12,7 +12,7 @@ namespace TelegramClient.Factory.Base
     {
         public Client Client { get; }
         public string PathFolderToSaveFiles { get; }
-        public abstract MessageTypes TypeMessage { get; }
+        public abstract MessageTypes TypeMessage { get; set; }
 
         public abstract string FileExtension { get; }
 

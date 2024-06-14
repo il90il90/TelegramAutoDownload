@@ -15,9 +15,11 @@ namespace TelegramClient.Factory.Factories
     public class Videos : BaseMessage
     {
         private readonly Client client;
-        public override MessageTypes TypeMessage => MessageTypes.Videos;
+        
 
         public override string FileExtension => "mp4";
+
+        public override MessageTypes TypeMessage { get => MessageTypes.Videos; set => throw new NotImplementedException(); }
 
         public Videos(Client client, string pathFolderToSaveFiles) : base(client, pathFolderToSaveFiles)
         {
