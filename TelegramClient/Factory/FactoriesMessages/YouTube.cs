@@ -25,8 +25,10 @@ namespace TelegramClient.Factory.Factories
         {
             if (!message.message.StartsWith("https://youtu")) return;
 
-            var pathFolderLocation = PathLocationFolder(chatDto, "");
-            await _youtubeDownloader.DownloadYouTubeVideoAsync(pathFolderLocation, message.message);
+            var videoUrl = message.message;
+            var infoVideo = await _youtubeDownloader.GetVideoInfo(videoUrl);
+            var pathFolderLocation = PathLocationFolder(chatDto, infoVideo.Author.ChannelTitle,true);
+            await _youtubeDownloader.DownloadYouTubeVideoAsync(pathFolderLocation, videoUrl);
         }
     }
 }

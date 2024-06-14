@@ -23,10 +23,17 @@ namespace TelegramClient.Factory.Base
         }
         public abstract Task ExecuteAsync(Message message, ChatDto chatDto);
 
-        public string PathLocationFolder(ChatDto chatDto, string fileName)
+        public string PathLocationFolder(ChatDto chatDto, string fileName, bool createFolder = false)
         {
             var path = CreateFolderIfNotExist(chatDto);
-            return Path.Combine($"{path}/{chatDto.Name}", $"{fileName}.{FileExtension}");
+            path = Path.Combine($"{path}/{chatDto.Name}", $"{fileName}.{FileExtension}");
+
+            if (createFolder && !Directory.Exists($"{path}/{fileName}"))
+            {
+                Directory.CreateDirectory(path);
+            }
+
+            return path;
         }
 
         private string CreateFolderIfNotExist(ChatDto chatDto)
