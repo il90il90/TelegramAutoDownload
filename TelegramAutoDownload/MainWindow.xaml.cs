@@ -91,6 +91,7 @@ namespace TelegramAutoDownload
             hlOpenFolder.Inlines.Clear();
             hlOpenFolder.Inlines.Add(new Run(path));
             hlOpenFolder.IsEnabled = true;
+            tbCountChats.Text = _chats.Count.ToString();
         }
 
         private void SearchTextBox_TextChanged(object sender, TextChangedEventArgs e)
@@ -99,8 +100,10 @@ namespace TelegramAutoDownload
             string textContent = textBox.Text.ToLower();
             if (_chats == null) return;
 
-            ItemsListView.ItemsSource = _chats.Cast<ChatDto>().Where(c => c.Name.ToLower().Contains(textContent) ||
+            var chats = _chats.Cast<ChatDto>().Where(c => c.Name.ToLower().Contains(textContent) ||
             c.Username != null && c.Username.Contains(textContent.ToLower())).OrderByDescending(a => a.Selected);
+            ItemsListView.ItemsSource = chats;
+            tbCountChats.Text = chats.Count().ToString();
         }
 
         private void SelectChatId_Checked(object sender, RoutedEventArgs e)

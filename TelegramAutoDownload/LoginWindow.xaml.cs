@@ -37,7 +37,7 @@ namespace TelegramAutoDownload
             txtCode.Visibility = Visibility.Visible;
             tbCode.Visibility = Visibility.Visible;
             btnEnterCode.Visibility = Visibility.Visible;
-
+            btnLogin.IsEnabled = false;
         }
         private async void BtnEnterCode_Click(object sender, RoutedEventArgs e)
         {

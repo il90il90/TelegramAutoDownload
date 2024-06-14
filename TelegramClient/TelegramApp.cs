@@ -76,12 +76,13 @@ namespace TelegramClient
             var dialogs = await Client.Messages_GetAllDialogs();
             foreach (var dialog in dialogs.chats)
             {
+                if (!dialog.Value.IsActive) continue;
                 groups.Add(new ChatDto()
                 {
                     Id = dialog.Value.ID,
                     Name = dialog.Value.Title,
                     Username = dialog.Value.MainUsername,
-                    Type = "Group"
+                    Type = dialog.Value.IsGroup ? "Group" : "Channel"
                 });
             }
             foreach (var dialog in dialogs.users)
