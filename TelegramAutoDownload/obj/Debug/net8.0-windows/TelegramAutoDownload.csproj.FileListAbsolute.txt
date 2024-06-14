@@ -27,3 +27,4 @@ C:\Users\il90i\source\repos\RunnerApp\TelegramAutoDownload\obj\Debug\net8.0-wind
 C:\Users\il90i\source\repos\RunnerApp\TelegramAutoDownload\obj\Debug\net8.0-windows\TelegramAutoDownload.pdb
 C:\Users\il90i\source\repos\RunnerApp\TelegramAutoDownload\obj\Debug\net8.0-windows\TelegramAutoDownload.genruntimeconfig.cache
 C:\Users\il90i\source\repos\RunnerApp\TelegramAutoDownload\obj\Debug\net8.0-windows\ref\TelegramAutoDownload.dll
+C:\Users\il90i\source\repos\RunnerApp\TelegramAutoDownload\obj\Debug\net8.0-windows\TelegramAutoDownload.sourcelink.json
