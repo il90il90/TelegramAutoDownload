@@ -7,6 +7,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TelegramClient", "TelegramC
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TelegramAutoDownload", "TelegramAutoDownload\TelegramAutoDownload.csproj", "{DB2263BD-7D96-4AAF-87C4-A2D7F185199F}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "YoutubePlugin", "YoutubePlugin\YoutubePlugin.csproj", "{EE196651-5292-4460-A0BD-C24B7B41073D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{DB2263BD-7D96-4AAF-87C4-A2D7F185199F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DB2263BD-7D96-4AAF-87C4-A2D7F185199F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DB2263BD-7D96-4AAF-87C4-A2D7F185199F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EE196651-5292-4460-A0BD-C24B7B41073D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EE196651-5292-4460-A0BD-C24B7B41073D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EE196651-5292-4460-A0BD-C24B7B41073D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EE196651-5292-4460-A0BD-C24B7B41073D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

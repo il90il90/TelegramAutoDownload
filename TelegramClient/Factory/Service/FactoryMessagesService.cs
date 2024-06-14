@@ -19,14 +19,15 @@ namespace TelegramClient.Factory.Service
         private readonly List<IMessageType> messageTypes;
         public FactoryMessagesService(Client client, string pathFolderToSaveFiles)
         {
-            messageTypes = new List<IMessageType>()
-            {
-                new Messages(client,pathFolderToSaveFiles),
+            var messageTextFactoryService = new MessageTextFactoryService(client, pathFolderToSaveFiles);
+            messageTypes =
+            [
+                new Messages(client,pathFolderToSaveFiles,messageTextFactoryService ),
                 new Videos(client, pathFolderToSaveFiles),
                 new Photos(client, pathFolderToSaveFiles),
                 new Files(client, pathFolderToSaveFiles),
                 new Music(client, pathFolderToSaveFiles)
-            };
+            ];
         }
 
         public async Task ExecuteAsync(Update[] updates, ChatDto chatDto)
@@ -46,7 +47,7 @@ namespace TelegramClient.Factory.Service
             }
         }
 
-        
+
         private MessageTypes GetTypeOfMessage(Message message)
         {
             if (message.media is MessageMediaPhoto)
