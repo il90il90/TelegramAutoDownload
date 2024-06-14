@@ -22,7 +22,7 @@ namespace TelegramClient.Factory.FactoriesMessages
 
         public override MessageTypes TypeMessage => MessageTypes.Music;
 
-        public override string FileExtension => "mp3";
+        public override string FileExtension => "";
 
         public override async Task ExecuteAsync(Message message, ChatDto chatDto)
         {

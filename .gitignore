@@ -403,3 +403,4 @@ FodyWeavers.xsd
 # JetBrains Rider
 *.sln.iml
 /TelegramAutoDownload/bin/Debug
+/TelegramAutoDownload/bin
