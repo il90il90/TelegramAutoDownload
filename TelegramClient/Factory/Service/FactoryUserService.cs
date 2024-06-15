@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Threading.Channels;
+using TelegramAutoDownload.Models;
 using TelegramClient.Factory.FactoriesUsers;
 using TelegramClient.Factory.Interfaces.Channel;
 using TelegramClient.Models;
@@ -12,13 +13,13 @@ namespace TelegramClient.Factory.Service
         private readonly IList<IChannel> _channels;
         private readonly IList<long> _listenToChannelId;
 
-        public FactoryUserService(IList<long> listenToChannel)
+        public FactoryUserService(IList<long> listenToChannel, ConfigParams configParams)
         {
             _listenToChannelId = listenToChannel;
             _channels = new List<IChannel>()
             {
-                new Group(_listenToChannelId),
-                new FactoriesUsers.User(_listenToChannelId),
+                new Group(_listenToChannelId,configParams),
+                new FactoriesUsers.User(_listenToChannelId, configParams),
             };
         }
 

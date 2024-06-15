@@ -17,7 +17,6 @@ namespace TelegramClient.Factory.Factories
         private readonly Client client;
         
 
-        public override string FileExtension => "mp4";
 
         public override MessageTypes TypeMessage { get => MessageTypes.Videos; set => throw new NotImplementedException(); }
 

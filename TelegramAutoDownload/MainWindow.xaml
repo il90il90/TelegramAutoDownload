@@ -3,7 +3,6 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:TelegramAutoDownload"
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="800">
 
@@ -69,6 +68,20 @@
                         <GridViewColumn.CellTemplate>
                             <DataTemplate>
                                 <TextBlock Text="{Binding Type}" VerticalAlignment="Center" Margin="5,0"/>
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+                    <GridViewColumn Header="Reaction Icon" Width="100">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <ComboBox Name="ReactionIcon" SelectedItem="{Binding ReactionIcon, Mode=TwoWay}"  Loaded="ReactionIcon_Loaded" SelectionChanged="ComboBox_SelectionChanged" Width="60">
+                                    <ComboBoxItem Content="" />
+                                    <ComboBoxItem Content="👍" />
+                                    <ComboBoxItem Content="✅" />
+                                    <ComboBoxItem Content="💯" />
+                                    <ComboBoxItem Content="❤️" />
+                                    <ComboBoxItem Content="👌" />
+                                </ComboBox>
                             </DataTemplate>
                         </GridViewColumn.CellTemplate>
                     </GridViewColumn>

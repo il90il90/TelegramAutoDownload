@@ -13,7 +13,6 @@ namespace TelegramClient.Factory.Factories
     {
         private readonly YoutubeDownloader _youtubeDownloader;
 
-        public override string FileExtension { get; } = "";
         public override MessageTypes TypeMessage { get => MessageTypes.YouTube; set => throw new NotImplementedException(); }
 
         public YouTube(Client client, string pathFolderToSaveFiles) : base(client, pathFolderToSaveFiles)
