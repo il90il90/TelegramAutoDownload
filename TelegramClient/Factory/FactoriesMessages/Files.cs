@@ -17,8 +17,6 @@ namespace TelegramClient.Factory.Factories
         private readonly Client client;
         //public override MessageTypes TypeMessage => MessageTypes.Files;
 
-        public override string FileExtension => null;
-
         public override MessageTypes TypeMessage { get => MessageTypes.Files; set => throw new NotImplementedException(); }
 
         public Files(Client client, string pathFolderToSaveFiles) : base(client, pathFolderToSaveFiles)

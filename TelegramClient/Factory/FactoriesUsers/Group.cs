@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using TelegramAutoDownload.Models;
 using TelegramClient.Models;
 using TL;
 
@@ -9,7 +10,7 @@ namespace TelegramClient.Factory.FactoriesUsers
 {
     internal class Group : Base.UserBase
     {
-        public Group(IList<long> listenToChannel) : base(listenToChannel)
+        public Group(IList<long> listenToChannel, ConfigParams configParams) : base(listenToChannel, configParams)
         {
         }
 
@@ -20,11 +21,13 @@ namespace TelegramClient.Factory.FactoriesUsers
             if (group != null)
             {
                 var chat = updates.Chats?.Values?.FirstOrDefault();
+                var chatParams = ConfigParams.Chats.FirstOrDefault(a => a.Id == chat.ID);
                 return new ChatDto()
                 {
                     Id = chat.ID,
                     Name = chat.Title,
                     Username = chat.MainUsername,
+                    ReactionIcon = chatParams.ReactionIcon,
                 };
             }
             return null;

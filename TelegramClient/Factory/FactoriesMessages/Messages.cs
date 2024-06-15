@@ -19,8 +19,6 @@ namespace TelegramClient.Factory.Factories
             _messageTextFactory = messageTextFactory;
         }
 
-        public override string FileExtension => null;
-
         public override MessageTypes TypeMessage { get => MessageTypes.Message; set => throw new NotImplementedException(); }
 
         public override async Task ExecuteAsync(TL.Message message, ChatDto chatDto)

@@ -14,7 +14,7 @@ namespace TelegramClient.Factory.Base
         public string PathFolderToSaveFiles { get; }
         public abstract MessageTypes TypeMessage { get; set; }
 
-        public abstract string FileExtension { get; }
+        //public abstract string FileExtension { get; }
 
         public BaseMessage(Client client, string pathFolderToSaveFiles)
         {
@@ -26,7 +26,7 @@ namespace TelegramClient.Factory.Base
         public string PathLocationFolder(ChatDto chatDto, string fileName, bool createFolder = false)
         {
             var path = CreateFolderIfNotExist(chatDto);
-            path = Path.Combine($"{path}/{chatDto.Name}", $"{fileName}.{FileExtension}");
+            path = Path.Combine($"{path}/{chatDto.Name}", $"{fileName}");
 
             if (createFolder && !Directory.Exists($"{path}/{fileName}"))
             {

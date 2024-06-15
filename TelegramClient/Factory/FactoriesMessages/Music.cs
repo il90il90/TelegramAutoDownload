@@ -20,8 +20,6 @@ namespace TelegramClient.Factory.FactoriesMessages
             this.client = client;
         }
 
-        public override string FileExtension => "";
-
         public override MessageTypes TypeMessage { get => MessageTypes.Music; set => throw new NotImplementedException(); }
 
         public override async Task ExecuteAsync(Message message, ChatDto chatDto)

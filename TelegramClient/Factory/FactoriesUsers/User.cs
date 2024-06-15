@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using TelegramAutoDownload.Models;
 using TelegramClient.Models;
 using TL;
 
@@ -9,9 +10,8 @@ namespace TelegramClient.Factory.FactoriesUsers
 
     public class User : Base.UserBase
     {
-        public User(IList<long> listenToChannel) : base(listenToChannel)
+        public User(IList<long> listenToChannel, ConfigParams configParams) : base(listenToChannel, configParams)
         {
-
         }
 
         public override ChatDto Execute(UpdatesBase updates)
@@ -29,7 +29,7 @@ namespace TelegramClient.Factory.FactoriesUsers
                 {
                     Id = user.Value.Value.ID,
                     Name = $"{user.Value.Value.first_name} {user.Value.Value.last_name}",
-                    Username = username
+                    Username = username,
                 };
             }
             catch (Exception)

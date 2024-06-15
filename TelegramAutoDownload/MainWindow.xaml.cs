@@ -6,6 +6,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
+using System.Windows.Media;
 using TelegramAutoDownload.Models;
 using TelegramClient;
 using TelegramClient.Models;
@@ -27,11 +28,10 @@ namespace TelegramAutoDownload
 
         private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
-            await Task.Delay(200);
+            await Task.Delay(500);
             await LoadDataAsync();
             ItemsListView.IsEnabled = true;
             Init();
-
         }
 
         private void Init()
@@ -54,18 +54,19 @@ namespace TelegramAutoDownload
                     var fromConfigFile = configParams.Chats?.FirstOrDefault(a => a.Id == chat.Id);
                     if (fromConfigFile != null)
                     {
-                        chat.Selected = true;
+                        chat.Selected = fromConfigFile.Selected;
+                        chat.ReactionIcon = fromConfigFile.ReactionIcon;
                     }
                 }
 
                 ItemsListView.ItemsSource = _chats.OrderByDescending(a => a.Selected);
+
             }
             catch (Exception ex)
             {
                 MessageBox.Show(ex.Message, "error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
-
 
         private void BtnSelectPath_Click(object sender, RoutedEventArgs e)
         {
@@ -113,7 +114,6 @@ namespace TelegramAutoDownload
                 return;
             var checkedItems = _chats.Cast<ChatDto>().Where(item => item.Selected).ToList();
 
-
             ConfigParams configParams = ConfigFile.Read();
             configParams.Chats = checkedItems;
             ConfigFile.Save(configParams);
@@ -123,7 +123,6 @@ namespace TelegramAutoDownload
 
         private void HlOpenFolder_Click(object sender, RoutedEventArgs e)
         {
-
             try
             {
                 string path = ((Run)hlOpenFolder.Inlines.FirstOrDefault()).Text;
@@ -132,6 +131,55 @@ namespace TelegramAutoDownload
             catch (Exception ex)
             {
                 MessageBox.Show(ex.Message);
+            }
+        }
+
+        private void ComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            var comboBox = sender as ComboBox;
+            if (comboBox != null && comboBox.SelectedItem != null)
+            {
+                var item = (ComboBoxItem)comboBox.SelectedValue;
+                var reactionIcon = (string)item.Content;
+                var dataContext = comboBox.DataContext as ChatDto;
+                if (dataContext != null)
+                {
+                    var config = ConfigFile.Read();
+                    var foundChat = config.Chats.FirstOrDefault(a => a.Id == dataContext.Id);
+                    if (foundChat == null)
+                    {
+                        MessageBox.Show($"Please select a {dataContext?.Type} before choosing a Reaction.", "", MessageBoxButton.OK, MessageBoxImage.Information);
+                        return;
+                    };
+
+                    dataContext.ReactionIcon = reactionIcon;
+                    foundChat.ReactionIcon = reactionIcon;
+
+                    ConfigFile.Save(config);
+                    TelegramApp.UpdateConfig(config);
+                }
+            }
+        }
+
+        private void ReactionIcon_Loaded(object sender, RoutedEventArgs e)
+        {
+            var comboBox = sender as ComboBox;
+            if (comboBox != null)
+            {
+                DependencyObject parent = VisualTreeHelper.GetParent(comboBox);
+                while (!(parent is ListViewItem) && parent != null)
+                {
+                    parent = VisualTreeHelper.GetParent(parent);
+                }
+
+                if (parent is ListViewItem listViewItem)
+                {
+                    var chatDto = listViewItem.DataContext as ChatDto;
+                    if (chatDto != null)
+                    {
+                        comboBox.Text = chatDto.ReactionIcon;
+                    }
+                }
             }
         }
     }

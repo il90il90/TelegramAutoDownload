@@ -17,7 +17,7 @@ namespace TelegramClient.Factory.Factories
         {
         }
 
-        public override string FileExtension => "jpg";
+        public string FileExtension => "jpg";
 
         public override MessageTypes TypeMessage { get => MessageTypes.Photos; set => throw new NotImplementedException(); }
 
@@ -37,7 +37,7 @@ namespace TelegramClient.Factory.Factories
                 var folderLocation = PathLocationFolder(chatDto, filename);
                 using var fileStream = File.Create(folderLocation);
                 var type = await Client.DownloadFileAsync(photo, fileStream);
-                fileStream.Close(); 
+                fileStream.Close();
             }
         }
     }

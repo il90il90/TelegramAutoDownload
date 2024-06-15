@@ -16,7 +16,7 @@ namespace YoutubePlugin
         {
             var video = await GetVideoInfo(videoUrl);
             var streamManifest = await youtube.Videos.Streams.GetManifestAsync(videoUrl);
-            
+
             var streamInfo = streamManifest.Streams.OrderByDescending(a => a.Size.Bytes).FirstOrDefault(a => a.Container.Name.Contains("mp4"));
             if (streamInfo != null)
             {

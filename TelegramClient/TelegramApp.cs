@@ -14,7 +14,6 @@ namespace TelegramClient
         public readonly Client Client;
         private FactoryMessagesService factoryService;
         private FactoryUserService factoryUserService;
-        private ConfigParams _configParams;
 
         public TelegramApp(FactoryUserService factoryUserService)
         {
@@ -35,10 +34,9 @@ namespace TelegramClient
         /// <param name="pathFolderToSaveFiles">The path to the folder where files will be saved.</param>
         public void UpdateConfig(ConfigParams configParams)
         {
-            _configParams = configParams;
             var chatIds = configParams.Chats.Select(c => c.Id).ToList();
             factoryService = new FactoryMessagesService(Client, configParams.PathSaveFile);
-            factoryUserService = new FactoryUserService(chatIds);
+            factoryUserService = new FactoryUserService(chatIds, configParams);
         }
 
         private async Task Client_OnUpdates(UpdatesBase updates)
@@ -51,21 +49,20 @@ namespace TelegramClient
 
             await factoryService.ExecuteAsync(updates.UpdateList, chat);
 
-            if (_configParams.ReactionStatus)
+            if (chat.ReactionIcon != null)
             {
                 var updateNewMessage = updates.UpdateList.OfType<UpdateNewMessage>().FirstOrDefault();
                 if (updateNewMessage != null)
                 {
                     var message = (Message)updateNewMessage.message;
-                    await ReactToMessage(updates, message);
+                    await ReactToMessage(updates, message, chat.ReactionIcon);
                 }
             }
         }
 
-        private async Task ReactToMessage(UpdatesBase updates, Message message)
+        private async Task ReactToMessage(UpdatesBase updates, Message message, string reactionIcon)
         {
-
-            InputPeer inputPeer = null;
+            InputPeer inputPeer;
             var isCahnnel = updates?.Chats?.FirstOrDefault().Value?.IsChannel;
             if (isCahnnel == true)
             {
@@ -77,7 +74,7 @@ namespace TelegramClient
                 var user = updates.Users.FirstOrDefault().Value;
                 inputPeer = new InputUser(user.id, user.access_hash);
             }
-            await Client.Messages_SendReaction(inputPeer, message.ID, new[] { new ReactionEmoji { emoticon = _configParams.ReactionIcon } });
+            await Client.Messages_SendReaction(inputPeer, message.ID, new[] { new ReactionEmoji { emoticon = reactionIcon } });
         }
 
         public async Task<IList<ChatDto>> GetAllChats()

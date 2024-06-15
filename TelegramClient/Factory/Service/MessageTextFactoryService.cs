@@ -16,8 +16,6 @@ namespace TelegramClient.Factory.Service
 
         public override MessageTypes TypeMessage { get; set; }
 
-        public override string FileExtension { get; }
-
         public MessageTextFactoryService(Client client, string pathFolderToSaveFiles) : base(client, pathFolderToSaveFiles)
         {
             messageTexts = [
