@@ -20,7 +20,14 @@ namespace YoutubePlugin
             var streamInfo = streamManifest.Streams.OrderByDescending(a => a.Size.Bytes).FirstOrDefault(a => a.Container.Name.Contains("mp4"));
             if (streamInfo != null)
             {
-                await youtube.Videos.Streams.DownloadAsync(streamInfo, $"{path}/{video.Title}-{video.Author?.ChannelTitle}.{streamInfo.Container}");
+                char[] invalidChars = Path.GetInvalidFileNameChars();
+                var title = video.Title;
+                foreach (char c in invalidChars)
+                {
+                    title = title.Replace(c, ' ');
+                }
+
+                await youtube.Videos.Streams.DownloadAsync(streamInfo, $"{path}/{title}-{video.Author?.ChannelTitle}.{streamInfo.Container}");
             }
         }
     }
