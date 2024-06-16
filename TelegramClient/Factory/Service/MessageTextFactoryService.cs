@@ -27,8 +27,15 @@ namespace TelegramClient.Factory.Service
         {
             foreach (var item in messageTexts)
             {
-                TypeMessage = item.TypeMessage;
-                await item.ExecuteAsync(message, chatDto);
+                var split = message.message.Split('\n');
+                foreach (var line in split)
+                {
+                    TypeMessage = item.TypeMessage;
+                    await item.ExecuteAsync(new Message()
+                    {
+                        message = line
+                    }, chatDto);
+                }
             }
         }
     }
