@@ -1,5 +1,6 @@
 ﻿using Microsoft.Win32;
 using Newtonsoft.Json;
+using System;
 using System.Diagnostics;
 using System.IO;
 using System.Windows;
@@ -29,13 +30,12 @@ namespace TelegramAutoDownload
         private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
             await Task.Delay(500);
-            await LoadDataAsync();
-            ItemsListView.IsEnabled = true;
-            Init();
+            await InitAsync();
         }
 
-        private void Init()
+        private async Task InitAsync()
         {
+            await LoadDataAsync();
             ConfigParams configParams = ConfigFile.Read();
             if (configParams?.Chats == null) return;
             TelegramApp.UpdateConfig(configParams);
@@ -52,15 +52,20 @@ namespace TelegramAutoDownload
                 foreach (var chat in _chats)
                 {
                     var fromConfigFile = configParams.Chats?.FirstOrDefault(a => a.Id == chat.Id);
-                    if (fromConfigFile != null)
-                    {
-                        chat.Selected = fromConfigFile.Selected;
-                        chat.ReactionIcon = fromConfigFile.ReactionIcon;
-                    }
+                    if (fromConfigFile == null) continue;
+
+                    chat.Selected = fromConfigFile.Selected;
+                    chat.ReactionIcon = fromConfigFile.ReactionIcon;
+                    chat.Download.Videos = fromConfigFile.Download.Videos;
+                    chat.Download.Photos = fromConfigFile.Download.Photos;
+                    chat.Download.Music = fromConfigFile.Download.Music;
+                    chat.Download.Files = fromConfigFile.Download.Files;
                 }
 
-                ItemsListView.ItemsSource = _chats.OrderByDescending(a => a.Selected);
-
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    ItemsListView.ItemsSource = _chats.OrderByDescending(a => a.Selected);
+                });
             }
             catch (Exception ex)
             {
@@ -103,7 +108,10 @@ namespace TelegramAutoDownload
             if (_chats == null) return;
 
             var chats = _chats.Cast<ChatDto>().Where(c => c.Name.ToLower().Contains(textSearch) ||
-            c.Username != null && c.Username.Contains(textSearch.ToLower()) || c.Type.ToLower().Contains(textSearch.ToLower())).OrderByDescending(a => a.Selected);
+            c.Id.ToString().Contains(textSearch.ToLower()) ||
+            c.Username != null && c.Username.Contains(textSearch.ToLower()) ||
+            c.Type.Contains(textSearch, StringComparison.CurrentCultureIgnoreCase)).OrderByDescending(a => a.Selected);
+
             ItemsListView.ItemsSource = chats;
             tbCountChats.Text = chats.Count().ToString();
         }
@@ -180,6 +188,68 @@ namespace TelegramAutoDownload
                         comboBox.Text = chatDto.ReactionIcon;
                     }
                 }
+            }
+        }
+
+        private void Download_Checked(object sender, RoutedEventArgs e)
+        {
+            var checkbox = sender as CheckBox;
+            if (checkbox?.IsChecked != null)
+            {
+                var configFile = new ConfigFile();
+                var configParams = configFile.Read();
+
+                var chatDto = checkbox.DataContext as ChatDto;
+                var chat = configParams.Chats.FirstOrDefault(a => a.Id == chatDto?.Id);
+                if (chat == null) return;
+
+                switch (checkbox.Content)
+                {
+                    case "Videos":
+                        chat.Download.Videos = checkbox.IsChecked.Value;
+                        break;
+                    case "Photos":
+                        chat.Download.Photos = checkbox.IsChecked.Value;
+                        break;
+                    case "Music":
+                        chat.Download.Music = checkbox.IsChecked.Value;
+                        break;
+                    case "Files":
+                        chat.Download.Files = checkbox.IsChecked.Value;
+                        break;
+                    default:
+                        break;
+                }
+
+                ConfigFile.Save(configParams);
+                TelegramApp.UpdateConfig(configParams);
+            }
+        }
+
+        private void Download_Loaded(object sender, RoutedEventArgs e)
+        {
+            var checkbox = sender as CheckBox;
+            if (checkbox?.IsChecked != null)
+            {
+                var chatDto = checkbox.DataContext as ChatDto;
+                switch (checkbox.Content)
+                {
+                    case "Videos":
+                        checkbox.IsChecked = chatDto?.Download.Videos;
+                        break;
+                    case "Photos":
+                        checkbox.IsChecked = chatDto?.Download.Photos;
+                        break;
+                    case "Music":
+                        checkbox.IsChecked = chatDto?.Download.Music;
+                        break;
+                    case "Files":
+                        checkbox.IsChecked = chatDto?.Download.Files;
+                        break;
+                    default:
+                        break;
+                }
+
             }
         }
     }

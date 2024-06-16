@@ -15,7 +15,7 @@ namespace TelegramClient.Factory.Factories
     public class Videos : BaseMessage
     {
         private readonly Client client;
-        
+
 
 
         public override MessageTypes TypeMessage { get => MessageTypes.Videos; set => throw new NotImplementedException(); }
@@ -25,8 +25,10 @@ namespace TelegramClient.Factory.Factories
             this.client = client;
         }
 
-        public override async Task ExecuteAsync(Message message, ChatDto chatDto)
+        public override async Task<bool> ExecuteAsync(Message message, ChatDto chatDto)
         {
+            if (!chatDto.Download.Videos) return false;
+
             if (message.media is MessageMediaDocument mediaVideo)
             {
                 var document = (Document)mediaVideo.document;
@@ -36,6 +38,7 @@ namespace TelegramClient.Factory.Factories
                 using var stream = File.OpenWrite(pathFolderLocation);
                 await client.DownloadFileAsync(document, stream);
             }
+            return true;
         }
     }
 }

@@ -14,7 +14,7 @@ namespace TelegramClient.Factory.Interfaces.Messages
         public Client Client { get; }
         public MessageTypes TypeMessage { get; set; }
         //public string FileExtension { get; }
-        public Task ExecuteAsync(Message message, ChatDto chatDto);
+        public Task<bool> ExecuteAsync(Message message, ChatDto chatDto);
 
     }
 }

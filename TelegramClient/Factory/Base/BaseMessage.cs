@@ -14,14 +14,12 @@ namespace TelegramClient.Factory.Base
         public string PathFolderToSaveFiles { get; }
         public abstract MessageTypes TypeMessage { get; set; }
 
-        //public abstract string FileExtension { get; }
-
         public BaseMessage(Client client, string pathFolderToSaveFiles)
         {
             Client = client;
             PathFolderToSaveFiles = pathFolderToSaveFiles;
         }
-        public abstract Task ExecuteAsync(Message message, ChatDto chatDto);
+        public abstract Task<bool> ExecuteAsync(Message message, ChatDto chatDto);
 
         public string PathLocationFolder(ChatDto chatDto, string fileName, bool createFolder = false)
         {

@@ -20,14 +20,15 @@ namespace TelegramClient.Factory.Factories
             _youtubeDownloader = new YoutubeDownloader();
         }
 
-        public override async Task ExecuteAsync(Message message, ChatDto chatDto)
+        public override async Task<bool> ExecuteAsync(Message message, ChatDto chatDto)
         {
-            if (!message.message.StartsWith("https://youtu")) return;
+            if (!message.message.StartsWith("https://youtu")) return false;
 
             var videoUrl = message.message;
             var infoVideo = await _youtubeDownloader.GetVideoInfo(videoUrl);
             var pathFolderLocation = PathLocationFolder(chatDto, infoVideo.Author.ChannelTitle,true);
             await _youtubeDownloader.DownloadYouTubeVideoAsync(pathFolderLocation, videoUrl);
+            return true;
         }
     }
 }

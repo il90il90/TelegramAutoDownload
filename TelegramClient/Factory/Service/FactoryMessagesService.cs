@@ -30,7 +30,7 @@ namespace TelegramClient.Factory.Service
             ];
         }
 
-        public async Task ExecuteAsync(Update[] updates, ChatDto chatDto)
+        public async Task<bool> ExecuteAsync(Update[] updates, ChatDto chatDto)
         {
             foreach (Update update in updates)
             {
@@ -41,10 +41,11 @@ namespace TelegramClient.Factory.Service
                     var type = GetTypeOfMessage(message);
 
                     var handleMessage = messageTypes.FirstOrDefault(a => a.TypeMessage.Equals(type));
-                    if (handleMessage == null) return;
-                    await handleMessage.ExecuteAsync(message, chatDto);
+                    if (handleMessage == null) return false;
+                    return await handleMessage.ExecuteAsync(message, chatDto);
                 }
             }
+            return true;
         }
 
 

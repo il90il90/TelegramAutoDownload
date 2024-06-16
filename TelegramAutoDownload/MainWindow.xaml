@@ -4,7 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
+        Title="MainWindow" Height="450" Width="1059">
 
     <Grid Margin="0,0,0,0">
         <Grid.RowDefinitions>
@@ -64,7 +64,7 @@
                             </DataTemplate>
                         </GridViewColumn.CellTemplate>
                     </GridViewColumn>
-                    <GridViewColumn Header="Type" Width="150">
+                    <GridViewColumn Header="Type" Width="100">
                         <GridViewColumn.CellTemplate>
                             <DataTemplate>
                                 <TextBlock Text="{Binding Type}" VerticalAlignment="Center" Margin="5,0"/>
@@ -82,6 +82,19 @@
                                     <ComboBoxItem Content="❤️" />
                                     <ComboBoxItem Content="👌" />
                                 </ComboBox>
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+
+                    <GridViewColumn Header="Download" Width="300">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <CheckBox Name="Videos" Content="Videos" IsChecked="{Binding Videos, Mode=TwoWay}" Checked="Download_Checked" Unchecked="Download_Checked" Loaded="Download_Loaded" Margin="10"/>
+                                    <CheckBox Name="Photos" Content="Photos" IsChecked="{Binding Photos, Mode=TwoWay}" Checked="Download_Checked" Unchecked="Download_Checked" Loaded="Download_Loaded" Margin="10"/>
+                                    <CheckBox Name="Music" Content="Music" IsChecked="{Binding Music, Mode=TwoWay}" Checked="Download_Checked" Unchecked="Download_Checked" Loaded="Download_Loaded" Margin="10"/>
+                                    <CheckBox Name="Files" Content="Files" IsChecked="{Binding Files, Mode=TwoWay}" Checked="Download_Checked" Unchecked="Download_Checked" Loaded="Download_Loaded" Margin="10"/>
+                                </StackPanel>
                             </DataTemplate>
                         </GridViewColumn.CellTemplate>
                     </GridViewColumn>

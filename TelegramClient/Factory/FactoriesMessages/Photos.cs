@@ -21,8 +21,9 @@ namespace TelegramClient.Factory.Factories
 
         public override MessageTypes TypeMessage { get => MessageTypes.Photos; set => throw new NotImplementedException(); }
 
-        public override async Task ExecuteAsync(Message message, ChatDto chatDto)
+        public override async Task<bool> ExecuteAsync(Message message, ChatDto chatDto)
         {
+            if (!chatDto.Download.Photos) return false;
             if (message.media is MessageMediaDocument { document: Document document })
             {
                 var filename = document.Filename;
@@ -39,6 +40,7 @@ namespace TelegramClient.Factory.Factories
                 var type = await Client.DownloadFileAsync(photo, fileStream);
                 fileStream.Close();
             }
+            return true;
         }
     }
 }

@@ -22,8 +22,9 @@ namespace TelegramClient.Factory.FactoriesMessages
 
         public override MessageTypes TypeMessage { get => MessageTypes.Music; set => throw new NotImplementedException(); }
 
-        public override async Task ExecuteAsync(Message message, ChatDto chatDto)
+        public override async Task<bool> ExecuteAsync(Message message, ChatDto chatDto)
         {
+            if (!chatDto.Download.Music) return false;
             if (message.media is MessageMediaDocument mediaDocument)
             {
                 var document = (Document)mediaDocument.document;
@@ -33,6 +34,7 @@ namespace TelegramClient.Factory.FactoriesMessages
                 using var stream = File.OpenWrite(pathFolderLocation);
                 await client.DownloadFileAsync(document, stream);
             }
+            return true;
         }
     }
 }

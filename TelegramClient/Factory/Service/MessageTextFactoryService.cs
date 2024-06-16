@@ -23,7 +23,7 @@ namespace TelegramClient.Factory.Service
             ];
         }
 
-        public override async Task ExecuteAsync(Message message, ChatDto chatDto)
+        public override async Task<bool> ExecuteAsync(Message message, ChatDto chatDto)
         {
             foreach (var item in messageTexts)
             {
@@ -37,6 +37,7 @@ namespace TelegramClient.Factory.Service
                     }, chatDto);
                 }
             }
+            return true;
         }
     }
 }

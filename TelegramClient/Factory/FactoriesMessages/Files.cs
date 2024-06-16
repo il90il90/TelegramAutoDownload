@@ -15,7 +15,6 @@ namespace TelegramClient.Factory.Factories
     public class Files : BaseMessage
     {
         private readonly Client client;
-        //public override MessageTypes TypeMessage => MessageTypes.Files;
 
         public override MessageTypes TypeMessage { get => MessageTypes.Files; set => throw new NotImplementedException(); }
 
@@ -24,8 +23,10 @@ namespace TelegramClient.Factory.Factories
             this.client = client;
         }
 
-        public override async Task ExecuteAsync(Message message, ChatDto chatDto)
+        public override async Task<bool> ExecuteAsync(Message message, ChatDto chatDto)
         {
+            if (!chatDto.Download.Files) return false; ;
+
             if (message.media is MessageMediaDocument mediaDocument)
             {
                 var document = (Document)mediaDocument.document;
@@ -35,6 +36,7 @@ namespace TelegramClient.Factory.Factories
                 using var stream = File.OpenWrite(pathFolderLocation);
                 await client.DownloadFileAsync(document, stream);
             }
+            return true;
         }
     }
 }
