@@ -25,19 +25,20 @@ namespace TelegramClient.Factory.Service
 
         public override async Task<bool> ExecuteAsync(Message message, ChatDto chatDto)
         {
+            var resultExecute = false;
             foreach (var item in messageTexts)
             {
                 var split = message.message.Split('\n');
                 foreach (var line in split)
                 {
                     TypeMessage = item.TypeMessage;
-                    await item.ExecuteAsync(new Message()
+                    resultExecute = await item.ExecuteAsync(new Message()
                     {
                         message = line
                     }, chatDto);
                 }
             }
-            return true;
+            return resultExecute;
         }
     }
 }
