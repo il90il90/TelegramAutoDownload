@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("TelegramAutoDownload")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+295471c3fdbc9d53b0fc1da555966fdc0f6cad0f")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+3034cdbe27f33fc13c3af86c20dc59a54b89d526")]
 [assembly: System.Reflection.AssemblyProductAttribute("TelegramAutoDownload")]
 [assembly: System.Reflection.AssemblyTitleAttribute("TelegramAutoDownload")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
