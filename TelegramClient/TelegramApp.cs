@@ -49,6 +49,7 @@ namespace TelegramClient
 
             var resultExecute = await factoryService.ExecuteAsync(updates.UpdateList, chat);
 
+            
             if (resultExecute && chat.ReactionIcon != null)
             {
                 var updateNewMessage = updates.UpdateList.OfType<UpdateNewMessage>().FirstOrDefault();
