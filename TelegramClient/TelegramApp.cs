@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Threading.Tasks;
 using TelegramAutoDownload.Models;
+using TelegramClient.Factory.FactoriesMessages.Enum;
 using TelegramClient.Factory.Service;
 using TelegramClient.Models;
 using TL;
@@ -46,19 +47,27 @@ namespace TelegramClient
 
             var chat = factoryUserService.Execute(updates);
             if (chat == null) return;
-
-            var resultExecute = await factoryService.ExecuteAsync(updates.UpdateList, chat);
-
-            
-            if (resultExecute && chat.ReactionIcon != null)
+            List<Task> tasks = [];
+            foreach (Update update in updates.UpdateList)
             {
-                var updateNewMessage = updates.UpdateList.OfType<UpdateNewMessage>().FirstOrDefault();
-                if (updateNewMessage != null)
+                if (update is UpdateNewMessage updateNewMessage)
                 {
-                    var message = (Message)updateNewMessage.message;
-                    await ReactToMessage(updates, message, chat.ReactionIcon);
+                    var task = Task.Run(async () =>
+                    {
+                        var resultExecute = await factoryService.ExecuteAsync(updateNewMessage, chat);
+                        if (resultExecute && chat.ReactionIcon != null)
+                        {
+                            if (updateNewMessage != null)
+                            {
+                                var message = (Message)updateNewMessage.message;
+                                await ReactToMessage(updates, message, chat.ReactionIcon);
+                            }
+                        }
+                    });
+                    tasks.Add(task);
                 }
             }
+            await Task.WhenAll(tasks);
         }
 
         private async Task ReactToMessage(UpdatesBase updates, Message message, string reactionIcon)

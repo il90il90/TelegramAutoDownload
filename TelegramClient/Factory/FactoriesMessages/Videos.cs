@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using TelegramClient.Factory.Base;
@@ -32,8 +33,8 @@ namespace TelegramClient.Factory.Factories
             if (message.media is MessageMediaDocument mediaVideo)
             {
                 var document = (Document)mediaVideo.document;
-
-                var fileName = !string.IsNullOrEmpty(document.Filename) ? document.Filename : document.ID.ToString();
+                var mime_type = document.mime_type.Split("/").LastOrDefault();
+                var fileName = !string.IsNullOrEmpty(document.Filename) ? document.Filename : $"{document.ID}.{mime_type}";
                 var pathFolderLocation = PathLocationFolder(chatDto, fileName);
                 using var stream = File.OpenWrite(pathFolderLocation);
                 await client.DownloadFileAsync(document, stream);
