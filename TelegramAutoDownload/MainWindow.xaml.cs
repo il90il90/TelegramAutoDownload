@@ -123,6 +123,15 @@ namespace TelegramAutoDownload
             var checkedItems = _chats.Cast<ChatDto>().Where(item => item.Selected).ToList();
 
             ConfigParams configParams = ConfigFile.Read();
+            foreach (var item in checkedItems)
+            {
+                var chatInConfigFile = configParams.Chats.FirstOrDefault(a => a.Id == item.Id);
+                if (chatInConfigFile != null)
+                {
+                    item.Download = chatInConfigFile.Download;
+                    item.ReactionIcon = chatInConfigFile.ReactionIcon;
+                }
+            }
             configParams.Chats = checkedItems;
             ConfigFile.Save(configParams);
 
