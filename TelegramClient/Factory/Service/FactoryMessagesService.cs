@@ -30,25 +30,21 @@ namespace TelegramClient.Factory.Service
             ];
         }
 
-        public async Task<bool> ExecuteAsync(Update[] updates, ChatDto chatDto)
+        public async Task<bool> ExecuteAsync(Update update, ChatDto chatDto)
         {
             var resultExecute = false;
-            foreach (Update update in updates)
+            if (update is UpdateNewMessage updateNewMessage)
             {
-                if (update is UpdateNewMessage updateNewMessage)
-                {
-                    var message = (Message)updateNewMessage.message;
+                var message = (Message)updateNewMessage.message;
 
-                    var type = GetTypeOfMessage(message);
+                var type = GetTypeOfMessage(message);
 
-                    var handleMessage = messageTypes.FirstOrDefault(a => a.TypeMessage.Equals(type));
-                    if (handleMessage == null) return false;
-                    resultExecute= await handleMessage.ExecuteAsync(message, chatDto);
-                }
+                var handleMessage = messageTypes.FirstOrDefault(a => a.TypeMessage.Equals(type));
+                if (handleMessage == null) return false;
+                return resultExecute = await handleMessage.ExecuteAsync(message, chatDto);
             }
-            return resultExecute;
+            return false;
         }
-
 
         private MessageTypes GetTypeOfMessage(Message message)
         {

@@ -6,9 +6,7 @@ using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using TelegramClient.Factory.Base;
-using TelegramClient.Factory.Factories;
 using TelegramClient.Factory.FactoriesMessages.Enum;
-using TelegramClient.Factory.Interfaces.Messages;
 using TelegramClient.Models;
 using TL;
 using WTelegram;
@@ -47,31 +45,31 @@ namespace TelegramClient.Factory.Service
         public override async Task<bool> ExecuteAsync(Message message, ChatDto chatDto)
         {
             var resultExecute = false;
-            var split = message.message.Split('\n');
-            foreach (var line in split)
-            {
+            //var split = message.message.Split('\n');
+            //foreach (var line in split)
+            //{
 
-                foreach (var pluginType in _pluginTypes)
+            foreach (var pluginType in _pluginTypes)
+            {
+                var genericType = pluginType.MakeGenericType(typeof(Message));
+
+                if (Activator.CreateInstance(genericType) is BasePlugin<Message> pluginInstance)
                 {
-                    var genericType = pluginType.MakeGenericType(typeof(Message));
-                    
-                    if (Activator.CreateInstance(genericType) is BasePlugin<Message> pluginInstance)
+                    var config = new BasePlugins.Config
                     {
-                        var config = new BasePlugins.Config
-                        {
-                            Text = line,
-                            PathSaveFile = PathFolderToSaveFiles,
-                            ChatName = chatDto.Name,
-                        };
-                        
-                        if (pluginInstance.CanHandle(config))
-                        {
-                            resultExecute = await pluginInstance.ExecuteAsync(config);
-                        }
+                        Text = message.message,
+                        PathSaveFile = PathFolderToSaveFiles,
+                        ChatName = chatDto.Name,
+                    };
+
+                    if (pluginInstance.CanHandle(config))
+                    {
+                        resultExecute = await pluginInstance.ExecuteAsync(config);
                     }
                 }
             }
             return resultExecute;
+
         }
     }
 }
