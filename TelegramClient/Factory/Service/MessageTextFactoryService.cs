@@ -45,31 +45,30 @@ namespace TelegramClient.Factory.Service
         public override async Task<bool> ExecuteAsync(Message message, ChatDto chatDto)
         {
             var resultExecute = false;
-            //var split = message.message.Split('\n');
-            //foreach (var line in split)
-            //{
-
-            foreach (var pluginType in _pluginTypes)
+            var split = message.message.Split('\n');
+            foreach (var line in split)
             {
-                var genericType = pluginType.MakeGenericType(typeof(Message));
-
-                if (Activator.CreateInstance(genericType) is BasePlugin<Message> pluginInstance)
+                foreach (var pluginType in _pluginTypes)
                 {
-                    var config = new BasePlugins.Config
-                    {
-                        Text = message.message,
-                        PathSaveFile = PathFolderToSaveFiles,
-                        ChatName = chatDto.Name,
-                    };
+                    var genericType = pluginType.MakeGenericType(typeof(Message));
 
-                    if (pluginInstance.CanHandle(config))
+                    if (Activator.CreateInstance(genericType) is BasePlugin<Message> pluginInstance)
                     {
-                        resultExecute = await pluginInstance.ExecuteAsync(config);
+                        var config = new BasePlugins.Config
+                        {
+                            Text = line,
+                            PathSaveFile = PathFolderToSaveFiles,
+                            ChatName = chatDto.Name,
+                        };
+
+                        if (pluginInstance.CanHandle(config))
+                        {
+                            resultExecute = await pluginInstance.ExecuteAsync(config);
+                        }
                     }
                 }
             }
             return resultExecute;
-
         }
     }
 }
