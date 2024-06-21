@@ -1,4 +1,7 @@
-﻿using System.Collections.Generic;
+﻿using Serilog;
+using Serilog.Core;
+using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using TelegramAutoDownload.Models;
@@ -15,14 +18,12 @@ namespace TelegramClient
         public readonly Client Client;
         private FactoryMessagesService factoryService;
         private FactoryUserService factoryUserService;
+        private readonly Serilog.Core.Logger logger;
 
-        public TelegramApp(FactoryUserService factoryUserService)
+        public TelegramApp(int appId, string apiHash, Logger.Logger logger = null)
         {
-            this.factoryUserService = factoryUserService;
-        }
-
-        public TelegramApp(int appId, string apiHash)
-        {
+            if (logger != null)
+                this.logger = logger.GetInstance();
             Client = new Client(appId, apiHash, "session.dat");
             Client.LoginUserIfNeeded();
             Client.OnUpdates += Client_OnUpdates;
@@ -55,12 +56,14 @@ namespace TelegramClient
                     var task = Task.Run(async () =>
                     {
                         var resultExecute = await factoryService.ExecuteAsync(updateNewMessage, chat);
+                        var infoMessage = (Message)updateNewMessage.message;
+
+                        logger?.Information($"message from {chat.Name}. {{@fromUser}}{{@message}}{{@chat}}{{@resultExecute}}", infoMessage.post_author, infoMessage.message, chat, resultExecute);
                         if (resultExecute && chat.ReactionIcon != null)
                         {
                             if (updateNewMessage != null)
                             {
-                                var message = (Message)updateNewMessage.message;
-                                await ReactToMessage(updates, message, chat.ReactionIcon);
+                                await ReactToMessage(updates, infoMessage, chat.ReactionIcon);
                             }
                         }
                     });

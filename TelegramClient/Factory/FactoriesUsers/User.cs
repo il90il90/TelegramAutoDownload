@@ -33,6 +33,7 @@ namespace TelegramClient.Factory.FactoriesUsers
                     Username = username,
                     ReactionIcon = chatParams.ReactionIcon,
                     Download = chatParams.Download,
+                    Type = chatParams.Type,
                 };
             }
             catch (Exception)
