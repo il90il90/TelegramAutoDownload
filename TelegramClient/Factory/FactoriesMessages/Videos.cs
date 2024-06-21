@@ -33,8 +33,9 @@ namespace TelegramClient.Factory.Factories
             if (message.media is MessageMediaDocument mediaVideo)
             {
                 var document = (Document)mediaVideo.document;
-                var mime_type = document.mime_type.Split("/").LastOrDefault();
+                var mime_type = document.Filename.Split('.').LastOrDefault();
                 var fileName = !string.IsNullOrEmpty(document.Filename) ? document.Filename : $"{document.ID}.{mime_type}";
+
                 var pathFolderLocation = PathLocationFolder(chatDto, fileName);
                 using var stream = File.OpenWrite(pathFolderLocation);
                 await client.DownloadFileAsync(document, stream);

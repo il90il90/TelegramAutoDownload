@@ -38,6 +38,8 @@ namespace TelegramAutoDownload
             await LoadDataAsync();
             ConfigParams configParams = ConfigFile.Read();
             if (configParams?.Chats == null) return;
+            tbCountChats.Text = _chats.Count.ToString();
+
             TelegramApp.UpdateConfig(configParams);
             UpdatePathOnUI(configParams.PathSaveFile);
         }
@@ -98,7 +100,6 @@ namespace TelegramAutoDownload
             hlOpenFolder.Inlines.Clear();
             hlOpenFolder.Inlines.Add(new Run(path));
             hlOpenFolder.IsEnabled = true;
-            tbCountChats.Text = _chats.Count.ToString();
         }
 
         private void SearchTextBox_TextChanged(object sender, TextChangedEventArgs e)
