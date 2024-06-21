@@ -46,7 +46,7 @@ namespace TelegramClient.Factory.Service
             return false;
         }
 
-        private MessageTypes GetTypeOfMessage(Message message)
+        public MessageTypes GetTypeOfMessage(Message message)
         {
             if (message.media is MessageMediaPhoto)
             {
