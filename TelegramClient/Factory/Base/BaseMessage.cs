@@ -12,7 +12,7 @@ namespace TelegramClient.Factory.Base
     {
         public Client Client { get; }
         public string PathFolderToSaveFiles { get; }
-        public abstract MessageTypes TypeMessage { get; set; }
+        public abstract MessageTypes TypeMessage { get; }
 
         public BaseMessage(Client client, string pathFolderToSaveFiles)
         {
@@ -21,15 +21,10 @@ namespace TelegramClient.Factory.Base
         }
         public abstract Task<bool> ExecuteAsync(Message message, ChatDto chatDto);
 
-        public string PathLocationFolder(ChatDto chatDto, string fileName, bool createFolder = false)
+        public string PathLocationFolder(ChatDto chatDto, string fileName)
         {
             var path = CreateFolderIfNotExist(chatDto);
-            path = Path.Combine($"{path}/{chatDto.Name}", $"{fileName}");
-
-            if (createFolder && !Directory.Exists($"{path}/{fileName}"))
-            {
-                Directory.CreateDirectory(path);
-            }
+            path = Path.Combine($"{path}/{chatDto.Name.TrimEnd()}", $"{fileName}");
 
             return path;
         }

@@ -1,9 +1,12 @@
 {
   "version": 2,
-  "dgSpecHash": "RJxhs5eC6t99TbOWEoRMCwj5DeQEwVYVJedkvYjCvvJEeZcsWClJYthw1VrVSielEdDmpvgjQ9FoCcYjFf0oLg==",
+  "dgSpecHash": "jHRk8kX8mmr9XPSF/DxM8E0KhRJFSRZ4aX/BIlvrXD8jL7rnZ4lqON0/pGx4WbSToufSeewBfwIRVZum9b9gxA==",
   "success": true,
   "projectFilePath": "C:\\Users\\il90i\\source\\repos\\RunnerApp\\TelegramClient\\TelegramClient.csproj",
   "expectedPackageFiles": [
+    "C:\\Users\\il90i\\.nuget\\packages\\serilog\\4.0.0\\serilog.4.0.0.nupkg.sha512",
+    "C:\\Users\\il90i\\.nuget\\packages\\serilog.sinks.file\\5.0.0\\serilog.sinks.file.5.0.0.nupkg.sha512",
+    "C:\\Users\\il90i\\.nuget\\packages\\serilog.sinks.seq\\8.0.0\\serilog.sinks.seq.8.0.0.nupkg.sha512",
     "C:\\Users\\il90i\\.nuget\\packages\\wtelegramclient\\4.1.1\\wtelegramclient.4.1.1.nupkg.sha512"
   ],
   "logs": []

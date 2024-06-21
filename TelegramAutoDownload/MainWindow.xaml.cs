@@ -110,7 +110,7 @@ namespace TelegramAutoDownload
 
             var chats = _chats.Cast<ChatDto>().Where(c => c.Name.ToLower().Contains(textSearch) ||
             c.Id.ToString().Contains(textSearch.ToLower()) ||
-            c.Username != null && c.Username.Contains(textSearch.ToLower()) ||
+            c.Username != null && c.Username.ToLower().Contains(textSearch.ToLower()) ||
             c.Type.Contains(textSearch, StringComparison.CurrentCultureIgnoreCase)).OrderByDescending(a => a.Selected);
 
             ItemsListView.ItemsSource = chats;

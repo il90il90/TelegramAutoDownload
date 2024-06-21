@@ -19,7 +19,7 @@ namespace TelegramClient.Factory.Factories
 
 
 
-        public override MessageTypes TypeMessage { get => MessageTypes.Videos; set => throw new NotImplementedException(); }
+        public override MessageTypes TypeMessage => MessageTypes.Videos;
 
         public Videos(Client client, string pathFolderToSaveFiles) : base(client, pathFolderToSaveFiles)
         {

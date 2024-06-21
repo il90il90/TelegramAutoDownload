@@ -12,7 +12,7 @@ namespace TelegramClient.Factory.Interfaces.Messages
     interface IMessageType
     {
         public Client Client { get; }
-        public MessageTypes TypeMessage { get; set; }
+        public MessageTypes TypeMessage { get; }
         public Task<bool> ExecuteAsync(Message message, ChatDto chatDto);
 
     }

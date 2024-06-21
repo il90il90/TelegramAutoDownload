@@ -53,21 +53,30 @@ namespace TelegramClient
             {
                 if (update is UpdateNewMessage updateNewMessage)
                 {
-                    var task = Task.Run(async () =>
+                    try
                     {
-                        var resultExecute = await factoryService.ExecuteAsync(updateNewMessage, chat);
-                        var infoMessage = (Message)updateNewMessage.message;
-
-                        logger?.Information($"message from {chat.Name}. {{@fromUser}}{{@message}}{{@chat}}{{@resultExecute}}", infoMessage.post_author, infoMessage.message, chat, resultExecute);
-                        if (resultExecute && chat.ReactionIcon != null)
+                        var task = Task.Run(async () =>
                         {
-                            if (updateNewMessage != null)
+                            var resultExecute = await factoryService.ExecuteAsync(updateNewMessage, chat);
+                            var infoMessage = (Message)updateNewMessage.message;
+
+                            logger?.Information($"message from {chat.Name}: {infoMessage.message}. {{@fromUser}}{{@message}}{{@id}}{{@username}}{{@chatName}}{{@type}}{{@download}}{{@reactionIcon}}{{@resultExecute}}",
+                                infoMessage.post_author, infoMessage.message, chat.Id, chat.Username ?? "private", chat.Name, chat.Type, chat.Download, chat.ReactionIcon, resultExecute);
+
+                            if (resultExecute && chat.ReactionIcon != null)
                             {
-                                await ReactToMessage(updates, infoMessage, chat.ReactionIcon);
+                                if (updateNewMessage != null)
+                                {
+                                    await ReactToMessage(updates, infoMessage, chat.ReactionIcon);
+                                }
                             }
-                        }
-                    });
-                    tasks.Add(task);
+                        });
+                        tasks.Add(task);
+                    }
+                    catch (Exception ex)
+                    {
+                        logger?.Error($"error on :{chat.Name} {{errorMessage}}", ex.Message);
+                    }
                 }
             }
             await Task.WhenAll(tasks);

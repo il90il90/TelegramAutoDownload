@@ -16,7 +16,7 @@ namespace TelegramClient.Factory.Service
     public class MessageTextFactoryService : BaseMessage
     {
         private readonly List<Type> _pluginTypes = [];
-        public override MessageTypes TypeMessage { get; set; }
+        public override MessageTypes TypeMessage { get;  }
 
         public MessageTextFactoryService(Client client, string pathFolderToSaveFiles) : base(client, pathFolderToSaveFiles)
         {

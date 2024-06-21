@@ -19,7 +19,7 @@ namespace TelegramClient.Factory.Factories
 
         public string FileExtension => "jpg";
 
-        public override MessageTypes TypeMessage { get => MessageTypes.Photos; set => throw new NotImplementedException(); }
+        public override MessageTypes TypeMessage => MessageTypes.Photos;
 
         public override async Task<bool> ExecuteAsync(Message message, ChatDto chatDto)
         {
