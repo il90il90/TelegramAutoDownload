@@ -13,6 +13,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DownloadPlugin", "DownloadS
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BasePlugins", "BasePlugin\BasePlugins.csproj", "{6CA4B3B0-49C5-4E90-8F1F-EE354EEDBACA}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Logger", "Logger\Logger.csproj", "{38CF15F6-AC43-4A6E-9659-F06B3260FFCA}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -39,6 +41,10 @@ Global
 		{6CA4B3B0-49C5-4E90-8F1F-EE354EEDBACA}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6CA4B3B0-49C5-4E90-8F1F-EE354EEDBACA}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6CA4B3B0-49C5-4E90-8F1F-EE354EEDBACA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{38CF15F6-AC43-4A6E-9659-F06B3260FFCA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{38CF15F6-AC43-4A6E-9659-F06B3260FFCA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{38CF15F6-AC43-4A6E-9659-F06B3260FFCA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{38CF15F6-AC43-4A6E-9659-F06B3260FFCA}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
