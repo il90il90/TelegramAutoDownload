@@ -44,7 +44,7 @@ namespace TelegramClient.Factory.Service
 
         public override async Task<ResultExecute> ExecuteAsync(Message message, ChatDto chatDto)
         {
-            ResultExecute resultExecute = null;
+            ResultExecute resultExecute = new();
             var split = message.message.Split('\n');
             foreach (var line in split)
             {
