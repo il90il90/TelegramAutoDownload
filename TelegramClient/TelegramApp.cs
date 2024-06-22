@@ -53,16 +53,17 @@ namespace TelegramClient
             {
                 if (update is UpdateNewMessage updateNewMessage)
                 {
-                    try
+
+                    var task = Task.Run(async () =>
                     {
-                        var task = Task.Run(async () =>
+                        try
                         {
                             var resultExecute = await factoryService.ExecuteAsync(updateNewMessage, chat);
                             var infoMessage = (Message)updateNewMessage.message;
 
                             var messageType = factoryService.GetTypeOfMessage(infoMessage);
                             logger?.Information($"message from {chat.Name}: {infoMessage.message}. {{@fromUser}}{{@message}}{{@id}}{{@username}}{{@chatName}}{{@type}}{{@download}}{{@reactionIcon}}{{@resultExecute}}{{messageType}}",
-                                infoMessage.post_author, infoMessage.message, chat.Id, chat.Username ?? "private", chat.Name, chat.Type, chat.Download, chat.ReactionIcon, resultExecute, messageType);
+                                    infoMessage.post_author, infoMessage.message, chat.Id, chat.Username ?? "private", chat.Name, chat.Type, chat.Download, chat.ReactionIcon, resultExecute, messageType);
 
                             if (resultExecute && chat.ReactionIcon != null)
                             {
@@ -71,13 +72,13 @@ namespace TelegramClient
                                     await ReactToMessage(updates, infoMessage, chat.ReactionIcon);
                                 }
                             }
-                        });
-                        tasks.Add(task);
-                    }
-                    catch (Exception ex)
-                    {
-                        logger?.Error($"error on :{chat.Name} {{errorMessage}}", ex.Message);
-                    }
+                        }
+                        catch (Exception ex)
+                        {
+                            logger?.Error($"error on :{chat.Name} {{errorMessage}}", ex.Message);
+                        }
+                    });
+                    tasks.Add(task);
                 }
             }
             await Task.WhenAll(tasks);
