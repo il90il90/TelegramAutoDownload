@@ -62,7 +62,7 @@ namespace DownloadService
                 }
                 return new ResultExecute(true)
                 {
-                    Name = fileName
+                    FileName = fileName
                 };
             }
             catch (Exception e)

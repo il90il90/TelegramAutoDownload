@@ -48,7 +48,7 @@ namespace TelegramClient.Factory.Factories
                 
                 return new ResultExecute(true)
                 {
-                    Name = fileName
+                    FileName = fileName
                 };
             }
             return new ResultExecute(false);

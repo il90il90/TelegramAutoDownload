@@ -63,7 +63,7 @@ namespace TelegramClient
 
                             var messageType = factoryService.GetTypeOfMessage(infoMessage);
                             logger?.Information($"message from {chat.Name}: {infoMessage.message}. {{@fromUser}}{{@message}}{{@id}}{{@username}}{{@chatName}}{{@type}}{{@download}}{{@reactionIcon}}{{@resultExecute}}{{messageType}}",
-                                    infoMessage.post_author, infoMessage.message, chat.Id, chat.Username ?? "private", chat.Name, chat.Type, chat.Download, chat.ReactionIcon, resultExecute, messageType);
+                                    infoMessage.post_author, infoMessage.message, chat.Id, chat.Username ?? "private", chat.Name, chat.Type, chat.Download, chat.ReactionIcon, resultExecute, messageType, resultExecute);
 
                             if (resultExecute.IsSuccess && chat.ReactionIcon != null)
                             {

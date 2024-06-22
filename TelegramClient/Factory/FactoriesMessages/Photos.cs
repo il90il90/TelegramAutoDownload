@@ -45,7 +45,7 @@ namespace TelegramClient.Factory.Factories
             return new ResultExecute()
             {
                 IsSuccess = true,
-                Name = filename,
+                FileName = filename,
             };
         }
     }

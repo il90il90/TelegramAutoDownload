@@ -38,7 +38,7 @@ namespace TelegramClient.Factory.FactoriesMessages
             }
             return new ResultExecute(true)
             {
-                Name = fileName
+                FileName = fileName
             };
         }
     }

@@ -46,7 +46,7 @@ namespace YoutubePlugin
 
                 return new ResultExecute(true)
                 {
-                    Name = video?.Author?.ChannelTitle ?? ""
+                    FileName = video?.Author?.ChannelTitle ?? ""
                 };
             }
             catch (Exception ex)
