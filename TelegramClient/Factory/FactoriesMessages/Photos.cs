@@ -24,7 +24,7 @@ namespace TelegramClient.Factory.Factories
 
         public override async Task<ResultExecute> ExecuteAsync(Message message, ChatDto chatDto)
         {
-            if (!chatDto.Download.Photos) return new ResultExecute(false);
+            if (!chatDto.Download.Photos) return new ResultExecute();
             string filename = "";
             if (message.media is MessageMediaDocument { document: Document document })
             {

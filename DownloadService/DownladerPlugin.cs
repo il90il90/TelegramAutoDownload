@@ -33,7 +33,7 @@ namespace DownloadService
                         fileName = response?.Content?.Headers?.ContentDisposition?.FileNameStar?.Trim('"') ?? Path.GetFileName(new Uri(config.Text).LocalPath);
                         string filePath = Path.Combine(path, fileName);
                         if (totalSize == 0)
-                            return new ResultExecute(false);
+                            return new ResultExecute();
                         using (FileStream fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None))
                         {
                             long offset = 0;
@@ -60,15 +60,18 @@ namespace DownloadService
                         }
                     }
                 }
-                return new ResultExecute(true)
+                return new ResultExecute()
                 {
+                    IsSuccess = true,
                     FileName = fileName
                 };
             }
             catch (Exception e)
             {
-                Console.WriteLine(e.Message);
-                return new ResultExecute(false);
+                return new ResultExecute()
+                {
+                    ErrorMessage = e.Message,
+                };
             }
         }
     }

@@ -26,7 +26,7 @@ namespace TelegramClient.Factory.Factories
 
         public override async Task<ResultExecute> ExecuteAsync(Message message, ChatDto chatDto)
         {
-            if (!chatDto.Download.Videos) return new ResultExecute(false);
+            if (!chatDto.Download.Videos) return new ResultExecute();
 
             if (message.media is MessageMediaDocument mediaVideo)
             {
@@ -46,12 +46,13 @@ namespace TelegramClient.Factory.Factories
                 using var stream = File.OpenWrite(pathFolderLocation);
                 await client.DownloadFileAsync(document, stream);
                 
-                return new ResultExecute(true)
+                return new ResultExecute()
                 {
+                    IsSuccess = true,
                     FileName = fileName
                 };
             }
-            return new ResultExecute(false);
+            return new ResultExecute();
         }
     }
 }

@@ -33,7 +33,6 @@ namespace TelegramClient.Factory.Service
 
         public async Task<ResultExecute> ExecuteAsync(Update update, ChatDto chatDto)
         {
-            var resultExecute = false;
             if (update is UpdateNewMessage updateNewMessage)
             {
                 var message = (Message)updateNewMessage.message;
@@ -41,10 +40,10 @@ namespace TelegramClient.Factory.Service
                 var type = GetTypeOfMessage(message);
 
                 var handleMessage = messageTypes.FirstOrDefault(a => a.TypeMessage.Equals(type));
-                if (handleMessage == null) return new ResultExecute(false);
+                if (handleMessage == null) return new ResultExecute();
                 return await handleMessage.ExecuteAsync(message, chatDto);
             }
-            return new ResultExecute(false);
+            return new ResultExecute();
         }
 
         public MessageTypes GetTypeOfMessage(Message message)

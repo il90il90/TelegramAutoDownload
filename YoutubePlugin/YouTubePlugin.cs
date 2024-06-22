@@ -44,14 +44,18 @@ namespace YoutubePlugin
                     await youtube.Videos.Streams.DownloadAsync(streamInfo, $"{path}/{title}-{video.Author?.ChannelTitle}.{streamInfo.Container}");
                 }
 
-                return new ResultExecute(true)
+                return new ResultExecute()
                 {
-                    FileName = video?.Author?.ChannelTitle ?? ""
+                    IsSuccess = true,
+                    FileName = video.Title ?? ""
                 };
             }
             catch (Exception ex)
             {
-                return new ResultExecute(false);
+                return new ResultExecute()
+                {
+                    ErrorMessage = ex.Message,
+                };
             }
         }
 
