@@ -1,4 +1,5 @@
-﻿using System;
+﻿using BasePlugins;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
@@ -21,12 +22,13 @@ namespace TelegramClient.Factory.Factories
 
         public override MessageTypes TypeMessage => MessageTypes.Photos;
 
-        public override async Task<bool> ExecuteAsync(Message message, ChatDto chatDto)
+        public override async Task<ResultExecute> ExecuteAsync(Message message, ChatDto chatDto)
         {
-            if (!chatDto.Download.Photos) return false;
+            if (!chatDto.Download.Photos) return new ResultExecute();
+            string filename = "";
             if (message.media is MessageMediaDocument { document: Document document })
             {
-                var filename = document.Filename;
+                filename = document.Filename;
                 var folderLocation = PathLocationFolder(chatDto, filename);
                 filename ??= $"{document.id}.{document.mime_type[(document.mime_type.IndexOf('/') + 1)..]}";
                 using var fileStream = File.Create(folderLocation);
@@ -34,13 +36,17 @@ namespace TelegramClient.Factory.Factories
             }
             else if (message.media is MessageMediaPhoto { photo: Photo photo })
             {
-                var filename = $"{photo.id}.{FileExtension}";
+                filename = $"{photo.id}.{FileExtension}";
                 var folderLocation = PathLocationFolder(chatDto, filename);
                 using var fileStream = File.Create(folderLocation);
                 var type = await Client.DownloadFileAsync(photo, fileStream);
                 fileStream.Close();
             }
-            return true;
+            return new ResultExecute()
+            {
+                IsSuccess = true,
+                FileName = filename,
+            };
         }
     }
 }

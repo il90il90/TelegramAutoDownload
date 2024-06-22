@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using BasePlugins;
+using System.IO;
 using System.Threading.Tasks;
 using TelegramClient.Factory.FactoriesMessages.Enum;
 using TelegramClient.Factory.Interfaces.Messages;
@@ -19,7 +20,7 @@ namespace TelegramClient.Factory.Base
             Client = client;
             PathFolderToSaveFiles = pathFolderToSaveFiles;
         }
-        public abstract Task<bool> ExecuteAsync(Message message, ChatDto chatDto);
+        public abstract Task<ResultExecute> ExecuteAsync(Message message, ChatDto chatDto);
 
         public string PathLocationFolder(ChatDto chatDto, string fileName)
         {

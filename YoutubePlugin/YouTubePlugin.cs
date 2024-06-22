@@ -21,7 +21,7 @@ namespace YoutubePlugin
             return await youtube.Videos.GetAsync(videoUrl);
         }
 
-        public override async Task<bool> ExecuteAsync(Config config)
+        public override async Task<ResultExecute> ExecuteAsync(Config config)
         {
             try
             {
@@ -44,11 +44,18 @@ namespace YoutubePlugin
                     await youtube.Videos.Streams.DownloadAsync(streamInfo, $"{path}/{title}-{video.Author?.ChannelTitle}.{streamInfo.Container}");
                 }
 
-                return true;
+                return new ResultExecute()
+                {
+                    IsSuccess = true,
+                    FileName = video.Title ?? ""
+                };
             }
             catch (Exception ex)
             {
-                return false;
+                return new ResultExecute()
+                {
+                    ErrorMessage = ex.Message,
+                };
             }
         }
 

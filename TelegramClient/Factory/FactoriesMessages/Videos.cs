@@ -1,8 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using BasePlugins;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using TelegramClient.Factory.Base;
 using TelegramClient.Factory.FactoriesMessages.Enum;
@@ -26,9 +24,9 @@ namespace TelegramClient.Factory.Factories
             this.client = client;
         }
 
-        public override async Task<bool> ExecuteAsync(Message message, ChatDto chatDto)
+        public override async Task<ResultExecute> ExecuteAsync(Message message, ChatDto chatDto)
         {
-            if (!chatDto.Download.Videos) return false;
+            if (!chatDto.Download.Videos) return new ResultExecute();
 
             if (message.media is MessageMediaDocument mediaVideo)
             {
@@ -47,8 +45,14 @@ namespace TelegramClient.Factory.Factories
                 var pathFolderLocation = PathLocationFolder(chatDto, fileName);
                 using var stream = File.OpenWrite(pathFolderLocation);
                 await client.DownloadFileAsync(document, stream);
+                
+                return new ResultExecute()
+                {
+                    IsSuccess = true,
+                    FileName = fileName
+                };
             }
-            return true;
+            return new ResultExecute();
         }
     }
 }

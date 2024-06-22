@@ -1,4 +1,5 @@
-﻿using System;
+﻿using BasePlugins;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
@@ -13,7 +14,7 @@ namespace TelegramClient.Factory.Interfaces.Messages
     {
         public Client Client { get; }
         public MessageTypes TypeMessage { get; }
-        public Task<bool> ExecuteAsync(Message message, ChatDto chatDto);
+        public Task<ResultExecute> ExecuteAsync(Message message, ChatDto chatDto);
 
     }
 }

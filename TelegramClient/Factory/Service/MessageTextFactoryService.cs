@@ -16,7 +16,7 @@ namespace TelegramClient.Factory.Service
     public class MessageTextFactoryService : BaseMessage
     {
         private readonly List<Type> _pluginTypes = [];
-        public override MessageTypes TypeMessage { get;  }
+        public override MessageTypes TypeMessage { get; }
 
         public MessageTextFactoryService(Client client, string pathFolderToSaveFiles) : base(client, pathFolderToSaveFiles)
         {
@@ -42,9 +42,9 @@ namespace TelegramClient.Factory.Service
             }
         }
 
-        public override async Task<bool> ExecuteAsync(Message message, ChatDto chatDto)
+        public override async Task<ResultExecute> ExecuteAsync(Message message, ChatDto chatDto)
         {
-            var resultExecute = false;
+            ResultExecute resultExecute = null;
             var split = message.message.Split('\n');
             foreach (var line in split)
             {
