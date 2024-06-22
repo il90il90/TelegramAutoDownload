@@ -6,7 +6,7 @@ namespace BasePlugins
         public abstract string PluginName { get; }
 
         public abstract bool CanHandle(Config config);
-        public abstract Task<bool> ExecuteAsync(Config config);
+        public abstract Task<ResultExecute> ExecuteAsync(Config config);
 
         protected void CreateDirectoryIfNotExist(string path)
         {

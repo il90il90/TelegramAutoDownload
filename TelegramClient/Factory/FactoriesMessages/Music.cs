@@ -1,4 +1,5 @@
-﻿using System;
+﻿using BasePlugins;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
@@ -22,19 +23,23 @@ namespace TelegramClient.Factory.FactoriesMessages
 
         public override MessageTypes TypeMessage => MessageTypes.Music;
 
-        public override async Task<bool> ExecuteAsync(Message message, ChatDto chatDto)
+        public override async Task<ResultExecute> ExecuteAsync(Message message, ChatDto chatDto)
         {
-            if (!chatDto.Download.Music) return false;
+            if (!chatDto.Download.Music) return new ResultExecute(false);
+            string fileName = "";
             if (message.media is MessageMediaDocument mediaDocument)
             {
                 var document = (Document)mediaDocument.document;
 
-                var fileName = !string.IsNullOrEmpty(document.Filename) ? document.Filename : document.ID.ToString();
+                fileName = !string.IsNullOrEmpty(document.Filename) ? document.Filename : document.ID.ToString();
                 var pathFolderLocation = PathLocationFolder(chatDto, fileName);
                 using var stream = File.OpenWrite(pathFolderLocation);
                 await client.DownloadFileAsync(document, stream);
             }
-            return true;
+            return new ResultExecute(true)
+            {
+                Name = fileName
+            };
         }
     }
 }

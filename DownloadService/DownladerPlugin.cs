@@ -13,10 +13,11 @@ namespace DownloadService
             return config.Text.StartsWith("http://") || config.Text.StartsWith("https://");
         }
 
-        public override async Task<bool> ExecuteAsync(Config config)
+        public override async Task<ResultExecute> ExecuteAsync(Config config)
         {
             try
             {
+                string fileName;
                 long chunkSize = 20 * 1024 * 1024;
 
                 var path = $"{config.PathSaveFile}/{PluginName}/{config.ChatName}";
@@ -29,10 +30,10 @@ namespace DownloadService
                         response.EnsureSuccessStatusCode();
 
                         long totalSize = response.Content.Headers.ContentLength ?? 0;
-                        string fileName = response?.Content?.Headers?.ContentDisposition?.FileNameStar?.Trim('"') ?? Path.GetFileName(new Uri(config.Text).LocalPath);
+                        fileName = response?.Content?.Headers?.ContentDisposition?.FileNameStar?.Trim('"') ?? Path.GetFileName(new Uri(config.Text).LocalPath);
                         string filePath = Path.Combine(path, fileName);
                         if (totalSize == 0)
-                            return false;
+                            return new ResultExecute(false);
                         using (FileStream fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None))
                         {
                             long offset = 0;
@@ -59,12 +60,15 @@ namespace DownloadService
                         }
                     }
                 }
-                return true;
+                return new ResultExecute(true)
+                {
+                    Name = fileName
+                };
             }
             catch (Exception e)
             {
                 Console.WriteLine(e.Message);
-                return false;
+                return new ResultExecute(false);
             }
         }
     }

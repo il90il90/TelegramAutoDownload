@@ -4,6 +4,6 @@
     {
         public string PluginName { get; }
         public bool CanHandle(Config config);
-        public Task<bool> ExecuteAsync(Config config);
+        public Task<ResultExecute> ExecuteAsync(Config config);
     }
 }

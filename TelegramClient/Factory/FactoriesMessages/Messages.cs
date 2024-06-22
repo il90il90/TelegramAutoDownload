@@ -1,4 +1,5 @@
-﻿using System;
+﻿using BasePlugins;
+using System;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -21,7 +22,7 @@ namespace TelegramClient.Factory.Factories
 
         public override MessageTypes TypeMessage => MessageTypes.Message;
 
-        public override async Task<bool> ExecuteAsync(TL.Message message, ChatDto chatDto)
+        public override async Task<ResultExecute> ExecuteAsync(TL.Message message, ChatDto chatDto)
         {
             return await _messageTextFactory.ExecuteAsync(message, chatDto);
         }

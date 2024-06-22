@@ -1,4 +1,5 @@
-﻿using Microsoft.VisualBasic;
+﻿using BasePlugins;
+using Microsoft.VisualBasic;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -30,7 +31,7 @@ namespace TelegramClient.Factory.Service
             ];
         }
 
-        public async Task<bool> ExecuteAsync(Update update, ChatDto chatDto)
+        public async Task<ResultExecute> ExecuteAsync(Update update, ChatDto chatDto)
         {
             var resultExecute = false;
             if (update is UpdateNewMessage updateNewMessage)
@@ -40,10 +41,10 @@ namespace TelegramClient.Factory.Service
                 var type = GetTypeOfMessage(message);
 
                 var handleMessage = messageTypes.FirstOrDefault(a => a.TypeMessage.Equals(type));
-                if (handleMessage == null) return false;
-                return resultExecute = await handleMessage.ExecuteAsync(message, chatDto);
+                if (handleMessage == null) return new ResultExecute(false);
+                return await handleMessage.ExecuteAsync(message, chatDto);
             }
-            return false;
+            return new ResultExecute(false);
         }
 
         public MessageTypes GetTypeOfMessage(Message message)

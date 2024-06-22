@@ -1,4 +1,5 @@
-﻿using System;
+﻿using BasePlugins;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
@@ -23,9 +24,9 @@ namespace TelegramClient.Factory.Factories
             this.client = client;
         }
 
-        public override async Task<bool> ExecuteAsync(Message message, ChatDto chatDto)
+        public override async Task<ResultExecute> ExecuteAsync(Message message, ChatDto chatDto)
         {
-            if (!chatDto.Download.Files) return false; ;
+            if (!chatDto.Download.Files) return new ResultExecute(false);
 
             if (message.media is MessageMediaDocument mediaDocument)
             {
@@ -36,7 +37,7 @@ namespace TelegramClient.Factory.Factories
                 using var stream = File.OpenWrite(pathFolderLocation);
                 await client.DownloadFileAsync(document, stream);
             }
-            return true;
+            return new ResultExecute(false);
         }
     }
 }
