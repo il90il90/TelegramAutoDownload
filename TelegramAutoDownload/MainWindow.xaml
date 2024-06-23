@@ -77,7 +77,7 @@
                                 <ComboBox Name="ReactionIcon" SelectedItem="{Binding ReactionIcon, Mode=TwoWay}"  Loaded="ReactionIcon_Loaded" SelectionChanged="ComboBox_SelectionChanged" Width="60">
                                     <ComboBoxItem Content="" />
                                     <ComboBoxItem Content="👍" />
-                                    <ComboBoxItem Content="✅" />
+                                    <ComboBoxItem Content="🔥" />
                                     <ComboBoxItem Content="💯" />
                                     <ComboBoxItem Content="❤️" />
                                     <ComboBoxItem Content="👌" />
