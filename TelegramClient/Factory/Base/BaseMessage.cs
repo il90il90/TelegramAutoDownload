@@ -1,6 +1,7 @@
 ﻿using BasePlugins;
 using System.IO;
 using System.Threading.Tasks;
+using TelegramClient.Factory.Factories;
 using TelegramClient.Factory.FactoriesMessages.Enum;
 using TelegramClient.Factory.Interfaces.Messages;
 using TelegramClient.Models;
@@ -24,13 +25,18 @@ namespace TelegramClient.Factory.Base
 
         public string PathLocationFolder(ChatDto chatDto, string fileName)
         {
-            var path = CreateFolderIfNotExist(chatDto);
-            path = Path.Combine($"{path}/{chatDto.Name.TrimEnd()}", $"{fileName}");
+            var folderName = chatDto.Name.TrimEnd();
+            char[] invalidChars = Path.GetInvalidFileNameChars();
+            foreach (char c in invalidChars)
+            {
+                fileName = fileName.Replace(c, ' ');
+                folderName = folderName.Replace(c, ' ');
+            }
 
-            return path;
+            return CreateFolderIfNotExist(folderName, fileName);
         }
 
-        private string CreateFolderIfNotExist(ChatDto chatDto)
+        private string CreateFolderIfNotExist(string folderName, string fileName)
         {
             var fullPathOfFolder = PathFolderToSaveFiles == null ? $"{TypeMessage}" : $"{PathFolderToSaveFiles}/{TypeMessage}";
             if (!Directory.Exists(fullPathOfFolder))
@@ -38,13 +44,13 @@ namespace TelegramClient.Factory.Base
                 Directory.CreateDirectory(fullPathOfFolder);
             }
 
-            var fullPath = $"{fullPathOfFolder}/{chatDto.Name}";
+            var fullPath = $"{fullPathOfFolder}/{folderName}";
             if (!Directory.Exists(fullPath))
             {
                 Directory.CreateDirectory(fullPath);
             }
 
-            return fullPathOfFolder;
+            return Path.Combine($"{fullPath}", $"{fileName}");
         }
     }
 }

@@ -53,13 +53,13 @@ namespace TelegramClient
             {
                 if (update is UpdateNewMessage updateNewMessage)
                 {
-
+                    Message infoMessage = null;
                     var task = Task.Run(async () =>
                     {
                         try
                         {
                             var resultExecute = await factoryService.ExecuteAsync(updateNewMessage, chat);
-                            var infoMessage = (Message)updateNewMessage.message;
+                            infoMessage = (Message)updateNewMessage.message;
 
                             var messageType = factoryService.GetTypeOfMessage(infoMessage);
                             logger?.Information($"message from {chat.Name}: {infoMessage.message}. {{@fromUser}}{{@message}}{{@id}}{{@username}}{{@chatName}}{{@type}}{{@download}}{{@reactionIcon}}{{@resultExecute}}{{messageType}}",
@@ -75,7 +75,7 @@ namespace TelegramClient
                         }
                         catch (Exception ex)
                         {
-                            logger?.Error($"error on :{chat.Name} {{errorMessage}}", ex.Message);
+                            logger?.Error($"error on :{chat.Name}{{message}} {{errorMessage}}", infoMessage?.message, ex.Message);
                         }
                     });
                     tasks.Add(task);
@@ -86,20 +86,27 @@ namespace TelegramClient
 
         private async Task ReactToMessage(UpdatesBase updates, Message message, string reactionIcon)
         {
-            InputPeer inputPeer;
-            var isCahnnel = updates?.Chats?.FirstOrDefault().Value?.IsChannel;
-            var isGroup = updates?.Chats?.FirstOrDefault().Value?.IsGroup;
-            if (isCahnnel == true || isGroup == true)
+            try
             {
-                var channel = ((Channel)((Updates)updates).Chats.First().Value);
-                inputPeer = new InputPeerChannel(channel.ID, channel.access_hash);
+                InputPeer inputPeer;
+                var isCahnnel = updates?.Chats?.FirstOrDefault().Value?.IsChannel;
+                var isGroup = updates?.Chats?.FirstOrDefault().Value?.IsGroup;
+                if (isCahnnel == true || isGroup == true)
+                {
+                    var channel = ((Channel)((Updates)updates).Chats.First().Value);
+                    inputPeer = new InputPeerChannel(channel.ID, channel.access_hash);
+                }
+                else
+                {
+                    var user = updates.Users.FirstOrDefault().Value;
+                    inputPeer = new InputUser(user.id, user.access_hash);
+                }
+                await Client.Messages_SendReaction(inputPeer, message.ID, new[] { new ReactionEmoji { emoticon = reactionIcon } });
             }
-            else
+            catch (Exception e)
             {
-                var user = updates.Users.FirstOrDefault().Value;
-                inputPeer = new InputUser(user.id, user.access_hash);
+                throw new Exception($"failed to send reaction {e.Message}", e);
             }
-            await Client.Messages_SendReaction(inputPeer, message.ID, new[] { new ReactionEmoji { emoticon = reactionIcon } });
         }
 
         public async Task<IList<ChatDto>> GetAllChats()
