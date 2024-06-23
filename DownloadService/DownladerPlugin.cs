@@ -34,6 +34,13 @@ namespace DownloadService
                         string filePath = Path.Combine(path, fileName);
                         if (totalSize == 0)
                             return new ResultExecute();
+
+                        char[] invalidChars = Path.GetInvalidFileNameChars();
+                        foreach (char c in invalidChars)
+                        {
+                            filePath = filePath.Replace(c, ' ');
+                        }
+
                         using (FileStream fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None))
                         {
                             long offset = 0;
