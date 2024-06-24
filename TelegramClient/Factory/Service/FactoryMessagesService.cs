@@ -35,13 +35,14 @@ namespace TelegramClient.Factory.Service
         {
             if (update is UpdateNewMessage updateNewMessage)
             {
-                var message = (Message)updateNewMessage.message;
+                if (updateNewMessage.message is Message message)
+                {
+                    var type = GetTypeOfMessage(message);
 
-                var type = GetTypeOfMessage(message);
-
-                var handleMessage = messageTypes.FirstOrDefault(a => a.TypeMessage.Equals(type));
-                if (handleMessage == null) return new ResultExecute();
-                return await handleMessage.ExecuteAsync(message, chatDto);
+                    var handleMessage = messageTypes.FirstOrDefault(a => a.TypeMessage.Equals(type));
+                    if (handleMessage == null) return new ResultExecute();
+                    return await handleMessage.ExecuteAsync(message, chatDto);
+                }
             }
             return new ResultExecute();
         }
