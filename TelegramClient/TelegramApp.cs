@@ -73,7 +73,7 @@ namespace TelegramClient
                                         await ReactToMessage(updates, infoMessage, chat.ReactionIcon);
                                     }
                                 }
-                                if (!resultExecute.IsSuccess)
+                                if (!string.IsNullOrEmpty(resultExecute.ErrorMessage))
                                 {
                                     logger?.Warning($"error on :{chat.Name}{{message}} {{errorMessage}}", infoMessage?.message, resultExecute.ErrorMessage);
 
