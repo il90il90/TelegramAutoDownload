@@ -73,6 +73,11 @@ namespace TelegramClient
                                         await ReactToMessage(updates, infoMessage, chat.ReactionIcon);
                                     }
                                 }
+                                if (!resultExecute.IsSuccess)
+                                {
+                                    logger?.Warning($"error on :{chat.Name}{{message}} {{errorMessage}}", infoMessage?.message, resultExecute.ErrorMessage);
+
+                                }
                             }
                         }
                         catch (Exception ex)
