@@ -13,7 +13,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DownloadPlugin", "DownloadS
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BasePlugins", "BasePlugin\BasePlugins.csproj", "{6CA4B3B0-49C5-4E90-8F1F-EE354EEDBACA}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Logger", "Logger\Logger.csproj", "{38CF15F6-AC43-4A6E-9659-F06B3260FFCA}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Logger", "Logger\Logger.csproj", "{38CF15F6-AC43-4A6E-9659-F06B3260FFCA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TorrentPlugin", "TorrentPlugin\TorrentPlugin.csproj", "{A99A5B41-E592-4E5A-9755-D2BAB18712FD}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -45,6 +47,10 @@ Global
 		{38CF15F6-AC43-4A6E-9659-F06B3260FFCA}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{38CF15F6-AC43-4A6E-9659-F06B3260FFCA}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{38CF15F6-AC43-4A6E-9659-F06B3260FFCA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A99A5B41-E592-4E5A-9755-D2BAB18712FD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A99A5B41-E592-4E5A-9755-D2BAB18712FD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A99A5B41-E592-4E5A-9755-D2BAB18712FD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A99A5B41-E592-4E5A-9755-D2BAB18712FD}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
