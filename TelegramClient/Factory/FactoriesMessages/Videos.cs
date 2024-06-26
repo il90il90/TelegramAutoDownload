@@ -42,12 +42,12 @@ namespace TelegramClient.Factory.Factories
                 }
 
                 var fileExist = FileExistDuplicate(fileName);
-                if (fileExist)
+                if (fileExist.Length > 0)
                 {
                     return new ResultExecute()
                     {
-                        IsSuccess = false,
-                        ErrorMessage = $"{fileName} is exist"
+                        IsSuccess = true,
+                        ErrorMessage = $"{fileName} is exist on {fileExist.First()}"
                     };
                 }
                 var pathFolderLocation = PathLocationFolder(chatDto, fileName);

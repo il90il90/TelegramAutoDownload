@@ -93,7 +93,7 @@ namespace TelegramClient
                 InputPeer inputPeer;
                 var isCahnnel = updates?.Chats?.FirstOrDefault().Value?.IsChannel;
                 var isGroup = updates?.Chats?.FirstOrDefault().Value?.IsGroup;
-                if (isCahnnel == true || isGroup == true)
+                if (isCahnnel == true || isGroup == false)
                 {
                     var channel = ((Channel)((Updates)updates).Chats.First().Value);
                     inputPeer = new InputPeerChannel(channel.ID, channel.access_hash);

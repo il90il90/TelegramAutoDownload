@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Pipes;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using TelegramClient.Factory.Base;
@@ -31,12 +32,12 @@ namespace TelegramClient.Factory.Factories
             {
                 fileName = document.Filename;
                 var fileExist = FileExistDuplicate(fileName);
-                if (fileExist)
+                if (fileExist.Length > 0)
                 {
                     return new ResultExecute()
                     {
-                        IsSuccess = false,
-                        ErrorMessage = $"{fileName} is exist"
+                        IsSuccess = true,
+                        ErrorMessage = $"{fileName} is exist on {fileExist.First()}"
                     };
                 }
                 fileName ??= $"{document.id}.{document.mime_type[(document.mime_type.IndexOf('/') + 1)..]}";
@@ -49,12 +50,12 @@ namespace TelegramClient.Factory.Factories
             {
                 fileName = $"{photo.id}.{FileExtension}";
                 var fileExist = FileExistDuplicate(fileName);
-                if (fileExist)
+                if (fileExist.Length > 0)
                 {
                     return new ResultExecute()
                     {
-                        IsSuccess = false,
-                        ErrorMessage = $"{fileName} is exist"
+                        IsSuccess = true,
+                        ErrorMessage = $"{fileName} is exist on {fileExist.First()}"
                     };
                 }
                 var folderLocation = PathLocationFolder(chatDto, fileName);

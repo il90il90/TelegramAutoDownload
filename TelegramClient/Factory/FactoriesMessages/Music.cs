@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using TelegramClient.Factory.Base;
@@ -32,12 +33,12 @@ namespace TelegramClient.Factory.FactoriesMessages
 
                 var fileName = !string.IsNullOrEmpty(document.Filename) ? document.Filename : document.ID.ToString();
                 var fileExist = FileExistDuplicate(fileName);
-                if (fileExist)
+                if (fileExist.Length > 0)
                 {
                     return new ResultExecute()
                     {
-                        IsSuccess = false,
-                        ErrorMessage = $"{fileName} is exist"
+                        IsSuccess = true,
+                        ErrorMessage = $"{fileName} is exist on {fileExist.First()}"
                     };
                 }
                 var pathFolderLocation = PathLocationFolder(chatDto, fileName);

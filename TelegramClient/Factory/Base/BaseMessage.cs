@@ -53,10 +53,10 @@ namespace TelegramClient.Factory.Base
             return Path.Combine($"{fullPath}", $"{fileName}");
         }
 
-        protected bool FileExistDuplicate(string fileName)
+        protected string[]  FileExistDuplicate(string fileName)
         {
-            string[] files = Directory.GetFiles(PathFolderToSaveFiles, fileName, SearchOption.AllDirectories);
-            return files.Length > 0;
+            return Directory.GetFiles(PathFolderToSaveFiles, fileName, SearchOption.AllDirectories);
+            
         }
     }
 }
