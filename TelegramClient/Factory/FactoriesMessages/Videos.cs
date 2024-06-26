@@ -15,8 +15,6 @@ namespace TelegramClient.Factory.Factories
     {
         private readonly Client client;
 
-
-
         public override MessageTypes TypeMessage => MessageTypes.Videos;
 
         public Videos(Client client, string pathFolderToSaveFiles) : base(client, pathFolderToSaveFiles)
@@ -42,6 +40,16 @@ namespace TelegramClient.Factory.Factories
                 {
                     fileName = $"{document.ID}.{mime_type}";
                 }
+
+                var fileExist = FileExistDuplicate(fileName);
+                if (fileExist)
+                {
+                    return new ResultExecute()
+                    {
+                        IsSuccess = false,
+                        ErrorMessage = $"{fileName} is exist"
+                    };
+                }
                 var pathFolderLocation = PathLocationFolder(chatDto, fileName);
                 using var stream = File.OpenWrite(pathFolderLocation);
                 await client.DownloadFileAsync(document, stream);
@@ -54,5 +62,7 @@ namespace TelegramClient.Factory.Factories
             }
             return new ResultExecute();
         }
+      
     }
+   
 }

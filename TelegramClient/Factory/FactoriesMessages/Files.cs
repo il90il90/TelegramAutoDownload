@@ -33,6 +33,17 @@ namespace TelegramClient.Factory.Factories
                 var document = (Document)mediaDocument.document;
 
                 var fileName = !string.IsNullOrEmpty(document.Filename) ? document.Filename : document.ID.ToString();
+
+                var fileExist = FileExistDuplicate(fileName);
+                if (fileExist)
+                {
+                    return new ResultExecute()
+                    {
+                        IsSuccess = false,
+                        ErrorMessage = $"{fileName} is exist"
+                    };
+                }
+
                 var pathFolderLocation = PathLocationFolder(chatDto, fileName);
                 using var stream = File.OpenWrite(pathFolderLocation);
                 await client.DownloadFileAsync(document, stream);
