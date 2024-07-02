@@ -62,6 +62,7 @@ namespace TelegramAutoDownload
                     chat.Download.Photos = fromConfigFile.Download.Photos;
                     chat.Download.Music = fromConfigFile.Download.Music;
                     chat.Download.Files = fromConfigFile.Download.Files;
+                    chat.DownloadSizeMB = fromConfigFile.DownloadSizeMB;
                 }
 
                 await Application.Current.Dispatcher.InvokeAsync(() =>
@@ -185,7 +186,7 @@ namespace TelegramAutoDownload
             if (comboBox != null)
             {
                 DependencyObject parent = VisualTreeHelper.GetParent(comboBox);
-                while (!(parent is ListViewItem) && parent != null)
+                while (parent is not ListViewItem && parent != null)
                 {
                     parent = VisualTreeHelper.GetParent(parent);
                 }
@@ -260,6 +261,36 @@ namespace TelegramAutoDownload
                         break;
                 }
 
+            }
+        }
+
+        private void DownloadSize_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            string textBox = ((TextBox)sender).Text;
+            var configFile = new ConfigFile();
+            var configParams = configFile.Read();
+
+            if (sender is TextBox textbox)
+            {
+                var chatDto = textbox.DataContext as ChatDto;
+                var chat = configParams.Chats.FirstOrDefault(a => a.Id == chatDto?.Id);
+                if (chat == null)
+                    return;
+
+
+
+                if (int.TryParse(textBox, out var size))
+                {
+                    chat.DownloadSizeMB = size;
+                }
+                else
+                {
+                    chat.DownloadSizeMB = 0;
+                    textBox = "0";
+                }
+                
+                ConfigFile.Save(configParams);
+                TelegramApp.UpdateConfig(configParams);
             }
         }
     }

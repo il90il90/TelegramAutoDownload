@@ -1,4 +1,5 @@
 ﻿using BasePlugins;
+using System;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -24,45 +25,57 @@ namespace TelegramClient.Factory.Factories
 
         public override async Task<ResultExecute> ExecuteAsync(Message message, ChatDto chatDto)
         {
-            if (!chatDto.Download.Videos) return new ResultExecute();
-
-            if (message.media is MessageMediaDocument mediaVideo)
+            if (!chatDto.Download.Videos) return new ResultExecute(chatDto.Name);
+            string fileName = "";
+            try
             {
-                var document = (Document)mediaVideo.document;
-                string fileName;
-                var mime_type = "mp4";
-                if (!string.IsNullOrEmpty(document.Filename))
+                if (message.media is MessageMediaDocument mediaVideo)
                 {
-                    mime_type = document.Filename.Split('.').LastOrDefault();
-                    fileName = document.Filename;
-                }
-                else
-                {
-                    fileName = $"{document.ID}.{mime_type}";
-                }
+                    var document = (Document)mediaVideo.document;
 
-                var fileExist = FileExistDuplicate(fileName);
-                if (fileExist.Length > 0)
-                {
-                    return new ResultExecute()
+                    var mime_type = "mp4";
+                    if (!string.IsNullOrEmpty(document.Filename))
+                    {
+                        mime_type = document.Filename.Split('.').LastOrDefault();
+                        fileName = document.Filename;
+                    }
+                    else
+                    {
+                        fileName = $"{document.ID}.{mime_type}";
+                    }
+
+                    var fileExist = FileExistDuplicate(fileName);
+                    if (fileExist.Length > 0)
+                    {
+                        return new ResultExecute(chatDto.Name)
+                        {
+                            IsSuccess = true,
+                            ErrorMessage = $"{fileName} is exist on {fileExist.First()}"
+                        };
+                    }
+                    var pathFolderLocation = PathLocationFolder(chatDto, fileName);
+                    using var stream = File.OpenWrite(pathFolderLocation);
+                    await client.DownloadFileAsync(document, stream);
+
+                    return new ResultExecute(chatDto.Name)
                     {
                         IsSuccess = true,
-                        ErrorMessage = $"{fileName} is exist on {fileExist.First()}"
+                        FileName = fileName
                     };
                 }
-                var pathFolderLocation = PathLocationFolder(chatDto, fileName);
-                using var stream = File.OpenWrite(pathFolderLocation);
-                await client.DownloadFileAsync(document, stream);
-                
-                return new ResultExecute()
+            }
+            catch (Exception e)
+            {
+                return new ResultExecute(chatDto.Name)
                 {
-                    IsSuccess = true,
+                    IsSuccess = false,
+                    ErrorMessage = e.Message,
                     FileName = fileName
                 };
             }
-            return new ResultExecute();
+            return new ResultExecute(chatDto.Name);
         }
-      
+
     }
-   
+
 }

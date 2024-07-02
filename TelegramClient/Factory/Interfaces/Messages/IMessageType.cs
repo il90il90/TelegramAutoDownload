@@ -14,6 +14,7 @@ namespace TelegramClient.Factory.Interfaces.Messages
     {
         public Client Client { get; }
         public MessageTypes TypeMessage { get; }
+        public bool CheckPolicyDownload(ChatDto chatDto, Message message);
         public Task<ResultExecute> ExecuteAsync(Message message, ChatDto chatDto);
 
     }

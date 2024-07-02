@@ -35,6 +35,16 @@ namespace TelegramClient.Factory.Base
 
             return CreateFolderIfNotExist(folderName, fileName);
         }
+        public bool CheckPolicyDownload(ChatDto chatDto, Message message)
+        {
+            if (message.media is MessageMediaDocument media && media.document is Document document)
+            {
+                var documentSizeInMb = document.size / 1024 / 1024;
+                if (chatDto.DownloadSizeMB <= documentSizeInMb || documentSizeInMb == 0)
+                    return true;
+            }
+            return false;
+        }
 
         private string CreateFolderIfNotExist(string folderName, string fileName)
         {
@@ -53,10 +63,12 @@ namespace TelegramClient.Factory.Base
             return Path.Combine($"{fullPath}", $"{fileName}");
         }
 
-        protected string[]  FileExistDuplicate(string fileName)
+        protected string[] FileExistDuplicate(string fileName)
         {
             return Directory.GetFiles(PathFolderToSaveFiles, fileName, SearchOption.AllDirectories);
-            
+
         }
+
+
     }
 }

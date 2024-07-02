@@ -29,7 +29,9 @@ namespace TelegramClient.Factory.FactoriesUsers
                     Username = chat.MainUsername,
                     ReactionIcon = chatParams.ReactionIcon,
                     Download = chatParams.Download,
-                    Type=chatParams.Type,
+                    Type = chatParams.Type,
+                    DownloadSizeMB = chatParams.DownloadSizeMB,
+                    Selected=chatParams.Selected,
                 };
             }
             return null;

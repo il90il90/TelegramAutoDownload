@@ -9,6 +9,7 @@
         public string Type { get; set; }
         public string ReactionIcon { get; set; } = string.Empty;
         public Download Download { get; set; } = new Download();
+        public int DownloadSizeMB { get; set; }
     }
 
     public class Download

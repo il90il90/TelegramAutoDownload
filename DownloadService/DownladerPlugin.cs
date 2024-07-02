@@ -2,7 +2,7 @@
 using System;
 using System.Net.Http.Headers;
 
-namespace DownloadService
+namespace DownloadPlugin
 {
     public class DownladerPlugin<TMessage> : BasePlugin<TMessage>
     {
@@ -33,7 +33,7 @@ namespace DownloadService
                         fileName = response?.Content?.Headers?.ContentDisposition?.FileNameStar?.Trim('"') ?? Path.GetFileName(new Uri(config.Text).LocalPath);
                         string filePath = Path.Combine(path, fileName);
                         if (totalSize == 0)
-                            return new ResultExecute();
+                            return new ResultExecute(config.ChatName);
 
                         char[] invalidChars = Path.GetInvalidFileNameChars();
                         foreach (char c in invalidChars)
@@ -67,7 +67,7 @@ namespace DownloadService
                         }
                     }
                 }
-                return new ResultExecute()
+                return new ResultExecute(config.ChatName)
                 {
                     IsSuccess = true,
                     FileName = fileName
@@ -75,7 +75,7 @@ namespace DownloadService
             }
             catch (Exception e)
             {
-                return new ResultExecute()
+                return new ResultExecute(config.ChatName)
                 {
                     ErrorMessage = e.Message,
                 };

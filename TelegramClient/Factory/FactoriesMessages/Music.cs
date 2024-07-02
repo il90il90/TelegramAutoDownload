@@ -26,7 +26,7 @@ namespace TelegramClient.Factory.FactoriesMessages
 
         public override async Task<ResultExecute> ExecuteAsync(Message message, ChatDto chatDto)
         {
-            if (!chatDto.Download.Music) return new ResultExecute();
+            if (!chatDto.Download.Music) return new ResultExecute(chatDto.Name);
             if (message.media is MessageMediaDocument mediaDocument)
             {
                 var document = (Document)mediaDocument.document;
@@ -35,7 +35,7 @@ namespace TelegramClient.Factory.FactoriesMessages
                 var fileExist = FileExistDuplicate(fileName);
                 if (fileExist.Length > 0)
                 {
-                    return new ResultExecute()
+                    return new ResultExecute(chatDto.Name)
                     {
                         IsSuccess = true,
                         ErrorMessage = $"{fileName} is exist on {fileExist.First()}"
@@ -44,13 +44,13 @@ namespace TelegramClient.Factory.FactoriesMessages
                 var pathFolderLocation = PathLocationFolder(chatDto, fileName);
                 using var stream = File.OpenWrite(pathFolderLocation);
                 await client.DownloadFileAsync(document, stream);
-                return new ResultExecute()
+                return new ResultExecute(chatDto.Name)
                 {
                     IsSuccess = true,
                     FileName = fileName
                 };
             }
-            return new ResultExecute();
+            return new ResultExecute(chatDto.Name);
         }
     }
 }

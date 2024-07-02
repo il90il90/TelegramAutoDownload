@@ -1,11 +1,14 @@
-﻿using Serilog;
+﻿using Logger;
+using Serilog;
 using Serilog.Core;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 using TelegramAutoDownload.Models;
 using TelegramClient.Factory.FactoriesMessages.Enum;
+using TelegramClient.Factory.Interfaces.Channel;
 using TelegramClient.Factory.Service;
 using TelegramClient.Models;
 using TL;
@@ -70,12 +73,12 @@ namespace TelegramClient
                                 {
                                     if (updateNewMessage != null && !string.IsNullOrEmpty(chat.ReactionIcon))
                                     {
-                                        await ReactToMessage(updates, infoMessage, chat.ReactionIcon);
+                                        await ReactToMessage(chat, updates, infoMessage, chat.ReactionIcon);
                                     }
                                 }
                                 if (!string.IsNullOrEmpty(resultExecute.ErrorMessage))
                                 {
-                                    logger?.Warning($"error on :{chat.Name}{{message}} {{errorMessage}}", infoMessage?.message, resultExecute.ErrorMessage);
+                                    logger?.Warning($"warning :{chat.Name}{{message}} {{errorMessage}}", infoMessage?.message, resultExecute.ErrorMessage);
 
                                 }
                             }
@@ -91,28 +94,36 @@ namespace TelegramClient
             await Task.WhenAll(tasks);
         }
 
-        private async Task ReactToMessage(UpdatesBase updates, Message message, string reactionIcon)
+        private async Task ReactToMessage(ChatDto chatDto, UpdatesBase updates, Message message, string reactionIcon)
         {
+            var isChannel = updates?.Chats?.FirstOrDefault().Value?.IsChannel;
+            var isGroup = updates?.Chats?.FirstOrDefault().Value?.IsGroup;
             try
             {
                 InputPeer inputPeer;
-                var isCahnnel = updates?.Chats?.FirstOrDefault().Value?.IsChannel;
-                var isGroup = updates?.Chats?.FirstOrDefault().Value?.IsGroup;
-                if (isCahnnel == true || isGroup == false)
+
+                if (updates.Chats.First().Value is TL.Channel channel)
                 {
-                    var channel = ((Channel)((Updates)updates).Chats.First().Value);
                     inputPeer = new InputPeerChannel(channel.ID, channel.access_hash);
+                }
+                else if (updates.Chats.First().Value is TL.Chat chat)
+                {
+                    inputPeer = new InputPeerChat(chat.ID);
+                }
+                else if (updates.Users.First().Value is User user)
+                {
+                    inputPeer = new InputPeerUser(user.id, user.access_hash);
                 }
                 else
                 {
-                    var user = updates.Users.FirstOrDefault().Value;
-                    inputPeer = new InputUser(user.id, user.access_hash);
+                    throw new InvalidOperationException($"reaction: Unknown peer type, isCahnnel: {isChannel}, isGroup: {isGroup}");
                 }
+
                 await Client.Messages_SendReaction(inputPeer, message.ID, new[] { new ReactionEmoji { emoticon = reactionIcon } });
             }
             catch (Exception e)
             {
-                throw new Exception($"failed to send reaction {e.Message}", e);
+                throw new Exception($"failed to send reaction {chatDto.Name} {e.Message} isCahnnel: {isChannel}, isGroup: {isGroup}", e);
             }
         }
 
