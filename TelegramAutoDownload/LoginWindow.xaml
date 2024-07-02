@@ -5,18 +5,32 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:TelegramAutoDownload"
         mc:Ignorable="d"
-        Title="LoginWindow" Height="250" Width="330">
+        Title="Login" Height="250" Width="386"
+        WindowStartupLocation="CenterScreen"        >
     <Grid>
-        <TextBox  Name="txtPhoneNuber"  HorizontalAlignment="Left" Margin="102,30,0,0" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="120"/>
-        <Button Name="btnLogin" Content="Login" HorizontalAlignment="Left" Margin="227,29,0,0" VerticalAlignment="Top" Width="83" Click="BtnLogin_Click"/>
-        <TextBlock HorizontalAlignment="Left" Margin="10,30,0,0" TextWrapping="Wrap" Text="Phone Number" VerticalAlignment="Top" Width="86"/>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
 
-        <TextBlock Name="tbCode" Visibility="Hidden"  HorizontalAlignment="Left" Margin="10,74,0,0" TextWrapping="Wrap" Text="Code:" VerticalAlignment="Top"/>
-        <TextBox Name ="txtCode" Visibility="Hidden"  HorizontalAlignment="Left" Margin="102,75,0,0" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="120"/>
-        <Button Name="btnEnterCode" Content="Enter" Visibility="Hidden"  HorizontalAlignment="Left" Margin="227,74,0,0" VerticalAlignment="Top" Width="82" Click="BtnEnterCode_Click"/>
+        <TextBlock Grid.Row="0" Grid.Column="0" Margin="10" TextWrapping="Wrap" Text="Phone Number" VerticalAlignment="Center"/>
+        <TextBox Grid.Row="0" Grid.Column="1" Name="txtPhoneNuber" Margin="10" TextWrapping="Wrap" VerticalAlignment="Center" Width="150"/>
+        <Button Grid.Row="0" Grid.Column="2" Name="btnLogin" Content="Login" Margin="10" VerticalAlignment="Center" Width="75" Click="BtnLogin_Click"/>
 
-        <TextBlock Name ="tbPassword" Visibility="Hidden" HorizontalAlignment="Left" Margin="10,120,0,0" TextWrapping="Wrap" Text="Password:" VerticalAlignment="Top"/>
-        <PasswordBox PasswordChar="*" Name="txtPassword" Visibility="Hidden"  HorizontalAlignment="Left" Margin="102,118,0,0" VerticalAlignment="Top" Width="120"/>
-        <Button x:Name="btnEnterPassword" Visibility="Hidden"  Content="Enter" HorizontalAlignment="Left" Margin="227,117,0,0" VerticalAlignment="Top" Width="82" Click="BtnEnterPassword_Click"/>
+        <TextBlock Grid.Row="1" Grid.Column="0" Name="tbCode" Visibility="Hidden" Margin="10" TextWrapping="Wrap" Text="Code:" VerticalAlignment="Center"/>
+        <TextBox Grid.Row="1" Grid.Column="1" Name="txtCode" Visibility="Hidden" Margin="10" TextWrapping="Wrap" VerticalAlignment="Center" Width="150"/>
+        <Button Grid.Row="1" Grid.Column="2" Name="btnEnterCode" Content="Enter" Visibility="Hidden" Margin="10" VerticalAlignment="Center" Width="75" Click="BtnEnterCode_Click"/>
+
+        <TextBlock Grid.Row="2" Grid.Column="0" Name="tbPassword" Visibility="Hidden" Margin="10" TextWrapping="Wrap" Text="Password:" VerticalAlignment="Center"/>
+        <PasswordBox Grid.Row="2" Grid.Column="1" Name="txtPassword" PasswordChar="*" Visibility="Hidden" Margin="10" VerticalAlignment="Center" Width="150"/>
+        <Button Grid.Row="2" Grid.Column="2" Name="btnEnterPassword" Content="Enter" Visibility="Hidden" Margin="10" VerticalAlignment="Center" Width="75" Click="BtnEnterPassword_Click"/>
     </Grid>
 </Window>
