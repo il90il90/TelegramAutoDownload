@@ -26,21 +26,6 @@ namespace TelegramAutoDownload
             TelegramApp = telegram;
             ConfigFile = config;
             Loaded += MainWindow_Loaded;
-            TelegramApp.OnUpdate = OnUpdate;
-        }
-
-        private string OnUpdate(string[] data)
-        {
-            tbOnUpdateLastedMessage.Dispatcher.Invoke(() =>
-            {
-                var name = data[0];
-                var fileName = data[1];
-                if (!string.IsNullOrEmpty(fileName))
-                {
-                    tbOnUpdateLastedMessage.Text = $"{name}: {fileName}";
-                }
-            });
-            return null;
         }
 
         private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
