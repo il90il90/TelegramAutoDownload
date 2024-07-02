@@ -8,6 +8,7 @@ using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 using TelegramAutoDownload.Models;
 using TelegramClient;
 using TelegramClient.Models;
@@ -25,6 +26,21 @@ namespace TelegramAutoDownload
             TelegramApp = telegram;
             ConfigFile = config;
             Loaded += MainWindow_Loaded;
+            TelegramApp.OnUpdate = OnUpdate;
+        }
+
+        private string OnUpdate(string[] data)
+        {
+            tbOnUpdate.Dispatcher.Invoke(() =>
+            {
+                var name = data[0];
+                var fileName = data[1];
+                if (!string.IsNullOrEmpty(fileName))
+                {
+                    tbOnUpdate.Text = $"{name}: {fileName}";
+                }
+            });
+            return null;
         }
 
         private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
@@ -288,7 +304,7 @@ namespace TelegramAutoDownload
                     chat.DownloadSizeMB = 0;
                     textBox = "0";
                 }
-                
+
                 ConfigFile.Save(configParams);
                 TelegramApp.UpdateConfig(configParams);
             }

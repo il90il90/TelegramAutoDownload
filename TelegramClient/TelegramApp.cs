@@ -18,6 +18,7 @@ namespace TelegramClient
 {
     public class TelegramApp
     {
+        public Func<string[], string> OnUpdate;
         public readonly Client Client;
         private FactoryMessagesService factoryService;
         private FactoryUserService factoryUserService;
@@ -50,6 +51,8 @@ namespace TelegramClient
                 return;
 
             var chat = factoryUserService.Execute(updates);
+            
+
             if (chat == null) return;
             List<Task> tasks = [];
             foreach (Update update in updates.UpdateList)
@@ -61,6 +64,7 @@ namespace TelegramClient
                     {
                         try
                         {
+                            
                             if (updateNewMessage.message is Message infoMessage)
                             {
                                 var resultExecute = await factoryService.ExecuteAsync(updateNewMessage, chat);
@@ -73,13 +77,13 @@ namespace TelegramClient
                                 {
                                     if (updateNewMessage != null && !string.IsNullOrEmpty(chat.ReactionIcon))
                                     {
+                                        OnUpdate?.Invoke([chat.Name, infoMessage.message]);
                                         await ReactToMessage(chat, updates, infoMessage, chat.ReactionIcon);
                                     }
                                 }
                                 if (!string.IsNullOrEmpty(resultExecute.ErrorMessage))
                                 {
                                     logger?.Warning($"warning :{chat.Name}{{message}} {{errorMessage}}", infoMessage?.message, resultExecute.ErrorMessage);
-
                                 }
                             }
                         }
