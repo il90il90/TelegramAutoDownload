@@ -117,8 +117,5 @@
         <TextBlock HorizontalAlignment="Left" Margin="10,10,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Grid.Row="2" Grid.ColumnSpan="3" Width="594">
             <Hyperlink IsEnabled="false" x:Name="hlOpenFolder" Click="HlOpenFolder_Click">Loading</Hyperlink>
         </TextBlock>
-        <TextBlock HorizontalAlignment="Left" Margin="111,10,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Grid.Row="2" Grid.ColumnSpan="2" Width="440" Grid.Column="1">
-            <TextBlock Name="tbOnUpdate" ></TextBlock>
-        </TextBlock>
     </Grid>
 </Window>
