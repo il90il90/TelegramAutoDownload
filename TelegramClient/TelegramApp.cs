@@ -68,7 +68,7 @@ namespace TelegramClient
                             if (updateNewMessage.message is Message infoMessage)
                             {
                                 var resultExecute = await factoryService.ExecuteAsync(updateNewMessage, chat);
-
+                                OnUpdate?.Invoke([chat.Name, infoMessage.message]);
                                 var messageType = factoryService.GetTypeOfMessage(infoMessage);
                                 logger?.Information($"message from {chat.Name}: {infoMessage.message}. {{@fromUser}}{{@message}}{{@id}}{{@username}}{{@chatName}}{{@type}}{{@download}}{{@reactionIcon}}{{@resultExecute}}{{messageType}}",
                                         infoMessage.post_author, infoMessage.message, chat.Id, chat.Username ?? "private", chat.Name, chat.Type, chat.Download, chat.ReactionIcon, resultExecute, messageType, resultExecute);
@@ -77,7 +77,7 @@ namespace TelegramClient
                                 {
                                     if (updateNewMessage != null && !string.IsNullOrEmpty(chat.ReactionIcon))
                                     {
-                                        OnUpdate?.Invoke([chat.Name, infoMessage.message]);
+                                        
                                         await ReactToMessage(chat, updates, infoMessage, chat.ReactionIcon);
                                     }
                                 }

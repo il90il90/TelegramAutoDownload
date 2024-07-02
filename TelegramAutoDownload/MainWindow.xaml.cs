@@ -31,13 +31,13 @@ namespace TelegramAutoDownload
 
         private string OnUpdate(string[] data)
         {
-            tbOnUpdate.Dispatcher.Invoke(() =>
+            tbOnUpdateLastedMessage.Dispatcher.Invoke(() =>
             {
                 var name = data[0];
                 var fileName = data[1];
                 if (!string.IsNullOrEmpty(fileName))
                 {
-                    tbOnUpdate.Text = $"{name}: {fileName}";
+                    tbOnUpdateLastedMessage.Text = $"{name}: {fileName}";
                 }
             });
             return null;

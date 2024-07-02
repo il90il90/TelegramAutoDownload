@@ -6,7 +6,7 @@
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="1240">
 
-    <Grid Margin="0,0,0,0">
+    <Grid Margin="0,0,0,-6">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
@@ -25,7 +25,7 @@
             <TextBlock Name="tbCountChats" Margin="10,12,0,0" TextWrapping="Wrap" Text="0" Height="16" VerticalAlignment="Top" HorizontalAlignment="Left" Width="24"/>
         </StackPanel>
 
-        <ListView x:Name="ItemsListView" SelectionMode="Extended" Margin="10" Grid.Row="1" Grid.ColumnSpan="3">
+        <ListView x:Name="ItemsListView" SelectionMode="Extended" Margin="10,10,10,21" Grid.Row="1" Grid.ColumnSpan="3">
             <ListView.Resources>
                 <Style TargetType="GridViewColumnHeader">
                     <Setter Property="HorizontalContentAlignment" Value="Left"/>
@@ -114,11 +114,11 @@
             <Button x:Name="BtnSelectPath" Content="Select Path to save" Click="BtnSelectPath_Click" Width="171" Height="20" Margin="0,0,10,0"/>
         </StackPanel>
 
-        <TextBlock HorizontalAlignment="Left" Margin="10,10,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Grid.Row="2" Grid.ColumnSpan="3" Width="594">
+        <TextBlock HorizontalAlignment="Left" Margin="10,12,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Grid.Row="2" Grid.ColumnSpan="3" Width="1034">
             <Hyperlink IsEnabled="false" x:Name="hlOpenFolder" Click="HlOpenFolder_Click">Loading</Hyperlink>
         </TextBlock>
-        <TextBlock HorizontalAlignment="Left" Margin="111,10,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Grid.Row="2" Grid.ColumnSpan="2" Width="440" Grid.Column="1">
-            <TextBlock Name="tbOnUpdate" ></TextBlock>
+        <TextBlock Margin="10,0,196,37" TextWrapping="Wrap" Grid.Row="1" Grid.ColumnSpan="3" Height="16" VerticalAlignment="Bottom" Grid.RowSpan="2">
+            <TextBlock Name="tbOnUpdateLastedMessage"></TextBlock>
         </TextBlock>
     </Grid>
 </Window>
