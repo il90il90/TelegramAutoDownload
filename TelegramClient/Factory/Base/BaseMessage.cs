@@ -1,5 +1,6 @@
 ﻿using BasePlugins;
 using System.IO;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using TelegramClient.Factory.Factories;
 using TelegramClient.Factory.FactoriesMessages.Enum;
@@ -35,23 +36,49 @@ namespace TelegramClient.Factory.Base
 
             return CreateFolderIfNotExist(folderName, fileName);
         }
-        public bool CheckPolicyDownload(ChatDto chatDto, Message message)
+
+        public ResultExecute CheckDownloadPolicy(ChatDto chatDto, Message message)
         {
             if (message.media is MessageMediaDocument media && media.document is Document document)
             {
                 var documentSizeInMb = document.size / 1024 / 1024;
-                if (chatDto.DownloadSizeMB <= documentSizeInMb || documentSizeInMb == 0)
+
+                if (chatDto.Size != 0 && chatDto.Size <= documentSizeInMb)
                 {
-                    return true;
+                    return new ResultExecute(chatDto.Name)
+                    {
+                        FileName = document.Filename,
+                        IsSuccess = false,
+                        ErrorMessage = $"file limit to start download is: {chatDto.Size}MB, and the original file is: {documentSizeInMb}MB",
+                    };
                 }
+
+                foreach (var regexPattern in chatDto.Regex)
+                {
+                    Regex regex = new(regexPattern);
+                    if (regex.IsMatch(document.Filename))
+                    {
+                        return new ResultExecute(chatDto.Name)
+                        {
+                            FileName = document.Filename,
+                            IsSuccess = false,
+                            ErrorMessage = $"skip by regex pattern: '{regexPattern}' matched the document filename: {document.Filename}"
+                        };
+                    }
+                }
+                return new ResultExecute(chatDto.Name)
+                {
+                    IsSuccess = true
+                };
             }
             else
             {
-                //for another plugins
-                return true;
+                //ignore policy for plugins 
+                return new ResultExecute(chatDto.Name)
+                {
+                    IsSuccess = true
+                };
             }
-
-            return false;
         }
 
         private string CreateFolderIfNotExist(string folderName, string fileName)
