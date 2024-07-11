@@ -41,8 +41,16 @@ namespace TelegramClient.Factory.Base
             {
                 var documentSizeInMb = document.size / 1024 / 1024;
                 if (chatDto.DownloadSizeMB <= documentSizeInMb || documentSizeInMb == 0)
+                {
                     return true;
+                }
             }
+            else
+            {
+                //for another plugins
+                return true;
+            }
+
             return false;
         }
 
