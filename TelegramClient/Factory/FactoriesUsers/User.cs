@@ -34,7 +34,8 @@ namespace TelegramClient.Factory.FactoriesUsers
                     ReactionIcon = chatParams.ReactionIcon,
                     Download = chatParams.Download,
                     Type = chatParams.Type,
-                    DownloadSizeMB = chatParams.DownloadSizeMB,
+                    Size = chatParams.Size,
+                    Regex = chatParams.Regex,
                     Selected = chatParams.Selected,
                 };
             }

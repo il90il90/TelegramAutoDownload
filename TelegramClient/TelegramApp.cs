@@ -64,7 +64,6 @@ namespace TelegramClient
                     {
                         try
                         {
-
                             if (updateNewMessage.message is Message infoMessage)
                             {
                                 var resultExecute = await factoryService.ExecuteAsync(updateNewMessage, chat);

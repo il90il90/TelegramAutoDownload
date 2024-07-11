@@ -41,23 +41,14 @@ namespace TelegramClient.Factory.Service
 
                     var handleMessage = messageTypes.FirstOrDefault(a => a.TypeMessage.Equals(type));
                     if (handleMessage == null) return new ResultExecute(chatDto.Name);
-                    if (handleMessage.CheckPolicyDownload(chatDto, message))
+
+                    var downloadPolicyResult = handleMessage.CheckDownloadPolicy(chatDto, message);
+                    if (downloadPolicyResult.IsSuccess)
                     {
                         return await handleMessage.ExecuteAsync(message, chatDto);
                     }
-                    else
-                    {
-                        if (message.media is MessageMediaDocument media && media.document is Document document)
-                        {
-                            var documentSizeInMb = ((Document)((MessageMediaDocument)message.media).document).size / 1024 / 1024;
-                            return new ResultExecute(chatDto.Name)
-                            {
-                                IsSuccess = false,
-                                FileName = message.message,
-                                ErrorMessage = $"file limit to start download is: {chatDto.DownloadSizeMB}MB, and the original file is: {documentSizeInMb}MB"
-                            };
-                        }
-                    }
+
+                    return downloadPolicyResult;
                 }
             }
             return new ResultExecute(chatDto.Name);
