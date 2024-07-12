@@ -1,20 +1,17 @@
 ﻿using BasePlugins;
+using Logger.Config;
+using Logger.Services;
 using Microsoft.Win32;
 using Newtonsoft.Json;
-using System;
 using System.Diagnostics;
-using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
-using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Threading;
 using TelegramAutoDownload.Models;
 using TelegramClient;
 using TelegramClient.Models;
 using TL;
-using static TelegramClient.TelegramApp;
 namespace TelegramAutoDownload
 {
     public partial class MainWindow : Window
@@ -24,44 +21,57 @@ namespace TelegramAutoDownload
         private IList<ChatDto> _chats;
         private readonly Serilog.Core.Logger logger;
 
-        static bool IsAdministrator()
-        {
-            var wi = System.Security.Principal.WindowsIdentity.GetCurrent();
-            var wp = new System.Security.Principal.WindowsPrincipal(wi);
-            return wp.IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator);
-        }
+        TelegramService telegramService;
         public MainWindow(TelegramApp telegram, ConfigFile config)
         {
             InitializeComponent();
 
-            var logger = new Logger.Logger(new Logger.ConfigLog
+            telegramService = new TelegramService(new ConfigTelegramLogger
             {
-                Host = "http://localhost",
-                Port = 5341
+                BotToken = "",
+                ChatId = ""
             });
 
             TelegramApp = telegram;
             ConfigFile = config;
             Loaded += MainWindow_Loaded;
-            telegram.OnUpdateResultMessage = OnUpdateResultMessage;
-            telegram.OnErrorResultMessage = OnErrorResultMessage;
+            telegram.OnUpdateResultMessage = OnUpdateResultMessageAsync;
+            telegram.OnErrorResultMessage = OnErrorResultMessageAsync;
         }
 
-        private ResultMessageEvent OnUpdateResultMessage(ResultMessageEvent eventMessage)
+        private async Task<ResultMessageEvent> OnUpdateResultMessageAsync(ResultMessageEvent eventMessage)
         {
-            logger?.Information($"message from {eventMessage.Chat.Name}: {eventMessage.Message}. {{@fromUser}}{{@message}}{{@id}}{{@username}}{{@chatName}}{{@type}}{{@download}}{{@reactionIcon}}{{@resultExecute}}{{messageType}}",
-                                   eventMessage.PostAuthor, eventMessage.Message, eventMessage.Chat.Id, eventMessage.Chat.Username ?? "private", eventMessage.Chat.Name, eventMessage.Chat.Type, eventMessage.Chat.Download, eventMessage.Chat.ReactionIcon, eventMessage.ResultExecute, eventMessage.ResultExecute.MessageType);
 
-            if (!string.IsNullOrEmpty(eventMessage.ResultExecute.ErrorMessage))
+
+            if (string.IsNullOrEmpty(eventMessage.ResultExecute.ErrorMessage))
+            {
+                logger?.Information($"message from {eventMessage.Chat.Name}: {eventMessage.Message}. {{@fromUser}}{{@message}}{{@id}}{{@username}}{{@chatName}}{{@type}}{{@download}}{{@reactionIcon}}{{@resultExecute}}{{messageType}}",
+                                   eventMessage.PostAuthor, eventMessage.Message, eventMessage.Chat.Id, eventMessage.Chat.Username ?? "private", eventMessage.Chat.Name, eventMessage.Chat.Type, eventMessage.Chat.Download, eventMessage.Chat.ReactionIcon, eventMessage.ResultExecute, eventMessage.ResultExecute.MessageType);
+            }
+            else
             {
                 logger?.Warning($"warning :{eventMessage.Chat.Name}{{message}}", eventMessage.Message, eventMessage.ResultExecute.ErrorMessage);
+                await telegramService.SendMessageAsync("⚠️\n" + JsonConvert.SerializeObject(new
+                {
+                    Message = eventMessage.Message,
+                    Chat = eventMessage.Chat,
+                    ResultExecute = eventMessage.ResultExecute,
+                    PostAuthor = eventMessage.PostAuthor,
+                }, Formatting.Indented));
             }
             return eventMessage;
         }
 
-        private ResultMessageEvent OnErrorResultMessage(ResultMessageEvent eventMessage)
+        private async Task<ResultMessageEvent> OnErrorResultMessageAsync(ResultMessageEvent eventMessage)
         {
             logger?.Error($"error on :{eventMessage.Chat.Name}{{message}} {{errorMessage}}", eventMessage?.Message, eventMessage?.ResultExecute.ErrorMessage);
+            await telegramService.SendMessageAsync("❌\n" + JsonConvert.SerializeObject(new
+            {
+                Message = eventMessage.Message,
+                Chat = eventMessage.Chat,
+                ResultExecute = eventMessage.ResultExecute,
+                PostAuthor = eventMessage.PostAuthor,
+            }, Formatting.Indented));
             return eventMessage;
         }
 

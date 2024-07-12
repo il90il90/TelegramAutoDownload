@@ -13,8 +13,8 @@ namespace TelegramClient
 {
     public partial class TelegramApp
     {
-        public Func<ResultMessageEvent, ResultMessageEvent> OnUpdateResultMessage;
-        public Func<ResultMessageEvent, ResultMessageEvent> OnErrorResultMessage;
+        public Func<ResultMessageEvent, Task<ResultMessageEvent>> OnUpdateResultMessage;
+        public Func<ResultMessageEvent, Task<ResultMessageEvent>> OnErrorResultMessage;
         public readonly Client Client;
         private FactoryMessagesService factoryService;
         private FactoryUserService factoryUserService;
