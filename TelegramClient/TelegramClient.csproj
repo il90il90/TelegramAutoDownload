@@ -10,7 +10,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\BasePlugin\BasePlugins.csproj" />
-    <ProjectReference Include="..\Logger\Logger.csproj" />
   </ItemGroup>
 
 </Project>

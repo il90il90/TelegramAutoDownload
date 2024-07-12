@@ -3,12 +3,52 @@
   "WorkspaceRootPath": "C:\\Users\\il90i\\source\\repos\\RunnerApp\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{DB2263BD-7D96-4AAF-87C4-A2D7F185199F}|TelegramAutoDownload\\TelegramAutoDownload.csproj|c:\\users\\il90i\\source\\repos\\runnerapp\\telegramautodownload\\mainwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{DB2263BD-7D96-4AAF-87C4-A2D7F185199F}|TelegramAutoDownload\\TelegramAutoDownload.csproj|solutionrelative:telegramautodownload\\mainwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{80FA84AB-C728-4FB9-8CC4-323D3527C80C}|TelegramClient\\TelegramClient.csproj|c:\\users\\il90i\\source\\repos\\runnerapp\\telegramclient\\telegramapp.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{80FA84AB-C728-4FB9-8CC4-323D3527C80C}|TelegramClient\\TelegramClient.csproj|solutionrelative:telegramclient\\telegramapp.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{DB2263BD-7D96-4AAF-87C4-A2D7F185199F}|TelegramAutoDownload\\TelegramAutoDownload.csproj|c:\\users\\il90i\\source\\repos\\runnerapp\\telegramautodownload\\loginwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
+      "RelativeMoniker": "D:0:0:{DB2263BD-7D96-4AAF-87C4-A2D7F185199F}|TelegramAutoDownload\\TelegramAutoDownload.csproj|solutionrelative:telegramautodownload\\loginwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{DB2263BD-7D96-4AAF-87C4-A2D7F185199F}|TelegramAutoDownload\\TelegramAutoDownload.csproj|c:\\users\\il90i\\source\\repos\\runnerapp\\telegramautodownload\\loginwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{DB2263BD-7D96-4AAF-87C4-A2D7F185199F}|TelegramAutoDownload\\TelegramAutoDownload.csproj|solutionrelative:telegramautodownload\\loginwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6CA4B3B0-49C5-4E90-8F1F-EE354EEDBACA}|BasePlugin\\BasePlugins.csproj|c:\\users\\il90i\\source\\repos\\runnerapp\\baseplugin\\resultexecute.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6CA4B3B0-49C5-4E90-8F1F-EE354EEDBACA}|BasePlugin\\BasePlugins.csproj|solutionrelative:baseplugin\\resultexecute.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{80FA84AB-C728-4FB9-8CC4-323D3527C80C}|TelegramClient\\TelegramClient.csproj|c:\\users\\il90i\\source\\repos\\runnerapp\\telegramclient\\models\\resultmessageevent.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{80FA84AB-C728-4FB9-8CC4-323D3527C80C}|TelegramClient\\TelegramClient.csproj|solutionrelative:telegramclient\\models\\resultmessageevent.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{80FA84AB-C728-4FB9-8CC4-323D3527C80C}|TelegramClient\\TelegramClient.csproj|c:\\users\\il90i\\source\\repos\\runnerapp\\telegramclient\\factory\\service\\factorymessagesservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{80FA84AB-C728-4FB9-8CC4-323D3527C80C}|TelegramClient\\TelegramClient.csproj|solutionrelative:telegramclient\\factory\\service\\factorymessagesservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{80FA84AB-C728-4FB9-8CC4-323D3527C80C}|TelegramClient\\TelegramClient.csproj|c:\\users\\il90i\\source\\repos\\runnerapp\\telegramclient\\factory\\factoriesmessages\\videos.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{80FA84AB-C728-4FB9-8CC4-323D3527C80C}|TelegramClient\\TelegramClient.csproj|solutionrelative:telegramclient\\factory\\factoriesmessages\\videos.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{80FA84AB-C728-4FB9-8CC4-323D3527C80C}|TelegramClient\\TelegramClient.csproj|c:\\users\\il90i\\source\\repos\\runnerapp\\telegramclient\\factory\\base\\basemessage.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{80FA84AB-C728-4FB9-8CC4-323D3527C80C}|TelegramClient\\TelegramClient.csproj|solutionrelative:telegramclient\\factory\\base\\basemessage.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{DB2263BD-7D96-4AAF-87C4-A2D7F185199F}|TelegramAutoDownload\\TelegramAutoDownload.csproj|c:\\users\\il90i\\source\\repos\\runnerapp\\telegramautodownload\\mainwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
       "RelativeMoniker": "D:0:0:{DB2263BD-7D96-4AAF-87C4-A2D7F185199F}|TelegramAutoDownload\\TelegramAutoDownload.csproj|solutionrelative:telegramautodownload\\mainwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{DB2263BD-7D96-4AAF-87C4-A2D7F185199F}|TelegramAutoDownload\\TelegramAutoDownload.csproj|c:\\users\\il90i\\source\\repos\\runnerapp\\telegramautodownload\\mainwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{DB2263BD-7D96-4AAF-87C4-A2D7F185199F}|TelegramAutoDownload\\TelegramAutoDownload.csproj|solutionrelative:telegramautodownload\\mainwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{80FA84AB-C728-4FB9-8CC4-323D3527C80C}|TelegramClient\\TelegramClient.csproj|c:\\users\\il90i\\source\\repos\\runnerapp\\telegramclient\\factory\\service\\messagetextfactoryservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{80FA84AB-C728-4FB9-8CC4-323D3527C80C}|TelegramClient\\TelegramClient.csproj|solutionrelative:telegramclient\\factory\\service\\messagetextfactoryservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{80FA84AB-C728-4FB9-8CC4-323D3527C80C}|TelegramClient\\TelegramClient.csproj|c:\\users\\il90i\\source\\repos\\runnerapp\\telegramclient\\factory\\interfaces\\messages\\imessagetype.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{80FA84AB-C728-4FB9-8CC4-323D3527C80C}|TelegramClient\\TelegramClient.csproj|solutionrelative:telegramclient\\factory\\interfaces\\messages\\imessagetype.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{80FA84AB-C728-4FB9-8CC4-323D3527C80C}|TelegramClient\\TelegramClient.csproj|c:\\users\\il90i\\source\\repos\\runnerapp\\telegramclient\\factory\\factoriesusers\\group.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -21,30 +61,6 @@
     {
       "AbsoluteMoniker": "D:0:0:{80FA84AB-C728-4FB9-8CC4-323D3527C80C}|TelegramClient\\TelegramClient.csproj|c:\\users\\il90i\\source\\repos\\runnerapp\\telegramclient\\factory\\factoriesusers\\user.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{80FA84AB-C728-4FB9-8CC4-323D3527C80C}|TelegramClient\\TelegramClient.csproj|solutionrelative:telegramclient\\factory\\factoriesusers\\user.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{80FA84AB-C728-4FB9-8CC4-323D3527C80C}|TelegramClient\\TelegramClient.csproj|c:\\users\\il90i\\source\\repos\\runnerapp\\telegramclient\\factory\\base\\basemessage.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{80FA84AB-C728-4FB9-8CC4-323D3527C80C}|TelegramClient\\TelegramClient.csproj|solutionrelative:telegramclient\\factory\\base\\basemessage.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{80FA84AB-C728-4FB9-8CC4-323D3527C80C}|TelegramClient\\TelegramClient.csproj|c:\\users\\il90i\\source\\repos\\runnerapp\\telegramclient\\factory\\interfaces\\messages\\imessagetype.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{80FA84AB-C728-4FB9-8CC4-323D3527C80C}|TelegramClient\\TelegramClient.csproj|solutionrelative:telegramclient\\factory\\interfaces\\messages\\imessagetype.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{80FA84AB-C728-4FB9-8CC4-323D3527C80C}|TelegramClient\\TelegramClient.csproj|c:\\users\\il90i\\source\\repos\\runnerapp\\telegramclient\\factory\\service\\factorymessagesservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{80FA84AB-C728-4FB9-8CC4-323D3527C80C}|TelegramClient\\TelegramClient.csproj|solutionrelative:telegramclient\\factory\\service\\factorymessagesservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{80FA84AB-C728-4FB9-8CC4-323D3527C80C}|TelegramClient\\TelegramClient.csproj|c:\\users\\il90i\\source\\repos\\runnerapp\\telegramclient\\telegramapp.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{80FA84AB-C728-4FB9-8CC4-323D3527C80C}|TelegramClient\\TelegramClient.csproj|solutionrelative:telegramclient\\telegramapp.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{6CA4B3B0-49C5-4E90-8F1F-EE354EEDBACA}|BasePlugin\\BasePlugins.csproj|c:\\users\\il90i\\source\\repos\\runnerapp\\baseplugin\\resultexecute.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{6CA4B3B0-49C5-4E90-8F1F-EE354EEDBACA}|BasePlugin\\BasePlugins.csproj|solutionrelative:baseplugin\\resultexecute.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{80FA84AB-C728-4FB9-8CC4-323D3527C80C}|TelegramClient\\TelegramClient.csproj|c:\\users\\il90i\\source\\repos\\runnerapp\\telegramclient\\factory\\service\\messagetextfactoryservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{80FA84AB-C728-4FB9-8CC4-323D3527C80C}|TelegramClient\\TelegramClient.csproj|solutionrelative:telegramclient\\factory\\service\\messagetextfactoryservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
   "DocumentGroupContainers": [
@@ -54,35 +70,87 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 7,
+          "SelectedChildIndex": 10,
           "Children": [
             {
               "$type": "Document",
-              "DocumentIndex": 9,
+              "DocumentIndex": 3,
+              "Title": "LoginWindow.xaml.cs",
+              "DocumentMoniker": "C:\\Users\\il90i\\source\\repos\\RunnerApp\\TelegramAutoDownload\\LoginWindow.xaml.cs",
+              "RelativeDocumentMoniker": "TelegramAutoDownload\\LoginWindow.xaml.cs",
+              "ToolTip": "C:\\Users\\il90i\\source\\repos\\RunnerApp\\TelegramAutoDownload\\LoginWindow.xaml.cs",
+              "RelativeToolTip": "TelegramAutoDownload\\LoginWindow.xaml.cs",
+              "ViewState": "AQIAAAAAAAAAAAAAAAAAABMAAABRAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2024-07-12T06:49:13.35Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "LoginWindow.xaml",
+              "DocumentMoniker": "C:\\Users\\il90i\\source\\repos\\RunnerApp\\TelegramAutoDownload\\LoginWindow.xaml",
+              "RelativeDocumentMoniker": "TelegramAutoDownload\\LoginWindow.xaml",
+              "ToolTip": "C:\\Users\\il90i\\source\\repos\\RunnerApp\\TelegramAutoDownload\\LoginWindow.xaml",
+              "RelativeToolTip": "TelegramAutoDownload\\LoginWindow.xaml",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
+              "WhenOpened": "2024-07-12T06:49:10.594Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "ResultMessageEvent.cs",
+              "DocumentMoniker": "C:\\Users\\il90i\\source\\repos\\RunnerApp\\TelegramClient\\Models\\ResultMessageEvent.cs",
+              "RelativeDocumentMoniker": "TelegramClient\\Models\\ResultMessageEvent.cs",
+              "ToolTip": "C:\\Users\\il90i\\source\\repos\\RunnerApp\\TelegramClient\\Models\\ResultMessageEvent.cs",
+              "RelativeToolTip": "TelegramClient\\Models\\ResultMessageEvent.cs",
+              "ViewState": "AQIAAAAAAAAAAAAAAAAAAAwAAAAAAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2024-07-12T06:31:32.497Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
+              "Title": "Videos.cs",
+              "DocumentMoniker": "C:\\Users\\il90i\\source\\repos\\RunnerApp\\TelegramClient\\Factory\\FactoriesMessages\\Videos.cs",
+              "RelativeDocumentMoniker": "TelegramClient\\Factory\\FactoriesMessages\\Videos.cs",
+              "ToolTip": "C:\\Users\\il90i\\source\\repos\\RunnerApp\\TelegramClient\\Factory\\FactoriesMessages\\Videos.cs",
+              "RelativeToolTip": "TelegramClient\\Factory\\FactoriesMessages\\Videos.cs",
+              "ViewState": "AQIAABoAAAAAAAAAAADgvz0AAAApAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2024-07-12T05:43:41.545Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
               "Title": "ResultExecute.cs",
               "DocumentMoniker": "C:\\Users\\il90i\\source\\repos\\RunnerApp\\BasePlugin\\ResultExecute.cs",
               "RelativeDocumentMoniker": "BasePlugin\\ResultExecute.cs",
               "ToolTip": "C:\\Users\\il90i\\source\\repos\\RunnerApp\\BasePlugin\\ResultExecute.cs",
               "RelativeToolTip": "BasePlugin\\ResultExecute.cs",
-              "ViewState": "AQIAAAAAAAAAAAAAAAAAAAQAAAAcAAAA",
+              "ViewState": "AQIAAAAAAAAAAAAAAAAAAAIAAAAeAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2024-07-11T16:26:32.559Z"
+              "WhenOpened": "2024-07-11T16:26:32.559Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 6,
+              "DocumentIndex": 11,
               "Title": "IMessageType.cs",
               "DocumentMoniker": "C:\\Users\\il90i\\source\\repos\\RunnerApp\\TelegramClient\\Factory\\Interfaces\\Messages\\IMessageType.cs",
               "RelativeDocumentMoniker": "TelegramClient\\Factory\\Interfaces\\Messages\\IMessageType.cs",
               "ToolTip": "C:\\Users\\il90i\\source\\repos\\RunnerApp\\TelegramClient\\Factory\\Interfaces\\Messages\\IMessageType.cs",
               "RelativeToolTip": "TelegramClient\\Factory\\Interfaces\\Messages\\IMessageType.cs",
-              "ViewState": "AQIAAAAAAAAAAAAAAAAqwBAAAAAwAAAA",
+              "ViewState": "AQIAAAAAAAAAAAAAAAAAABEAAAAvAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2024-07-11T16:23:52.494Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 13,
               "Title": "ChatDto.cs",
               "DocumentMoniker": "C:\\Users\\il90i\\source\\repos\\RunnerApp\\TelegramClient\\Models\\ChatDto.cs",
               "RelativeDocumentMoniker": "TelegramClient\\Models\\ChatDto.cs",
@@ -90,12 +158,11 @@
               "RelativeToolTip": "TelegramClient\\Models\\ChatDto.cs",
               "ViewState": "AQIAAAAAAAAAAAAAAAAAAA0AAAAjAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2024-07-11T15:21:57.122Z",
-              "EditorCaption": ""
+              "WhenOpened": "2024-07-11T15:21:57.122Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 14,
               "Title": "User.cs",
               "DocumentMoniker": "C:\\Users\\il90i\\source\\repos\\RunnerApp\\TelegramClient\\Factory\\FactoriesUsers\\User.cs",
               "RelativeDocumentMoniker": "TelegramClient\\Factory\\FactoriesUsers\\User.cs",
@@ -103,50 +170,50 @@
               "RelativeToolTip": "TelegramClient\\Factory\\FactoriesUsers\\User.cs",
               "ViewState": "AQIAAAkAAAAAAAAAAAAowCUAAAAtAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2024-07-11T15:20:01.208Z",
-              "EditorCaption": ""
+              "WhenOpened": "2024-07-11T15:20:01.208Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 7,
+              "DocumentIndex": 6,
               "Title": "FactoryMessagesService.cs",
               "DocumentMoniker": "C:\\Users\\il90i\\source\\repos\\RunnerApp\\TelegramClient\\Factory\\Service\\FactoryMessagesService.cs",
               "RelativeDocumentMoniker": "TelegramClient\\Factory\\Service\\FactoryMessagesService.cs",
               "ToolTip": "C:\\Users\\il90i\\source\\repos\\RunnerApp\\TelegramClient\\Factory\\Service\\FactoryMessagesService.cs",
               "RelativeToolTip": "TelegramClient\\Factory\\Service\\FactoryMessagesService.cs",
-              "ViewState": "AQIAABgAAAAAAAAAAAAUwCwAAABQAAAA",
+              "ViewState": "AQIAABsAAAAAAAAAAADgvzEAAAAeAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2024-07-11T15:20:01.279Z"
+              "WhenOpened": "2024-07-11T15:20:01.279Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 5,
+              "DocumentIndex": 8,
               "Title": "BaseMessage.cs",
               "DocumentMoniker": "C:\\Users\\il90i\\source\\repos\\RunnerApp\\TelegramClient\\Factory\\Base\\BaseMessage.cs",
               "RelativeDocumentMoniker": "TelegramClient\\Factory\\Base\\BaseMessage.cs",
               "ToolTip": "C:\\Users\\il90i\\source\\repos\\RunnerApp\\TelegramClient\\Factory\\Base\\BaseMessage.cs",
               "RelativeToolTip": "TelegramClient\\Factory\\Base\\BaseMessage.cs",
-              "ViewState": "AQIAABUAAAAAAAAAAAAAAEsAAAAYAAAA",
+              "ViewState": "AQIAAFQAAAAAAAAAAAArwGwAAAANAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2024-07-11T15:20:01.292Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 0,
               "Title": "MainWindow.xaml.cs",
               "DocumentMoniker": "C:\\Users\\il90i\\source\\repos\\RunnerApp\\TelegramAutoDownload\\MainWindow.xaml.cs",
               "RelativeDocumentMoniker": "TelegramAutoDownload\\MainWindow.xaml.cs",
               "ToolTip": "C:\\Users\\il90i\\source\\repos\\RunnerApp\\TelegramAutoDownload\\MainWindow.xaml.cs",
               "RelativeToolTip": "TelegramAutoDownload\\MainWindow.xaml.cs",
-              "ViewState": "AQIAAAcBAAAAAAAAAAAgwB0BAAAYAAAA",
+              "ViewState": "AQIAACEAAAAAAAAAAADwvzwAAAAAAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2024-07-11T04:09:12.323Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 9,
               "Title": "MainWindow.xaml",
               "DocumentMoniker": "C:\\Users\\il90i\\source\\repos\\RunnerApp\\TelegramAutoDownload\\MainWindow.xaml",
               "RelativeDocumentMoniker": "TelegramAutoDownload\\MainWindow.xaml",
@@ -158,7 +225,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 12,
               "Title": "Group.cs",
               "DocumentMoniker": "C:\\Users\\il90i\\source\\repos\\RunnerApp\\TelegramClient\\Factory\\FactoriesUsers\\Group.cs",
               "RelativeDocumentMoniker": "TelegramClient\\Factory\\FactoriesUsers\\Group.cs",
@@ -166,8 +233,7 @@
               "RelativeToolTip": "TelegramClient\\Factory\\FactoriesUsers\\Group.cs",
               "ViewState": "AQIAAAUAAAAAAAAAAAAowBMAAAAAAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2024-07-11T03:57:47.43Z",
-              "EditorCaption": ""
+              "WhenOpened": "2024-07-11T03:57:47.43Z"
             },
             {
               "$type": "Document",
@@ -177,19 +243,19 @@
               "RelativeDocumentMoniker": "TelegramClient\\Factory\\Service\\MessageTextFactoryService.cs",
               "ToolTip": "C:\\Users\\il90i\\source\\repos\\RunnerApp\\TelegramClient\\Factory\\Service\\MessageTextFactoryService.cs",
               "RelativeToolTip": "TelegramClient\\Factory\\Service\\MessageTextFactoryService.cs",
-              "ViewState": "AQIAAC0AAAAAAAAAAADgv0EAAAAiAAAA",
+              "ViewState": "AQIAABEAAAAAAAAAAAASwCAAAAArAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2024-07-08T16:49:48.602Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 8,
+              "DocumentIndex": 1,
               "Title": "TelegramApp.cs",
               "DocumentMoniker": "C:\\Users\\il90i\\source\\repos\\RunnerApp\\TelegramClient\\TelegramApp.cs",
               "RelativeDocumentMoniker": "TelegramClient\\TelegramApp.cs",
               "ToolTip": "C:\\Users\\il90i\\source\\repos\\RunnerApp\\TelegramClient\\TelegramApp.cs",
               "RelativeToolTip": "TelegramClient\\TelegramApp.cs",
-              "ViewState": "AQIAADIAAAAAAAAAAAAiwE0AAABbAAAA",
+              "ViewState": "AQIAAAAAAAAAAAAAAAAAABAAAAAuAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2024-07-08T16:49:48.628Z",
               "EditorCaption": ""

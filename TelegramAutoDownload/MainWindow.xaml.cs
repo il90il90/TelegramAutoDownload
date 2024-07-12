@@ -1,4 +1,5 @@
-﻿using Microsoft.Win32;
+﻿using BasePlugins;
+using Microsoft.Win32;
 using Newtonsoft.Json;
 using System;
 using System.Diagnostics;
@@ -13,6 +14,7 @@ using TelegramAutoDownload.Models;
 using TelegramClient;
 using TelegramClient.Models;
 using TL;
+using static TelegramClient.TelegramApp;
 namespace TelegramAutoDownload
 {
     public partial class MainWindow : Window
@@ -20,12 +22,47 @@ namespace TelegramAutoDownload
         private readonly TelegramApp TelegramApp;
         private readonly ConfigFile ConfigFile;
         private IList<ChatDto> _chats;
+        private readonly Serilog.Core.Logger logger;
+
+        static bool IsAdministrator()
+        {
+            var wi = System.Security.Principal.WindowsIdentity.GetCurrent();
+            var wp = new System.Security.Principal.WindowsPrincipal(wi);
+            return wp.IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator);
+        }
         public MainWindow(TelegramApp telegram, ConfigFile config)
         {
             InitializeComponent();
+
+            var logger = new Logger.Logger(new Logger.ConfigLog
+            {
+                Host = "http://localhost",
+                Port = 5341
+            });
+
             TelegramApp = telegram;
             ConfigFile = config;
             Loaded += MainWindow_Loaded;
+            telegram.OnUpdateResultMessage = OnUpdateResultMessage;
+            telegram.OnErrorResultMessage = OnErrorResultMessage;
+        }
+
+        private ResultMessageEvent OnUpdateResultMessage(ResultMessageEvent eventMessage)
+        {
+            logger?.Information($"message from {eventMessage.Chat.Name}: {eventMessage.Message}. {{@fromUser}}{{@message}}{{@id}}{{@username}}{{@chatName}}{{@type}}{{@download}}{{@reactionIcon}}{{@resultExecute}}{{messageType}}",
+                                   eventMessage.PostAuthor, eventMessage.Message, eventMessage.Chat.Id, eventMessage.Chat.Username ?? "private", eventMessage.Chat.Name, eventMessage.Chat.Type, eventMessage.Chat.Download, eventMessage.Chat.ReactionIcon, eventMessage.ResultExecute, eventMessage.ResultExecute.MessageType);
+
+            if (!string.IsNullOrEmpty(eventMessage.ResultExecute.ErrorMessage))
+            {
+                logger?.Warning($"warning :{eventMessage.Chat.Name}{{message}}", eventMessage.Message, eventMessage.ResultExecute.ErrorMessage);
+            }
+            return null;
+        }
+
+        private ResultMessageEvent OnErrorResultMessage(ResultMessageEvent eventMessage)
+        {
+            logger?.Error($"error on :{eventMessage.Chat.Name}{{message}} {{errorMessage}}", eventMessage?.Message, eventMessage?.ResultExecute.ErrorMessage);
+            return null;
         }
 
         private async void MainWindow_Loaded(object sender, RoutedEventArgs e)

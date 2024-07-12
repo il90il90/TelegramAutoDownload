@@ -45,7 +45,9 @@ namespace TelegramClient.Factory.Service
                     var downloadPolicyResult = handleMessage.CheckDownloadPolicy(chatDto, message);
                     if (downloadPolicyResult.IsSuccess)
                     {
-                        return await handleMessage.ExecuteAsync(message, chatDto);
+                        var resultExecute = await handleMessage.ExecuteAsync(message, chatDto);
+                        resultExecute.MessageType = type.ToString();
+                        return resultExecute;
                     }
 
                     return downloadPolicyResult;

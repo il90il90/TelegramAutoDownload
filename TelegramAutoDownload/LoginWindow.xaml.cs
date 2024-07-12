@@ -16,12 +16,8 @@ namespace TelegramAutoDownload
             InitializeComponent();
             _configFile = new ConfigFile();
             var _configParams = _configFile.Read();
-            var logger = new Logger.Logger(new Logger.ConfigLog
-            {
-                Host = "http://localhost",
-                Port = 5341
-            });
-            telegram = new TelegramApp(_configParams.AppId, _configParams.ApiHash, logger);
+
+            telegram = new TelegramApp(_configParams.AppId, _configParams.ApiHash);
             MoveToMainWindowIfConnected();
         }
 

@@ -1,4 +1,5 @@
 ﻿using BasePlugins;
+using System;
 using System.IO;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -100,10 +101,14 @@ namespace TelegramClient.Factory.Base
 
         protected string[] FileExistDuplicate(string fileName)
         {
-            return Directory.GetFiles(PathFolderToSaveFiles, fileName, SearchOption.AllDirectories);
-
+            try
+            {
+                return Directory.GetFiles(PathFolderToSaveFiles, fileName, SearchOption.AllDirectories);
+            }
+            catch (Exception e)
+            {
+                return [];
+            }
         }
-
-
     }
 }
