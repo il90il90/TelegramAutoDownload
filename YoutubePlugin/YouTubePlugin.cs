@@ -13,7 +13,7 @@ namespace YoutubePlugin
 
         public override bool CanHandle(Config config)
         {
-            return config.Text.StartsWith("https://youtu");
+            return config.Text.StartsWith("https://youtu") || config.Text.StartsWith("https://www.youtu");
         }
 
         public async Task<Video> GetVideoInfo(string videoUrl)

@@ -10,10 +10,19 @@
         "dependencies": {
           "Logger": "1.0.0",
           "Newtonsoft.Json": "13.0.3",
-          "TelegramClient": "1.0.0"
+          "TelegramClient": "1.0.0",
+          "dotenv.net": "3.2.0"
         },
         "runtime": {
           "TelegramAutoDownload.dll": {}
+        }
+      },
+      "dotenv.net/3.2.0": {
+        "runtime": {
+          "lib/netstandard2.1/dotenv.net.dll": {
+            "assemblyVersion": "3.2.0.0",
+            "fileVersion": "3.2.0.0"
+          }
         }
       },
       "Newtonsoft.Json/13.0.3": {
@@ -92,6 +101,13 @@
       "type": "project",
       "serviceable": false,
       "sha512": ""
+    },
+    "dotenv.net/3.2.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-shohkuZ2HxhNmLY+jCG5MJreMEtmjbaWyOIoJ920KTDwJHT9JC7WdnmrXCwqJ1JPKo5QY9oDJUEFTlQE8qSZSw==",
+      "path": "dotenv.net/3.2.0",
+      "hashPath": "dotenv.net.3.2.0.nupkg.sha512"
     },
     "Newtonsoft.Json/13.0.3": {
       "type": "package",
