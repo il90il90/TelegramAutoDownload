@@ -1,5 +1,4 @@
-﻿using BasePlugins;
-using Logger.Config;
+﻿using Logger.Config;
 using Logger.Services;
 using Microsoft.Win32;
 using Newtonsoft.Json;
@@ -11,7 +10,8 @@ using System.Windows.Media;
 using TelegramAutoDownload.Models;
 using TelegramClient;
 using TelegramClient.Models;
-using TL;
+using dotenv.net;
+
 namespace TelegramAutoDownload
 {
     public partial class MainWindow : Window
@@ -25,11 +25,12 @@ namespace TelegramAutoDownload
         public MainWindow(TelegramApp telegram, ConfigFile config)
         {
             InitializeComponent();
-
+            
+            DotEnv.Load();
             telegramService = new TelegramService(new ConfigTelegramLogger
             {
-                BotToken = "",
-                ChatId = ""
+                BotToken = Environment.GetEnvironmentVariable("BotToken"),
+                ChatId = Environment.GetEnvironmentVariable("ChatId"),
             });
 
             TelegramApp = telegram;
@@ -41,8 +42,6 @@ namespace TelegramAutoDownload
 
         private async Task<ResultMessageEvent> OnUpdateResultMessageAsync(ResultMessageEvent eventMessage)
         {
-
-
             if (string.IsNullOrEmpty(eventMessage.ResultExecute.ErrorMessage))
             {
                 logger?.Information($"message from {eventMessage.Chat.Name}: {eventMessage.Message}. {{@fromUser}}{{@message}}{{@id}}{{@username}}{{@chatName}}{{@type}}{{@download}}{{@reactionIcon}}{{@resultExecute}}{{messageType}}",
