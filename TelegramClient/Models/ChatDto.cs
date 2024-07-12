@@ -11,8 +11,8 @@ namespace TelegramClient.Models
         public string Type { get; set; }
         public string ReactionIcon { get; set; } = string.Empty;
         public Download Download { get; set; } = new Download();
-        public int Size { get; set; }
-        public List<string> Regex { get; set; } = [];
+        public int DownloadFromSize { get; set; }
+        public List<string> IgnoreFileByRegex { get; set; } = [];
     }
 
     public class Download

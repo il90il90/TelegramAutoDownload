@@ -63,8 +63,8 @@ namespace TelegramAutoDownload
                     chat.Download.Photos = fromConfigFile.Download.Photos;
                     chat.Download.Music = fromConfigFile.Download.Music;
                     chat.Download.Files = fromConfigFile.Download.Files;
-                    chat.Size = fromConfigFile.Size;
-                    chat.Regex = fromConfigFile.Regex;
+                    chat.DownloadFromSize = fromConfigFile.DownloadFromSize;
+                    chat.IgnoreFileByRegex = fromConfigFile.IgnoreFileByRegex;
                 }
 
                 await Application.Current.Dispatcher.InvokeAsync(() =>
@@ -283,11 +283,11 @@ namespace TelegramAutoDownload
 
                 if (int.TryParse(textBox, out var size))
                 {
-                    chat.Size = size;
+                    chat.DownloadFromSize = size;
                 }
                 else
                 {
-                    chat.Size = 0;
+                    chat.DownloadFromSize = 0;
                     textBox = "0";
                 }
 

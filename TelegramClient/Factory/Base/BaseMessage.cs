@@ -43,17 +43,17 @@ namespace TelegramClient.Factory.Base
             {
                 var documentSizeInMb = document.size / 1024 / 1024;
 
-                if (chatDto.Size != 0 && chatDto.Size <= documentSizeInMb)
+                if (chatDto.DownloadFromSize != 0 && chatDto.DownloadFromSize <= documentSizeInMb)
                 {
                     return new ResultExecute(chatDto.Name)
                     {
                         FileName = document.Filename,
                         IsSuccess = false,
-                        ErrorMessage = $"file limit to start download is: {chatDto.Size}MB, and the original file is: {documentSizeInMb}MB",
+                        ErrorMessage = $"file limit to start download is: {chatDto.DownloadFromSize}MB, and the original file is: {documentSizeInMb}MB",
                     };
                 }
 
-                foreach (var regexPattern in chatDto.Regex)
+                foreach (var regexPattern in chatDto.IgnoreFileByRegex)
                 {
                     Regex regex = new(regexPattern);
                     if (regex.IsMatch(document.Filename))

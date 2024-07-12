@@ -102,7 +102,7 @@
                     <GridViewColumn Header="Start Download From Size (MB)" Width="200">
                         <GridViewColumn.CellTemplate>
                             <DataTemplate>
-                                <TextBox Name="DownloadSize" Text="{Binding Size, Mode=TwoWay}" TextChanged="DownloadSize_TextChanged" Width="100" VerticalAlignment="Center" Margin="5,0"/>
+                                <TextBox Name="DownloadSize" Text="{Binding DownloadFromSize, Mode=TwoWay}" TextChanged="DownloadSize_TextChanged" Width="100" VerticalAlignment="Center" Margin="5,0"/>
                             </DataTemplate>
                         </GridViewColumn.CellTemplate>
                     </GridViewColumn>
