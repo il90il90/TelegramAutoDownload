@@ -56,13 +56,13 @@ namespace TelegramAutoDownload
             {
                 logger?.Warning($"warning :{eventMessage.Chat.Name}{{message}}", eventMessage.Message, eventMessage.ResultExecute.ErrorMessage);
             }
-            return null;
+            return eventMessage;
         }
 
         private ResultMessageEvent OnErrorResultMessage(ResultMessageEvent eventMessage)
         {
             logger?.Error($"error on :{eventMessage.Chat.Name}{{message}} {{errorMessage}}", eventMessage?.Message, eventMessage?.ResultExecute.ErrorMessage);
-            return null;
+            return eventMessage;
         }
 
         private async void MainWindow_Loaded(object sender, RoutedEventArgs e)

@@ -58,9 +58,7 @@ namespace TelegramClient
                         {
                             try
                             {
-                                throw new Exception("bela");
                                 resultExecute = await factoryService.ExecuteAsync(updateNewMessage, chat);
-
 
                                 if (resultExecute.IsSuccess && chat.ReactionIcon != null)
                                 {
