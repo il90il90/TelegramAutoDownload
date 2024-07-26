@@ -1,10 +1,13 @@
-**Telegram Auto Download**
+Here's the formatted README for your GitHub project:
+
+---
+
+# Telegram Auto Download
 
 **Overview:**
 Telegram Auto Download is a versatile software designed to automatically download videos, music, and photos when new files are received in selected Telegram channels. It simplifies the process of gathering multimedia content from Telegram channels.
 
-![](https://github.com/il90il90/TelegramAutoDownload/assets/5620005/c13db781-cf43-4cb0-ad86-dc27dd3fb103)
-
+![Telegram Auto Download](https://github.com/il90il90/TelegramAutoDownload/assets/5620005/c13db781-cf43-4cb0-ad86-dc27dd3fb103)
 
 **Key Features:**
 - Automatic downloading of videos, music, and photos from specified Telegram channels.
@@ -29,6 +32,17 @@ Telegram Auto Download is a versatile software designed to automatically downloa
 3. Let the software automatically fetch new content as it arrives in the specified channels.
 4. Access downloaded files on your PC or share the folder over the local network for wider accessibility.
 
-**Enhance Your Multimedia Experience with Telegram Auto Download by using https://jellyfin.org/**
+**Enhance Your Multimedia Experience with Telegram Auto Download by using [Jellyfin](https://jellyfin.org/).**
 
+## Environment Variables
 
+To configure Telegram notifications for tracking new file downloads, update your `.env` file with the following variables:
+
+```env
+BOT_TOKEN=339792###:AAHH-lwsvlmsi-2c8ju2ith8AI15M8Rc###
+CHAT_ID=-1002172343###
+```
+
+Ensure you replace the placeholders with your actual bot token and chat ID.
+
+---
