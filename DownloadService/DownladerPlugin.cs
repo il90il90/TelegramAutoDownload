@@ -31,15 +31,17 @@ namespace DownloadPlugin
 
                         long totalSize = response.Content.Headers.ContentLength ?? 0;
                         fileName = response?.Content?.Headers?.ContentDisposition?.FileNameStar?.Trim('"') ?? Path.GetFileName(new Uri(config.Text).LocalPath);
-                        string filePath = Path.Combine(path, fileName);
+
                         if (totalSize == 0)
                             return new ResultExecute(config.ChatName);
 
                         char[] invalidChars = Path.GetInvalidFileNameChars();
                         foreach (char c in invalidChars)
                         {
-                            filePath = filePath.Replace(c, ' ');
+                            fileName = fileName.Replace(c, ' ');
                         }
+
+                        string filePath = Path.Combine(path, fileName);
 
                         using (FileStream fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None))
                         {
