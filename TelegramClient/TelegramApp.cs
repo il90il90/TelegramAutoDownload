@@ -13,7 +13,8 @@ namespace TelegramClient
 {
     public partial class TelegramApp
     {
-        public Func<ResultMessageEvent, Task<ResultMessageEvent>> OnUpdateResultMessage;
+        public Func<ResultMessageEvent, Task<ResultMessageEvent>> OnSaved;
+        public Func<ResultMessageEvent, Task<ResultMessageEvent>> OnWarnningMessage;
         public Func<ResultMessageEvent, Task<ResultMessageEvent>> OnErrorResultMessage;
         public readonly Client Client;
         private FactoryMessagesService factoryService;
@@ -60,20 +61,28 @@ namespace TelegramClient
                             {
                                 resultExecute = await factoryService.ExecuteAsync(updateNewMessage, chat);
 
+                                var resultMessageEvent = new ResultMessageEvent
+                                {
+                                    Chat = chat,
+                                    Message = infoMessage.message,
+                                    PostAuthor = infoMessage.post_author,
+                                    ResultExecute = resultExecute,
+                                };
                                 if (resultExecute.IsSuccess && chat.ReactionIcon != null)
                                 {
                                     if (updateNewMessage != null && !string.IsNullOrEmpty(chat.ReactionIcon))
                                     {
                                         await ReactToMessage(chat, updates, infoMessage, chat.ReactionIcon);
                                     }
+                                    OnSaved?.Invoke(resultMessageEvent);
                                 }
-                                OnUpdateResultMessage?.Invoke(new ResultMessageEvent
+                                else
                                 {
-                                    Chat = chat,
-                                    Message = infoMessage.message,
-                                    PostAuthor = infoMessage.post_author,
-                                    ResultExecute = resultExecute,
-                                });
+                                    if (!string.IsNullOrEmpty(resultExecute.ErrorMessage))
+                                    {
+                                        OnWarnningMessage?.Invoke(resultMessageEvent);
+                                    }
+                                }
                             }
                             catch (Exception ex)
                             {

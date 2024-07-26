@@ -12,7 +12,7 @@
         public string Name { get; set; }
         public bool IsSuccess { get; set; }
         public string FileName { get; set; }
-        public string ErrorMessage { get; set; }
         public string MessageType { get; set; }
+        public string ErrorMessage { get; set; }
     }
 }

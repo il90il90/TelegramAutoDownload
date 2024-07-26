@@ -1,6 +1,4 @@
 ﻿using Logger.Config;
-using Logger.Interfaces;
-using static System.Net.Mime.MediaTypeNames;
 
 namespace Logger.Services
 {
@@ -10,15 +8,24 @@ namespace Logger.Services
 
         public string BotToken { get; set; }
         public string ChatId { get; set; }
+        public bool IsActive { get; set; }
 
         public TelegramService(IConfigTelegramLogger configLogger)
         {
             BotToken = configLogger.BotToken;
             ChatId = configLogger.ChatId;
+            if (BotToken != null && ChatId != null)
+            {
+                IsActive = true;
+            }
         }
 
         public async Task SendMessageAsync(string text)
         {
+            if (!IsActive)
+            {
+                return;
+            }
             var url = $"https://api.telegram.org/bot{BotToken}/sendMessage";
             var data = new FormUrlEncodedContent(
             [
