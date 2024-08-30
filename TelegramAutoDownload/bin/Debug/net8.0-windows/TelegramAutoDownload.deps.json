@@ -74,7 +74,10 @@
       },
       "BasePlugins/1.0.0": {
         "runtime": {
-          "BasePlugins.dll": {}
+          "BasePlugins.dll": {
+            "assemblyVersion": "1.0.0",
+            "fileVersion": "1.0.0.0"
+          }
         }
       },
       "Logger/1.0.0": {
@@ -82,7 +85,10 @@
           "Serilog.Sinks.Seq": "8.0.0"
         },
         "runtime": {
-          "Logger.dll": {}
+          "Logger.dll": {
+            "assemblyVersion": "1.0.0",
+            "fileVersion": "1.0.0.0"
+          }
         }
       },
       "TelegramClient/1.0.0": {
@@ -91,7 +97,10 @@
           "WTelegramClient": "4.1.1"
         },
         "runtime": {
-          "TelegramClient.dll": {}
+          "TelegramClient.dll": {
+            "assemblyVersion": "1.0.0",
+            "fileVersion": "1.0.0.0"
+          }
         }
       }
     }

@@ -44,13 +44,13 @@ namespace TelegramClient.Factory.Factories
                         fileName = $"{document.ID}.{mime_type}";
                     }
 
-                    var fileExist = FileExistDuplicate(fileName);
-                    if (fileExist.Length > 0)
+                    var fileExist = GetPathOfDuplicateFile(fileName);
+                    if (fileExist != null)
                     {
                         return new ResultExecute(chatDto.Name)
                         {
                             IsSuccess = true,
-                            ErrorMessage = $"{fileName} is exist on {fileExist.First()}"
+                            ErrorMessage = $"{fileName} is exist on {fileExist}"
                         };
                     }
                     var pathFolderLocation = PathLocationFolder(chatDto, fileName);

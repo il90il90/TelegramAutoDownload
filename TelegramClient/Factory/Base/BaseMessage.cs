@@ -1,6 +1,7 @@
 ﻿using BasePlugins;
 using System;
 using System.IO;
+using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using TelegramClient.Factory.Factories;
@@ -99,15 +100,33 @@ namespace TelegramClient.Factory.Base
             return Path.Combine($"{fullPath}", $"{fileName}");
         }
 
-        protected string[] FileExistDuplicate(string fileName)
+        protected string GetPathOfDuplicateFile(string fileName)
         {
             try
             {
-                return Directory.GetFiles(PathFolderToSaveFiles, fileName, SearchOption.AllDirectories);
+                var rootPathByType = $"{PathFolderToSaveFiles}/{TypeMessage}";
+
+                var folders = Directory.GetDirectories(rootPathByType);
+                foreach (var folder in folders)
+                {
+                    var nameFolder = folder.Split("\\").LastOrDefault();
+                    var files = Directory.GetFiles(folder);
+                    foreach (var file in files)
+                    {
+                        var nameFile = file.Split("\\").LastOrDefault();
+                        if (nameFile == fileName)
+                        {
+                            return $"{nameFolder}";
+                        }
+                    }
+                }
+
+                return null;
+
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                return [];
+                return null;
             }
         }
     }

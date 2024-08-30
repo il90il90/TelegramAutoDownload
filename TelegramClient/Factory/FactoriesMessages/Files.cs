@@ -35,13 +35,13 @@ namespace TelegramClient.Factory.Factories
 
                 var fileName = !string.IsNullOrEmpty(document.Filename) ? document.Filename : document.ID.ToString();
 
-                var fileExist = FileExistDuplicate(fileName);
-                if (fileExist.Length > 0)
+                var fileExist = GetPathOfDuplicateFile(fileName);
+                if (fileExist != null)
                 {
                     return new ResultExecute(chatDto.Name)
                     {
                         IsSuccess = true,
-                        ErrorMessage = $"{fileName} is exist on {fileExist.First()}"
+                        ErrorMessage = $"{fileName} is exist on {fileExist}"
                     };
                 }
 

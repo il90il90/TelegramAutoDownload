@@ -68,7 +68,7 @@ namespace TelegramClient
                                     PostAuthor = infoMessage.post_author,
                                     ResultExecute = resultExecute,
                                 };
-                                if (resultExecute.IsSuccess && chat.ReactionIcon != null)
+                                if (resultExecute.IsSuccess && chat.ReactionIcon != null && string.IsNullOrEmpty(resultExecute.ErrorMessage))
                                 {
                                     if (updateNewMessage != null && !string.IsNullOrEmpty(chat.ReactionIcon))
                                     {

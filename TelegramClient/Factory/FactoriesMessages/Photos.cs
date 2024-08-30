@@ -31,13 +31,13 @@ namespace TelegramClient.Factory.Factories
             if (message.media is MessageMediaDocument { document: Document document })
             {
                 fileName = document.Filename;
-                var fileExist = FileExistDuplicate(fileName);
-                if (fileExist.Length > 0)
+                var fileExist = GetPathOfDuplicateFile(fileName);
+                if (fileExist != null)
                 {
                     return new ResultExecute(chatDto.Name)
                     {
                         IsSuccess = true,
-                        ErrorMessage = $"{fileName} is exist on {fileExist.First()}"
+                        ErrorMessage = $"{fileName} is exist on {fileExist}"
                     };
                 }
                 fileName ??= $"{document.id}.{document.mime_type[(document.mime_type.IndexOf('/') + 1)..]}";
@@ -49,13 +49,13 @@ namespace TelegramClient.Factory.Factories
             else if (message.media is MessageMediaPhoto { photo: Photo photo })
             {
                 fileName = $"{photo.id}.{FileExtension}";
-                var fileExist = FileExistDuplicate(fileName);
-                if (fileExist.Length > 0)
+                var fileExist = GetPathOfDuplicateFile(fileName);
+                if (fileExist != null)
                 {
                     return new ResultExecute(chatDto.Name)
                     {
                         IsSuccess = true,
-                        ErrorMessage = $"{fileName} is exist on {fileExist.First()}"
+                        ErrorMessage = $"{fileName} is exist on {fileExist}"
                     };
                 }
                 var folderLocation = PathLocationFolder(chatDto, fileName);
