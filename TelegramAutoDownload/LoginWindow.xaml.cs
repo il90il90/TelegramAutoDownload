@@ -13,12 +13,19 @@ namespace TelegramAutoDownload
         private ConfigFile _configFile;
         public LoginWindow()
         {
-            InitializeComponent();
-            _configFile = new ConfigFile();
-            var _configParams = _configFile.Read();
+            try
+            {
+                InitializeComponent();
+                _configFile = new ConfigFile();
+                var _configParams = _configFile.Read();
 
-            telegram = new TelegramApp(_configParams.AppId, _configParams.ApiHash);
-            MoveToMainWindowIfConnected();
+                telegram = new TelegramApp(_configParams.AppId, _configParams.ApiHash);
+                MoveToMainWindowIfConnected();
+            }
+            catch (Exception e)
+            {
+                MessageBox.Show(e.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private void MoveToMainWindowIfConnected()
