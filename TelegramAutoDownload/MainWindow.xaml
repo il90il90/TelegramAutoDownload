@@ -192,15 +192,7 @@
                                 </DataTemplate>
                             </GridViewColumn.CellTemplate>
                         </GridViewColumn>
-                        <GridViewColumn Header="After Date" Width="130">
-                            <GridViewColumn.CellTemplate>
-                                <DataTemplate>
-                                    <DatePicker SelectedDate="{Binding DownloadAfterDate, Mode=TwoWay}"
-                                                SelectedDateChanged="DownloadAfterDate_Changed"
-                                                Width="120" VerticalAlignment="Center"/>
-                                </DataTemplate>
-                            </GridViewColumn.CellTemplate>
-                        </GridViewColumn>
+
                         <GridViewColumn Header="Providers" Width="280">
                             <GridViewColumn.CellTemplate>
                                 <DataTemplate>

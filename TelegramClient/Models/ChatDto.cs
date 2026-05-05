@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
 namespace TelegramClient.Models
 {
@@ -18,8 +17,6 @@ namespace TelegramClient.Models
         public List<string> IgnoreFileByRegex { get; set; } = [];
         // Keys are PluginName values; missing key = enabled by default
         public Dictionary<string, bool> EnabledPlugins { get; set; } = new();
-        // Only download messages sent after this date (null = no filter)
-        public DateTime? DownloadAfterDate { get; set; }
     }
 
     public class Download

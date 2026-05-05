@@ -490,21 +490,6 @@ namespace TelegramAutoDownload
             }
         }
 
-        private void DownloadAfterDate_Changed(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
-        {
-            if (_isLoading) return;
-            if (sender is DatePicker dp && dp.DataContext is ChatDto chatDto)
-            {
-                var config = ConfigFile.Read();
-                var found = config.Chats.FirstOrDefault(c => c.Id == chatDto.Id);
-                if (found != null)
-                {
-                    found.DownloadAfterDate = dp.SelectedDate;
-                    ConfigFile.Save(config);
-                    TelegramApp.UpdateConfig(config);
-                }
-            }
-        }
 
         protected override void OnClosing(CancelEventArgs e)
         {

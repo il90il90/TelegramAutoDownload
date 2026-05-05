@@ -96,10 +96,6 @@ namespace TelegramClient
                         {
                             try
                             {
-                                // Skip messages older than the configured date filter
-                                if (chat.DownloadAfterDate.HasValue
-                                    && infoMessage.Date < chat.DownloadAfterDate.Value)
-                                    return;
 
                                 // Send "download starting" reaction before the download begins
                                 if (!string.IsNullOrEmpty(chat.DownloadStartIcon))
