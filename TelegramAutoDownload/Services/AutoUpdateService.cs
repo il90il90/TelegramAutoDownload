@@ -45,21 +45,35 @@ namespace TelegramAutoDownload.Services
                 if (!IsNewer(version, AppVersion.Current))
                     return null;
 
-                // Find the ZIP asset
+                // Prefer the Setup EXE so the installer handles admin elevation + file replacement.
+                // Fall back to the portable ZIP only if no EXE is present.
                 string assetUrl = string.Empty;
                 string assetName = string.Empty;
                 var assets = obj["assets"] as JArray;
                 if (assets != null)
                 {
+                    string zipUrl = string.Empty, zipName = string.Empty;
                     foreach (var asset in assets)
                     {
                         var name = asset["name"]?.ToString() ?? string.Empty;
-                        if (name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+                        var url  = asset["browser_download_url"]?.ToString() ?? string.Empty;
+                        if (name.EndsWith("_Setup.exe", StringComparison.OrdinalIgnoreCase))
                         {
-                            assetUrl = asset["browser_download_url"]?.ToString() ?? string.Empty;
+                            assetUrl  = url;
                             assetName = name;
                             break;
                         }
+                        if (name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) && zipUrl == string.Empty)
+                        {
+                            zipUrl  = url;
+                            zipName = name;
+                        }
+                    }
+                    // Fall back to ZIP if no Setup EXE found
+                    if (assetUrl == string.Empty && zipUrl != string.Empty)
+                    {
+                        assetUrl  = zipUrl;
+                        assetName = zipName;
                     }
                 }
 
@@ -80,18 +94,18 @@ namespace TelegramAutoDownload.Services
         }
 
         /// <summary>
-        /// Downloads the release zip, extracts next to the current exe, launches
-        /// a batch script that waits for the app to exit then copies files over.
+        /// Downloads the Setup EXE (preferred) or portable ZIP, then installs.
+        /// For the Setup EXE: closes the app and launches the installer (handles UAC + file replacement).
+        /// For the ZIP fallback: uses a batch script to xcopy files after the process exits.
         /// </summary>
         public static async Task DownloadAndInstallAsync(ReleaseInfo release, Action<int>? onProgress = null)
         {
-            var appDir = AppDomain.CurrentDomain.BaseDirectory;
-            var tmpZip = Path.Combine(Path.GetTempPath(), release.AssetName);
-            var tmpExtract = Path.Combine(Path.GetTempPath(), $"TAD_update_{release.Version}");
+            var tmpFile = Path.Combine(Path.GetTempPath(), release.AssetName);
+            bool isInstaller = release.AssetName.EndsWith(".exe", StringComparison.OrdinalIgnoreCase);
 
             try
             {
-                // Download
+                // Download the asset
                 using var http = new HttpClient();
                 http.DefaultRequestHeaders.UserAgent.ParseAdd($"TelegramAutoDownload/{AppVersion.Current}");
                 http.Timeout = TimeSpan.FromMinutes(15);
@@ -102,7 +116,7 @@ namespace TelegramAutoDownload.Services
                 long total = response.Content.Headers.ContentLength ?? 0;
                 long received = 0;
 
-                await using (var fs = File.Create(tmpZip))
+                await using (var fs = File.Create(tmpFile))
                 {
                     await using var stream = await response.Content.ReadAsStreamAsync();
                     var buffer = new byte[81920];
@@ -118,46 +132,47 @@ namespace TelegramAutoDownload.Services
 
                 onProgress?.Invoke(100);
 
-                // Extract
-                if (Directory.Exists(tmpExtract))
-                    Directory.Delete(tmpExtract, true);
-                ZipFile.ExtractToDirectory(tmpZip, tmpExtract);
+                if (isInstaller)
+                {
+                    // Run the Inno Setup installer — it handles UAC elevation and file replacement.
+                    // /VERYSILENT keeps it quiet; app restart is handled by the installer's [Run] section.
+                    Process.Start(new ProcessStartInfo(tmpFile, "/VERYSILENT /NORESTART /CLOSEAPPLICATIONS")
+                    {
+                        UseShellExecute = true  // Required for UAC prompt to appear
+                    });
+                    Application.Current.Dispatcher.Invoke(() => Application.Current.Shutdown());
+                }
+                else
+                {
+                    // ZIP fallback: extract and xcopy via batch (portable installs only)
+                    var tmpExtract = Path.Combine(Path.GetTempPath(), $"TAD_update_{release.Version}");
+                    if (Directory.Exists(tmpExtract)) Directory.Delete(tmpExtract, true);
+                    System.IO.Compression.ZipFile.ExtractToDirectory(tmpFile, tmpExtract);
 
-                // Write an updater batch script
-                var exeName = Path.GetFileName(Process.GetCurrentProcess().MainModule!.FileName);
-                var pid = Process.GetCurrentProcess().Id;
-                var batchPath = Path.Combine(Path.GetTempPath(), "tad_updater.bat");
+                    string srcDir = tmpExtract;
+                    var subdirs = Directory.GetDirectories(tmpExtract);
+                    if (subdirs.Length == 1) srcDir = subdirs[0];
 
-                // Find the actual source directory inside the extracted zip
-                // (the zip may have a single root folder)
-                string srcDir = tmpExtract;
-                var subdirs = Directory.GetDirectories(tmpExtract);
-                if (subdirs.Length == 1)
-                    srcDir = subdirs[0];
+                    var appDir = AppDomain.CurrentDomain.BaseDirectory;
+                    var exeName = Path.GetFileName(Process.GetCurrentProcess().MainModule!.FileName);
+                    var pid = Process.GetCurrentProcess().Id;
+                    var batchPath = Path.Combine(Path.GetTempPath(), "tad_updater.bat");
 
-                File.WriteAllText(batchPath, $@"@echo off
-:: Wait for the app to exit
+                    File.WriteAllText(batchPath, $@"@echo off
 :wait
 tasklist /fi ""pid eq {pid}"" | findstr /i ""{pid}"" >nul 2>&1
-if not errorlevel 1 (
-    timeout /t 1 /nobreak >nul
-    goto wait
-)
-:: Copy new files
-xcopy /e /y /i ""{srcDir}\*"" ""{appDir.TrimEnd('\\', '/')}\""
-:: Restart
+if not errorlevel 1 ( timeout /t 1 /nobreak >nul & goto wait )
+xcopy /e /y /i ""{srcDir}\*"" ""{appDir.TrimEnd('\\', '/')}\ ""
 start """" ""{Path.Combine(appDir, exeName)}""
 del ""%~f0""
 ");
-
-                // Launch the batch and exit the app
-                Process.Start(new ProcessStartInfo("cmd.exe", $"/c \"{batchPath}\"")
-                {
-                    CreateNoWindow = true,
-                    UseShellExecute = false
-                });
-
-                Application.Current.Dispatcher.Invoke(() => Application.Current.Shutdown());
+                    Process.Start(new ProcessStartInfo("cmd.exe", $"/c \"{batchPath}\"")
+                    {
+                        CreateNoWindow = true,
+                        UseShellExecute = false
+                    });
+                    Application.Current.Dispatcher.Invoke(() => Application.Current.Shutdown());
+                }
             }
             catch (Exception ex)
             {
@@ -166,7 +181,9 @@ del ""%~f0""
             }
             finally
             {
-                try { if (File.Exists(tmpZip)) File.Delete(tmpZip); } catch { }
+                // Don't delete the EXE — the installer needs it after Shutdown()
+                if (!isInstaller)
+                    try { if (File.Exists(tmpFile)) File.Delete(tmpFile); } catch { }
             }
         }
 
