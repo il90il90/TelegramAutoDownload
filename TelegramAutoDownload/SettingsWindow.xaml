@@ -25,8 +25,33 @@
                            Foreground="#2196F3" Margin="0,0,0,8"/>
                 <Border Background="#F5F5F5" CornerRadius="6" Padding="16,12" Margin="0,0,0,20">
                     <StackPanel>
-                        <TextBlock Text="You can get these values at https://my.telegram.org"
-                                   Foreground="#888" FontSize="11" Margin="0,0,0,12"/>
+
+                        <!-- How to get App ID instructions -->
+                        <Border Background="#E3F2FD" CornerRadius="4" Padding="12,10" Margin="0,0,0,12"
+                                BorderBrush="#90CAF9" BorderThickness="1">
+                            <StackPanel>
+                                <TextBlock FontWeight="SemiBold" Foreground="#1565C0" FontSize="12" Margin="0,0,0,6">
+                                    <Run Text="📋 How to get your App ID &amp; API Hash"/>
+                                </TextBlock>
+                                <TextBlock Foreground="#37474F" FontSize="11" Margin="0,0,0,4">
+                                    <Run FontWeight="SemiBold">1.</Run><Run> Go to </Run>
+                                    <Hyperlink NavigateUri="https://my.telegram.org" RequestNavigate="Hyperlink_RequestNavigate"
+                                               Foreground="#1976D2" FontWeight="SemiBold">https://my.telegram.org</Hyperlink>
+                                </TextBlock>
+                                <TextBlock Foreground="#37474F" FontSize="11" Margin="0,0,0,4">
+                                    <Run FontWeight="SemiBold">2.</Run><Run> Log in with your Telegram phone number (include country code, e.g. +972...)</Run>
+                                </TextBlock>
+                                <TextBlock Foreground="#37474F" FontSize="11" Margin="0,0,0,4">
+                                    <Run FontWeight="SemiBold">3.</Run><Run> Click </Run><Run FontWeight="SemiBold" Foreground="#1565C0">"API development tools"</Run>
+                                </TextBlock>
+                                <TextBlock Foreground="#37474F" FontSize="11" Margin="0,0,0,4">
+                                    <Run FontWeight="SemiBold">4.</Run><Run> Fill in </Run><Run FontWeight="SemiBold">App title</Run><Run> and </Run><Run FontWeight="SemiBold">Short name</Run><Run> (any names work), then click </Run><Run FontWeight="SemiBold" Foreground="#1565C0">"Create application"</Run>
+                                </TextBlock>
+                                <TextBlock Foreground="#37474F" FontSize="11">
+                                    <Run FontWeight="SemiBold">5.</Run><Run> Copy the </Run><Run FontWeight="SemiBold" Foreground="#1565C0">api_id</Run><Run> → paste in </Run><Run FontWeight="SemiBold">App ID</Run><Run> below, and </Run><Run FontWeight="SemiBold" Foreground="#1565C0">api_hash</Run><Run> → paste in </Run><Run FontWeight="SemiBold">API Hash</Run>
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
 
                         <TextBlock Text="App ID" FontWeight="SemiBold" Margin="0,0,0,4"/>
                         <TextBox x:Name="txtAppId"
@@ -140,6 +165,18 @@ Enable this only if you want to receive a Telegram message when a download finis
                            Foreground="#2196F3" Margin="0,0,0,8"/>
                 <Border Background="#F5F5F5" CornerRadius="6" Padding="16,12" Margin="0,0,0,8">
                     <StackPanel>
+
+                        <!-- Dark Mode -->
+                        <DockPanel Margin="0,0,0,16">
+                            <StackPanel DockPanel.Dock="Left">
+                                <TextBlock Text="Dark Mode" FontWeight="SemiBold"/>
+                                <TextBlock Text="Switch the app theme to dark." Foreground="#888" FontSize="11"/>
+                            </StackPanel>
+                            <ToggleButton x:Name="toggleDarkMode" HorizontalAlignment="Right"
+                                          Style="{DynamicResource MahApps.Styles.ToggleButton.Switch}"
+                                          Checked="ToggleDarkMode_Changed" Unchecked="ToggleDarkMode_Changed"/>
+                        </DockPanel>
+
                         <TextBlock Text="Download Folder" FontWeight="SemiBold" Margin="0,0,0,4"/>
                         <DockPanel>
                             <Button DockPanel.Dock="Right" Content="Browse…" Height="32" Width="72"
@@ -164,13 +201,21 @@ Enable this only if you want to receive a Telegram message when a download finis
         </ScrollViewer>
 
         <!-- Action buttons -->
-        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
-            <Button Content="Cancel" Width="80" Height="32" Margin="0,0,8,0"
-                    Click="BtnCancel_Click"/>
-            <Button Content="Save" Width="80" Height="32" IsDefault="True"
-                    Style="{DynamicResource MahApps.Styles.Button.Square.Accent}"
-                    Click="BtnSave_Click"/>
-        </StackPanel>
+        <DockPanel Grid.Row="1" Margin="0,16,0,0">
+            <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
+                <Button Content="Export…" Width="80" Height="32" Margin="0,0,8,0"
+                        Click="BtnExport_Click"/>
+                <Button Content="Import…" Width="80" Height="32"
+                        Click="BtnImport_Click"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Content="Cancel" Width="80" Height="32" Margin="0,0,8,0"
+                        Click="BtnCancel_Click"/>
+                <Button Content="Save" Width="80" Height="32" IsDefault="True"
+                        Style="{DynamicResource MahApps.Styles.Button.Square.Accent}"
+                        Click="BtnSave_Click"/>
+            </StackPanel>
+        </DockPanel>
     </Grid>
 
 </mah:MetroWindow>

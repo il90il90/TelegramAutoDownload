@@ -38,21 +38,52 @@ namespace TelegramClient.Factory.Base
 
         /// <summary>
         /// Creates a WTelegram ProgressCallback that reports download bytes to OnProgress.
-        /// Also checks the CancellationRegistry on each chunk so the UI can cancel mid-stream.
+        /// Registers a CancellationToken in the registry so the UI cancel button can abort mid-stream.
+        /// Throws OperationCanceledException inside the callback to stop the download immediately.
         /// </summary>
         protected Client.ProgressCallback? MakeProgress(string chatName, string fileName, long totalBytes)
         {
             if (OnProgress == null) return null;
             var cancelKey = CancellationRegistry.MakeKey(chatName, fileName);
-            var cts = new System.Threading.CancellationTokenSource();
-            // Store in registry so the UI cancel button can trigger it
-            CancellationRegistry.Register(cancelKey);
+            var token = CancellationRegistry.Register(cancelKey);
             return (transmitted, total) =>
             {
+                token.ThrowIfCancellationRequested();
                 long effectiveTotal = total > 0 ? total : totalBytes;
                 double pct = effectiveTotal > 0 ? transmitted * 100.0 / effectiveTotal : 0;
                 OnProgress.Invoke(chatName, fileName, TypeMessage.ToString(), Math.Min(99, pct), transmitted, effectiveTotal);
             };
+        }
+
+        /// <summary>Silently deletes a partially downloaded file after a cancelled download.</summary>
+        protected static void DeletePartialFile(string path)
+        {
+            try { if (File.Exists(path)) File.Delete(path); } catch { }
+        }
+
+        /// <summary>
+        /// Executes a download action with automatic retry (exponential backoff).
+        /// Does NOT retry on OperationCanceledException.
+        /// </summary>
+        protected static async Task<T> WithRetryAsync<T>(Func<Task<T>> action, int maxAttempts = 3)
+        {
+            int attempt = 0;
+            while (true)
+            {
+                try
+                {
+                    return await action();
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch when (++attempt < maxAttempts)
+                {
+                    int delayMs = attempt == 1 ? 2000 : 5000;
+                    await Task.Delay(delayMs);
+                }
+            }
         }
 
         public string PathLocationFolder(ChatDto chatDto, string fileName)

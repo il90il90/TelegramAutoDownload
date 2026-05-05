@@ -1,7 +1,9 @@
 ﻿using MahApps.Metro.Controls;
 using Microsoft.Win32;
+using Serilog;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
@@ -48,10 +50,18 @@ namespace TelegramAutoDownload
             telegram.OnComplete = (chatName, fileName, success) =>
                 DownloadProgressService.Instance.CompleteDownload(chatName, fileName, success);
 
-            // Bind active downloads panel and keep badge count in sync
+            // Enhanced completion notification with size, duration, avg speed
+            DownloadProgressService.Instance.DownloadCompleted += (chatName, fileName, bytes, duration) =>
+                _ = _notification.OnDownloadCompletedAsync(chatName, fileName, bytes, duration);
+
+            // Bind active downloads panel and keep badge count + stats in sync
             dgDownloads.ItemsSource = DownloadProgressService.Instance.Downloads;
             DownloadProgressService.Instance.Downloads.CollectionChanged += (_, __) =>
+            {
                 tbDownloadCount.Text = DownloadProgressService.Instance.Downloads.Count.ToString();
+                UpdateStatsStrip();
+            };
+            DownloadProgressService.Instance.StatsChanged += UpdateStatsStrip;
         }
 
         private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
@@ -59,7 +69,9 @@ namespace TelegramAutoDownload
             mainLoadingRing.IsActive = true;
             tbLoadingStatus.Text = "Loading chats...";
 
-            // Ensure yt-dlp is available for social media downloads (runs in background)
+            // Ensure yt-dlp is available and up to date; show status in footer
+            YtdlpService.StatusChanged += msg =>
+                Dispatcher.InvokeAsync(() => tbLoadingStatus.Text = msg);
             _ = YtdlpService.EnsureAsync();
 
             await Task.Delay(500);
@@ -175,6 +187,25 @@ namespace TelegramAutoDownload
         private void ThreadsSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
             // Threads are configured in Settings window — this handler is kept to avoid XAML errors.
+        }
+
+        private void UpdateStatsStrip()
+        {
+            Dispatcher.InvokeAsync(() =>
+            {
+                var svc = DownloadProgressService.Instance;
+                tbStatsFiles.Text = $"{svc.TotalFilesDownloaded} file{(svc.TotalFilesDownloaded == 1 ? "" : "s")}";
+                tbStatsBytes.Text = FormatBytes(svc.TotalBytesDownloaded);
+                tbStatsActive.Text = $"{svc.Downloads.Count} active";
+            });
+        }
+
+        private static string FormatBytes(long bytes)
+        {
+            if (bytes >= 1_073_741_824) return $"{bytes / 1_073_741_824.0:F1} GB";
+            if (bytes >= 1_048_576) return $"{bytes / 1_048_576.0:F1} MB";
+            if (bytes >= 1024) return $"{bytes / 1024.0:F0} KB";
+            return $"{bytes} B";
         }
 
         private void SearchTextBox_TextChanged(object sender, TextChangedEventArgs e)
@@ -434,6 +465,31 @@ namespace TelegramAutoDownload
                 ConfigFile.Save(configParams);
                 TelegramApp.UpdateConfig(configParams);
             }
+        }
+
+        private void DownloadAfterDate_Changed(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+            if (_isLoading) return;
+            if (sender is DatePicker dp && dp.DataContext is ChatDto chatDto)
+            {
+                var config = ConfigFile.Read();
+                var found = config.Chats.FirstOrDefault(c => c.Id == chatDto.Id);
+                if (found != null)
+                {
+                    found.DownloadAfterDate = dp.SelectedDate;
+                    ConfigFile.Save(config);
+                    TelegramApp.UpdateConfig(config);
+                }
+            }
+        }
+
+        protected override void OnClosing(CancelEventArgs e)
+        {
+            // Minimize to tray instead of closing
+            e.Cancel = true;
+            Hide();
+            App.TrayIcon?.ShowBalloonTip(2000, "Still running",
+                "Telegram Auto Download is running in the system tray.", System.Windows.Forms.ToolTipIcon.Info);
         }
     }
 }

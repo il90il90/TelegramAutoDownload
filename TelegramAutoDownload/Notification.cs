@@ -171,6 +171,54 @@ namespace TelegramAutoDownload
             return eventMessage;
         }
 
+        /// <summary>
+        /// Sends a rich completion summary with file size, duration, and average speed.
+        /// Called from DownloadProgressService.DownloadCompleted event.
+        /// </summary>
+        public async Task OnDownloadCompletedAsync(string chatName, string fileName, long totalBytes, double durationSec)
+        {
+            if (!telegramService.IsActive) return;
+            if (!_config.NotifyOnComplete) return;
+
+            double avgSpeedBps = durationSec > 0 ? totalBytes / durationSec : 0;
+            var duration = TimeSpan.FromSeconds(durationSec);
+            string durationStr = duration.TotalHours >= 1
+                ? $"{(int)duration.TotalHours}h {duration.Minutes}m {duration.Seconds}s"
+                : duration.TotalMinutes >= 1
+                    ? $"{duration.Minutes}m {duration.Seconds}s"
+                    : $"{duration.Seconds}s";
+
+            string speedStr = avgSpeedBps >= 1_048_576 ? $"{avgSpeedBps / 1_048_576:F1} MB/s"
+                            : avgSpeedBps >= 1024 ? $"{avgSpeedBps / 1024:F0} KB/s"
+                            : $"{avgSpeedBps:F0} B/s";
+
+            string sizeStr = totalBytes >= 1_073_741_824 ? $"{totalBytes / 1_073_741_824.0:F2} GB"
+                           : totalBytes >= 1_048_576 ? $"{totalBytes / 1_048_576.0:F1} MB"
+                           : totalBytes >= 1024 ? $"{totalBytes / 1024.0:F0} KB"
+                           : $"{totalBytes} B";
+
+            var key = $"{chatName}|{fileName}";
+            var message = string.Join("\n",
+                "✅ <b>Download Complete</b>",
+                "",
+                $"📁 <b>Chat:</b> {HtmlEncode(chatName)}",
+                $"📄 <b>File:</b> {HtmlEncode(fileName)}",
+                $"📦 <b>Size:</b> {sizeStr}",
+                $"⏱ <b>Duration:</b> {durationStr}",
+                $"⚡ <b>Avg Speed:</b> {speedStr}");
+
+            if (_progressMessages.TryRemove(key, out var msgId) && msgId != 0)
+            {
+                _lastReportedPct.TryRemove(key, out _);
+                await telegramService.EditMessageAsync(msgId, message);
+            }
+            else
+            {
+                _lastReportedPct.TryRemove(key, out _);
+                await telegramService.SendMessageAsync(message);
+            }
+        }
+
         private static string BuildProgressText(string chatName, string fileName, string pluginName, double percent)
         {
             var bar = BuildProgressBar(percent);
@@ -179,7 +227,7 @@ namespace TelegramAutoDownload
                 "",
                 $"📁 <b>Chat:</b> {HtmlEncode(chatName)}",
                 $"📄 <b>File:</b> {HtmlEncode(fileName)}",
-                $"🔌 <b>Plugin:</b> {HtmlEncode(pluginName)}",
+                $"📦 <b>Type:</b> {HtmlEncode(pluginName)}",
                 $"{bar} <b>{percent:F0}%</b>");
         }
 

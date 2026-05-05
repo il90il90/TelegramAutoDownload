@@ -16,74 +16,85 @@ namespace DownloadPlugin
 
         public override async Task<ResultExecute> ExecuteAsync(Config config)
         {
+            string fileName = string.Empty;
+            string filePath = string.Empty;
+            string cancelKey = string.Empty;
+
             try
             {
-                string fileName;
                 long chunkSize = 20 * 1024 * 1024;
-
                 var path = $"{config.PathSaveFile}/{PluginName}/{config.ChatName}";
-
                 CreateDirectoryIfNotExist(path);
-                using (HttpClient client = new HttpClient())
+
+                using HttpClient client = new HttpClient();
+                // Use a HEAD-like read to discover filename and size before registering the cancel key
+                using HttpResponseMessage response = await client.GetAsync(config.Text, HttpCompletionOption.ResponseHeadersRead);
+                response.EnsureSuccessStatusCode();
+
+                long totalSize = response.Content.Headers.ContentLength ?? 0;
+                fileName = response?.Content?.Headers?.ContentDisposition?.FileNameStar?.Trim('"')
+                           ?? Path.GetFileName(new Uri(config.Text).LocalPath);
+
+                if (totalSize == 0)
+                    return new ResultExecute(config.ChatName);
+
+                char[] invalidChars = Path.GetInvalidFileNameChars();
+                foreach (char c in invalidChars)
+                    fileName = fileName.Replace(c, ' ');
+
+                // Register cancellation key using the real filename so UI cancel button can find it
+                cancelKey = CancellationRegistry.MakeKey(config.ChatName, fileName);
+                var token = CancellationRegistry.Register(cancelKey);
+
+                filePath = Path.Combine(path, fileName);
+
+                // Report start
+                OnProgress?.Invoke(config.ChatName, fileName, PluginName, 0, 0, totalSize);
+
+                using FileStream fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None);
+                long offset = 0;
+
+                while (offset < totalSize)
                 {
-                    using (HttpResponseMessage response = await client.GetAsync(config.Text, HttpCompletionOption.ResponseHeadersRead))
+                    token.ThrowIfCancellationRequested();
+
+                    long end = Math.Min(offset + chunkSize - 1, totalSize - 1);
+                    long chunkOffset = offset;
+
+                    await WithRetryAsync(async () =>
                     {
-                        response.EnsureSuccessStatusCode();
+                        HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, config.Text);
+                        request.Headers.Range = new RangeHeaderValue(chunkOffset, end);
+                        using HttpResponseMessage chunkResponse = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, token);
+                        chunkResponse.EnsureSuccessStatusCode();
+                        using Stream contentStream = await chunkResponse.Content.ReadAsStreamAsync(token);
+                        await contentStream.CopyToAsync(fileStream, token);
+                        return true;
+                    });
 
-                        long totalSize = response.Content.Headers.ContentLength ?? 0;
-                        fileName = response?.Content?.Headers?.ContentDisposition?.FileNameStar?.Trim('"') ?? Path.GetFileName(new Uri(config.Text).LocalPath);
+                    offset += chunkSize;
 
-                        if (totalSize == 0)
-                            return new ResultExecute(config.ChatName);
-
-                        char[] invalidChars = Path.GetInvalidFileNameChars();
-                        foreach (char c in invalidChars)
-                        {
-                            fileName = fileName.Replace(c, ' ');
-                        }
-
-                        string filePath = Path.Combine(path, fileName);
-
-                        using (FileStream fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None))
-                        {
-                            long offset = 0;
-
-                            while (offset < totalSize)
-                            {
-                                long end = Math.Min(offset + chunkSize - 1, totalSize - 1);
-
-                                HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, config.Text);
-                                request.Headers.Range = new RangeHeaderValue(offset, end);
-
-                                using (HttpResponseMessage chunkResponse = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead))
-                                {
-                                    chunkResponse.EnsureSuccessStatusCode();
-
-                                    using (Stream contentStream = await chunkResponse.Content.ReadAsStreamAsync())
-                                    {
-                                        await contentStream.CopyToAsync(fileStream);
-                                    }
-                                }
-
-                                offset += chunkSize;
-                            }
-                        }
-                    }
+                    double pct = totalSize > 0 ? Math.Min(99, offset * 100.0 / totalSize) : 0;
+                    OnProgress?.Invoke(config.ChatName, fileName, PluginName, pct, Math.Min(offset, totalSize), totalSize);
                 }
-                return new ResultExecute(config.ChatName)
-                {
-                    IsSuccess = true,
-                    FileName = fileName
-                };
+
+                OnComplete?.Invoke(config.ChatName, fileName, true);
+                CancellationRegistry.Remove(cancelKey);
+
+                return new ResultExecute(config.ChatName) { IsSuccess = true, FileName = fileName, FilePath = filePath };
+            }
+            catch (OperationCanceledException)
+            {
+                try { if (!string.IsNullOrEmpty(filePath) && File.Exists(filePath)) File.Delete(filePath); } catch { }
+                if (!string.IsNullOrEmpty(cancelKey)) CancellationRegistry.Remove(cancelKey);
+                return new ResultExecute(config.ChatName) { IsSuccess = false, FileName = fileName, ErrorMessage = "Cancelled by user" };
             }
             catch (Exception e)
             {
-                return new ResultExecute(config.ChatName)
-                {
-                    ErrorMessage = e.Message,
-                };
+                OnComplete?.Invoke(config.ChatName, fileName, false);
+                if (!string.IsNullOrEmpty(cancelKey)) CancellationRegistry.Remove(cancelKey);
+                return new ResultExecute(config.ChatName) { ErrorMessage = e.Message, FileName = fileName };
             }
         }
     }
-
 }

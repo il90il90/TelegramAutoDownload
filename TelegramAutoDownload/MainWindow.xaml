@@ -17,23 +17,36 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Header row: search + chat count -->
-        <Border Grid.Row="0" Background="#F5F5F5" BorderBrush="#E0E0E0" BorderThickness="0,0,0,1" Padding="12,8">
-            <DockPanel>
-                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Button x:Name="BtnSettings" Content="⚙ Settings" Height="28"
-                            Click="BtnSettings_Click" Margin="0,0,12,0"/>
-                    <TextBlock Text="Chats:" VerticalAlignment="Center" Margin="0,0,6,0" Foreground="#666"/>
-                    <Border Background="#2AABEE" CornerRadius="10" Padding="8,2">
-                        <TextBlock x:Name="tbCountChats" Text="0" Foreground="White" FontWeight="Bold"/>
-                    </Border>
-                </StackPanel>
-                <TextBox x:Name="SearchTextBox" Width="280" 
-                         mah:TextBoxHelper.Watermark="Search chats..."
-                         mah:TextBoxHelper.ClearTextButton="True"
-                         TextChanged="SearchTextBox_TextChanged"
-                         VerticalContentAlignment="Center" Height="32"/>
-            </DockPanel>
+        <!-- Header row: search + stats + chat count -->
+        <Border Grid.Row="0" Background="#F5F5F5" BorderBrush="#E0E0E0" BorderThickness="0,0,0,1" Padding="12,6">
+            <StackPanel>
+                <DockPanel Margin="0,0,0,4">
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button x:Name="BtnSettings" Content="⚙ Settings" Height="28"
+                                Click="BtnSettings_Click" Margin="0,0,12,0"/>
+                        <TextBlock Text="Chats:" VerticalAlignment="Center" Margin="0,0,6,0" Foreground="#666"/>
+                        <Border Background="#2AABEE" CornerRadius="10" Padding="8,2">
+                            <TextBlock x:Name="tbCountChats" Text="0" Foreground="White" FontWeight="Bold"/>
+                        </Border>
+                    </StackPanel>
+                    <TextBox x:Name="SearchTextBox" Width="280"
+                             mah:TextBoxHelper.Watermark="Search chats..."
+                             mah:TextBoxHelper.ClearTextButton="True"
+                             TextChanged="SearchTextBox_TextChanged"
+                             VerticalContentAlignment="Center" Height="32"/>
+                </DockPanel>
+                <!-- Session statistics strip -->
+                <Border Background="#E3F2FD" CornerRadius="4" Padding="10,3">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="📊 This session: " Foreground="#1565C0" FontSize="11"/>
+                        <TextBlock x:Name="tbStatsFiles" Text="0 files" FontWeight="SemiBold" Foreground="#1565C0" FontSize="11" Margin="0,0,12,0"/>
+                        <TextBlock Text="|" Foreground="#90CAF9" FontSize="11" Margin="0,0,12,0"/>
+                        <TextBlock x:Name="tbStatsBytes" Text="0 B" FontWeight="SemiBold" Foreground="#1565C0" FontSize="11" Margin="0,0,12,0"/>
+                        <TextBlock Text="|" Foreground="#90CAF9" FontSize="11" Margin="0,0,12,0"/>
+                        <TextBlock x:Name="tbStatsActive" Text="0 active" Foreground="#1565C0" FontSize="11"/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
         </Border>
 
         <!-- Main content with GridSplitter -->
@@ -179,6 +192,15 @@
                                 </DataTemplate>
                             </GridViewColumn.CellTemplate>
                         </GridViewColumn>
+                        <GridViewColumn Header="After Date" Width="130">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <DatePicker SelectedDate="{Binding DownloadAfterDate, Mode=TwoWay}"
+                                                SelectedDateChanged="DownloadAfterDate_Changed"
+                                                Width="120" VerticalAlignment="Center"/>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
                         <GridViewColumn Header="Providers" Width="280">
                             <GridViewColumn.CellTemplate>
                                 <DataTemplate>
@@ -317,7 +339,7 @@
             <DockPanel>
                 <!-- Right: version + connection dot + path controls -->
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Text="v2.0.0" VerticalAlignment="Center" Foreground="#999" Margin="0,0,16,0"/>
+                    <TextBlock Text="v2.2.0" VerticalAlignment="Center" Foreground="#999" Margin="0,0,16,0"/>
                     <Ellipse x:Name="connectionDot" Width="10" Height="10" Fill="Green" Margin="0,0,8,0" VerticalAlignment="Center"/>
                     <!-- Folder path — click to open in Explorer -->
                     <Button x:Name="btnOpenFolder" Click="HlOpenFolder_Click"

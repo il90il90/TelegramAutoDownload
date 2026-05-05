@@ -1,0 +1,4 @@
+{
+  "summary": "Added a step-by-step instruction box in SettingsWindow.xaml explaining how to obtain the Telegram App ID and API Hash. The blue info box includes a clickable hyperlink to https://my.telegram.org and 5 clear steps. Added Hyperlink_RequestNavigate handler in SettingsWindow.xaml.cs using Process.Start with UseShellExecute=true to open the browser. Added System.Diagnostics and System.Windows.Navigation usings.",
+  "current_status": "SettingsWindow now has clear user guidance for Telegram API credentials. No linter errors. Changes not yet committed."
+}

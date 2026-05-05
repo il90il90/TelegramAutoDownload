@@ -1,0 +1,4 @@
+{
+  "summary": "Changed the notification message label from '🔌 Plugin:' to '📦 Type:' in Notification.cs BuildProgressText method. Rebuilt successfully (0 errors) and relaunched the app.",
+  "current_status": "Notification message now shows '📦 Type:' instead of '🔌 Plugin:'. App running with latest changes."
+}

@@ -21,6 +21,31 @@ namespace BasePlugins
         public abstract bool CanHandle(Config config);
         public abstract Task<ResultExecute> ExecuteAsync(Config config);
 
+        /// <summary>
+        /// Executes a download action with automatic retry (exponential backoff).
+        /// Does NOT retry on OperationCanceledException.
+        /// </summary>
+        protected static async Task<T> WithRetryAsync<T>(Func<Task<T>> action, int maxAttempts = 3)
+        {
+            int attempt = 0;
+            while (true)
+            {
+                try
+                {
+                    return await action();
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch when (++attempt < maxAttempts)
+                {
+                    int delayMs = attempt == 1 ? 2000 : 5000;
+                    await Task.Delay(delayMs);
+                }
+            }
+        }
+
         protected void CreateDirectoryIfNotExist(string path)
         {
             var fullPath = $"";

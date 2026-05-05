@@ -6,6 +6,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
     <ApplicationIcon>044a51cf-2359-480c-8c20-bf372f8a4cab.ico</ApplicationIcon>
   </PropertyGroup>
 
@@ -22,6 +23,8 @@
     <PackageReference Include="MahApps.Metro" Version="2.4.11" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="QRCoder.Xaml" Version="1.7.0" />
+    <PackageReference Include="Serilog" Version="4.2.0" />
+    <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
   </ItemGroup>
 
   <ItemGroup>
@@ -29,8 +32,7 @@
     <ProjectReference Include="..\TelegramClient\TelegramClient.csproj" />
     <!-- Plugin projects: ReferenceOutputAssembly=false means we don't link against them,
          but MSBuild still builds them (and their DeployPlugin post-build target fires) -->
-    <ProjectReference Include="..\SocialMediaPlugin\SocialMediaPlugin.csproj"
-                      ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\SocialMediaPlugin\SocialMediaPlugin.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
   <ItemGroup>

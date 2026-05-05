@@ -24,58 +24,49 @@ namespace TelegramClient.Factory.Factories
         public override async Task<ResultExecute> ExecuteAsync(Message message, ChatDto chatDto)
         {
             if (!chatDto.Download.Videos) return new ResultExecute(chatDto.Name);
-            string fileName = "";
+            if (message.media is not MessageMediaDocument mediaVideo) return new ResultExecute(chatDto.Name);
+
+            var document = (Document)mediaVideo.document;
+            var mime_type = "mp4";
+            string fileName;
+
+            if (!string.IsNullOrEmpty(document.Filename))
+            {
+                mime_type = document.Filename.Split('.').LastOrDefault();
+                fileName = document.Filename;
+            }
+            else
+            {
+                fileName = $"{document.ID}.{mime_type}";
+            }
+
+            var fileExist = GetPathOfDuplicateFile(fileName);
+            if (fileExist != null)
+                return new ResultExecute(chatDto.Name) { IsSuccess = true, ErrorMessage = $"{fileName} is exist on {fileExist}" };
+
+            var pathFolderLocation = PathLocationFolder(chatDto, fileName);
+            OnProgress?.Invoke(chatDto.Name, fileName, PluginName, 0, 0, document.size);
             try
             {
-                if (message.media is MessageMediaDocument mediaVideo)
+                await WithRetryAsync(async () =>
                 {
-                    var document = (Document)mediaVideo.document;
-
-                    var mime_type = "mp4";
-                    if (!string.IsNullOrEmpty(document.Filename))
-                    {
-                        mime_type = document.Filename.Split('.').LastOrDefault();
-                        fileName = document.Filename;
-                    }
-                    else
-                    {
-                        fileName = $"{document.ID}.{mime_type}";
-                    }
-
-                    var fileExist = GetPathOfDuplicateFile(fileName);
-                    if (fileExist != null)
-                    {
-                        return new ResultExecute(chatDto.Name)
-                        {
-                            IsSuccess = true,
-                            ErrorMessage = $"{fileName} is exist on {fileExist}"
-                        };
-                    }
-                    var pathFolderLocation = PathLocationFolder(chatDto, fileName);
-                    OnProgress?.Invoke(chatDto.Name, fileName, PluginName, 0, 0, document.size);
                     using var stream = File.Create(pathFolderLocation);
                     await Client.DownloadFileAsync(document, stream, null, MakeProgress(chatDto.Name, fileName, document.size));
-                    OnComplete?.Invoke(chatDto.Name, fileName, true);
-
-                    return new ResultExecute(chatDto.Name)
-                    {
-                        IsSuccess = true,
-                        FileName = fileName,
-                        FilePath = pathFolderLocation
-                    };
-                }
+                    return true;
+                });
+                OnComplete?.Invoke(chatDto.Name, fileName, true);
+                return new ResultExecute(chatDto.Name) { IsSuccess = true, FileName = fileName, FilePath = pathFolderLocation };
+            }
+            catch (OperationCanceledException)
+            {
+                DeletePartialFile(pathFolderLocation);
+                return new ResultExecute(chatDto.Name) { IsSuccess = false, FileName = fileName, ErrorMessage = "Cancelled by user" };
             }
             catch (Exception e)
             {
                 OnComplete?.Invoke(chatDto.Name, fileName, false);
-                return new ResultExecute(chatDto.Name)
-                {
-                    IsSuccess = false,
-                    ErrorMessage = e.Message,
-                    FileName = fileName
-                };
+                return new ResultExecute(chatDto.Name) { IsSuccess = false, FileName = fileName, ErrorMessage = e.Message };
             }
-            return new ResultExecute(chatDto.Name);
         }
 
     }

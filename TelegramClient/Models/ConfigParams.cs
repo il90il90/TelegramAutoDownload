@@ -15,6 +15,7 @@ namespace TelegramAutoDownload.Models
         public string ChatId { get; set; } = Environment.GetEnvironmentVariable("CHAT_ID") ?? string.Empty;
 
         public int DownloadThreads { get; set; } = 3;
+        public bool DarkMode { get; set; } = false;
 
         // Notification preferences — which events should trigger a Telegram bot message
         public bool NotifyOnStartup { get; set; } = true;

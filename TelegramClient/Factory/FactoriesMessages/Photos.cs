@@ -42,9 +42,26 @@ namespace TelegramClient.Factory.Factories
                 }
                 savedPath = PathLocationFolder(chatDto, fileName);
                 OnProgress?.Invoke(chatDto.Name, fileName, TypeMessage.ToString(), 0, 0, document.size);
-                using var fileStream = File.Create(savedPath);
-                await Client.DownloadFileAsync(document, fileStream, null, MakeProgress(chatDto.Name, fileName, document.size));
-                OnComplete?.Invoke(chatDto.Name, fileName, true);
+                try
+                {
+                    await WithRetryAsync(async () =>
+                    {
+                        using var fileStream = File.Create(savedPath);
+                        await Client.DownloadFileAsync(document, fileStream, null, MakeProgress(chatDto.Name, fileName, document.size));
+                        return true;
+                    });
+                    OnComplete?.Invoke(chatDto.Name, fileName, true);
+                }
+                catch (OperationCanceledException)
+                {
+                    DeletePartialFile(savedPath);
+                    return new ResultExecute(chatDto.Name) { IsSuccess = false, FileName = fileName, ErrorMessage = "Cancelled by user" };
+                }
+                catch (Exception ex)
+                {
+                    OnComplete?.Invoke(chatDto.Name, fileName, false);
+                    return new ResultExecute(chatDto.Name) { IsSuccess = false, FileName = fileName, ErrorMessage = ex.Message };
+                }
             }
             else if (message.media is MessageMediaPhoto { photo: Photo photo })
             {

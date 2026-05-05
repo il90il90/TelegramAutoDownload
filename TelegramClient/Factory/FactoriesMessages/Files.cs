@@ -29,7 +29,6 @@ namespace TelegramClient.Factory.Factories
             if (message.media is MessageMediaDocument mediaDocument)
             {
                 var document = (Document)mediaDocument.document;
-
                 var fileName = !string.IsNullOrEmpty(document.Filename) ? document.Filename : document.ID.ToString();
 
                 var fileExist = GetPathOfDuplicateFile(fileName);
@@ -44,15 +43,27 @@ namespace TelegramClient.Factory.Factories
 
                 var pathFolderLocation = PathLocationFolder(chatDto, fileName);
                 OnProgress?.Invoke(chatDto.Name, fileName, TypeMessage.ToString(), 0, 0, document.size);
-                using var stream = File.Create(pathFolderLocation);
-                await Client.DownloadFileAsync(document, stream, null, MakeProgress(chatDto.Name, fileName, document.size));
-                OnComplete?.Invoke(chatDto.Name, fileName, true);
-                return new ResultExecute(chatDto.Name)
+                try
                 {
-                    IsSuccess = true,
-                    FileName = fileName,
-                    FilePath = pathFolderLocation
-                };
+                    await WithRetryAsync(async () =>
+                    {
+                        using var stream = File.Create(pathFolderLocation);
+                        await Client.DownloadFileAsync(document, stream, null, MakeProgress(chatDto.Name, fileName, document.size));
+                        return true;
+                    });
+                    OnComplete?.Invoke(chatDto.Name, fileName, true);
+                    return new ResultExecute(chatDto.Name) { IsSuccess = true, FileName = fileName, FilePath = pathFolderLocation };
+                }
+                catch (OperationCanceledException)
+                {
+                    DeletePartialFile(pathFolderLocation);
+                    return new ResultExecute(chatDto.Name) { IsSuccess = false, FileName = fileName, ErrorMessage = "Cancelled by user" };
+                }
+                catch (Exception ex)
+                {
+                    OnComplete?.Invoke(chatDto.Name, fileName, false);
+                    return new ResultExecute(chatDto.Name) { IsSuccess = false, FileName = fileName, ErrorMessage = ex.Message };
+                }
             }
             return new ResultExecute(chatDto.Name);
         }

@@ -1,7 +1,11 @@
+using ControlzEx.Theming;
 using MahApps.Metro.Controls;
-using Microsoft.Win32;
+using Newtonsoft.Json;
 using System;
+using System.Diagnostics;
+using System.IO;
 using System.Windows;
+using System.Windows.Navigation;
 using TelegramAutoDownload.Models;
 
 namespace TelegramAutoDownload
@@ -37,6 +41,7 @@ namespace TelegramAutoDownload
             txtDownloadPath.Text = _config.PathSaveFile ?? string.Empty;
             sliderThreads.Value = Math.Max(1, Math.Min(10, _config.DownloadThreads));
             tbThreadsValue.Text = ((int)sliderThreads.Value).ToString();
+            toggleDarkMode.IsChecked = _config.DarkMode;
 
             // Notification preferences
             chkNotifyStartup.IsChecked  = _config.NotifyOnStartup;
@@ -50,6 +55,12 @@ namespace TelegramAutoDownload
             bool enabled = toggleNotifications.IsChecked == true;
             pnlNotifications.Opacity = enabled ? 1.0 : 0.5;
             pnlNotifications.IsEnabled = enabled;
+        }
+
+        private void ToggleDarkMode_Changed(object sender, RoutedEventArgs e)
+        {
+            bool dark = toggleDarkMode.IsChecked == true;
+            ThemeManager.Current.ChangeTheme(Application.Current, dark ? "Dark.Blue" : "Light.Blue");
         }
 
         private void SliderThreads_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -107,6 +118,7 @@ namespace TelegramAutoDownload
             _config.ChatId = notificationsEnabled ? txtChatId.Text.Trim() : string.Empty;
             _config.PathSaveFile = txtDownloadPath.Text.Trim();
             _config.DownloadThreads = (int)sliderThreads.Value;
+            _config.DarkMode = toggleDarkMode.IsChecked == true;
 
             // Notification preferences
             _config.NotifyOnStartup  = chkNotifyStartup.IsChecked  == true;
@@ -131,6 +143,79 @@ namespace TelegramAutoDownload
         {
             DialogResult = false;
             Close();
+        }
+
+        private void BtnExport_Click(object sender, RoutedEventArgs e)
+        {
+            var dialog = new SaveFileDialog
+            {
+                Title = "Export settings",
+                Filter = "JSON files (*.json)|*.json",
+                FileName = "TelegramAutoDownload-settings.json"
+            };
+            if (dialog.ShowDialog() != true) return;
+
+            // Export without sensitive credentials (AppId / ApiHash excluded)
+            var export = new ConfigParams
+            {
+                AppId = 0,
+                ApiHash = string.Empty,
+                BotToken = _config.BotToken,
+                ChatId = _config.ChatId,
+                PathSaveFile = _config.PathSaveFile,
+                DownloadThreads = _config.DownloadThreads,
+                DarkMode = _config.DarkMode,
+                NotifyOnStartup = _config.NotifyOnStartup,
+                NotifyOnProgress = _config.NotifyOnProgress,
+                NotifyOnComplete = _config.NotifyOnComplete,
+                NotifyOnError = _config.NotifyOnError,
+                Chats = _config.Chats
+            };
+            File.WriteAllText(dialog.FileName, JsonConvert.SerializeObject(export, Formatting.Indented));
+            MessageBox.Show("Settings exported successfully.\n(API credentials were excluded for security.)",
+                "Export", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private void BtnImport_Click(object sender, RoutedEventArgs e)
+        {
+            var dialog = new OpenFileDialog
+            {
+                Title = "Import settings",
+                Filter = "JSON files (*.json)|*.json"
+            };
+            if (dialog.ShowDialog() != true) return;
+
+            try
+            {
+                var json = File.ReadAllText(dialog.FileName);
+                var imported = JsonConvert.DeserializeObject<ConfigParams>(json);
+                if (imported == null) throw new Exception("Invalid file format.");
+
+                // Preserve existing API credentials — import only non-secret settings
+                if (!string.IsNullOrWhiteSpace(imported.BotToken)) _config.BotToken = imported.BotToken;
+                if (!string.IsNullOrWhiteSpace(imported.ChatId)) _config.ChatId = imported.ChatId;
+                if (!string.IsNullOrWhiteSpace(imported.PathSaveFile)) _config.PathSaveFile = imported.PathSaveFile;
+                if (imported.DownloadThreads > 0) _config.DownloadThreads = imported.DownloadThreads;
+                _config.DarkMode = imported.DarkMode;
+                _config.NotifyOnStartup = imported.NotifyOnStartup;
+                _config.NotifyOnProgress = imported.NotifyOnProgress;
+                _config.NotifyOnComplete = imported.NotifyOnComplete;
+                _config.NotifyOnError = imported.NotifyOnError;
+                if (imported.Chats?.Count > 0) _config.Chats = imported.Chats;
+
+                LoadValues();
+                MessageBox.Show("Settings imported successfully.", "Import", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Import failed: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void Hyperlink_RequestNavigate(object sender, RequestNavigateEventArgs e)
+        {
+            Process.Start(new ProcessStartInfo(e.Uri.AbsoluteUri) { UseShellExecute = true });
+            e.Handled = true;
         }
     }
 }

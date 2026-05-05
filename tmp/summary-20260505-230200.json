@@ -1,0 +1,4 @@
+{
+  "summary": "User noticed the instruction box was not visible because the app hadn't been rebuilt. Installed .NET 8 SDK (8.0.420) via winget. First build failed because the old app process was locking DLL files. Closed the app, rebuilt successfully (0 errors), then relaunched the updated TelegramAutoDownload.exe. The Settings window now shows the blue step-by-step instruction box for obtaining App ID.",
+  "current_status": "App running with updated Settings window showing Telegram API instructions. .NET 8 SDK now installed. Changes still need to be committed and pushed."
+}

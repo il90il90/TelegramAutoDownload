@@ -15,6 +15,20 @@ namespace TelegramAutoDownload.Services
 
         public ObservableCollection<DownloadItem> Downloads { get; } = new();
 
+        // Session statistics (in-memory only)
+        private int _totalFilesDownloaded;
+        private long _totalBytesDownloaded;
+
+        public int TotalFilesDownloaded => _totalFilesDownloaded;
+        public long TotalBytesDownloaded => _totalBytesDownloaded;
+
+        public event Action? StatsChanged;
+
+        /// <summary>
+        /// Fired when a download completes successfully: (chatName, fileName, totalBytes, durationSeconds)
+        /// </summary>
+        public event Action<string, string, long, double>? DownloadCompleted;
+
         public void AddDownload(string chatName, string fileName, string pluginName, long totalBytes = 0)
         {
             Application.Current?.Dispatcher.InvokeAsync(() =>
@@ -100,6 +114,16 @@ namespace TelegramAutoDownload.Services
                 item.Progress = success ? 100 : item.Progress;
                 item.Speed = "";
                 item.Eta = "";
+
+                if (success)
+                {
+                    System.Threading.Interlocked.Increment(ref _totalFilesDownloaded);
+                    long bytes = item.TotalBytes > 0 ? item.TotalBytes : item.BytesDownloaded;
+                    System.Threading.Interlocked.Add(ref _totalBytesDownloaded, bytes);
+                    StatsChanged?.Invoke();
+                    double durationSec = (DateTime.UtcNow - item.StartTime).TotalSeconds;
+                    DownloadCompleted?.Invoke(chatName, fileName, bytes, durationSec);
+                }
 
                 // Release the cancellation token
                 CancellationRegistry.Remove(item.CancellationKey);

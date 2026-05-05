@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "RJxhs5eC6t99TbOWEoRMCwj5DeQEwVYVJedkvYjCvvJEeZcsWClJYthw1VrVSielEdDmpvgjQ9FoCcYjFf0oLg==",
+  "dgSpecHash": "mKOoH6vJiCE=",
   "success": true,
-  "projectFilePath": "C:\\Users\\il90i\\source\\repos\\RunnerApp\\TelegramClient\\TelegramClient.csproj",
+  "projectFilePath": "C:\\Users\\il90i\\Documenten\\GitHub\\TelegramAutoDownload\\TelegramClient\\TelegramClient.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\il90i\\.nuget\\packages\\wtelegramclient\\4.1.1\\wtelegramclient.4.1.1.nupkg.sha512"
   ],
