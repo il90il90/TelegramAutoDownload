@@ -1,0 +1,16 @@
+C:\Users\il90i\Documenten\GitHub\TelegramAutoDownload\TelegramClient\obj\Debug\net8.0\TelegramClient.csproj.AssemblyReference.cache
+C:\Users\il90i\Documenten\GitHub\TelegramAutoDownload\TelegramClient\obj\Debug\net8.0\TelegramClient.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\il90i\Documenten\GitHub\TelegramAutoDownload\TelegramClient\obj\Debug\net8.0\TelegramClient.AssemblyInfoInputs.cache
+C:\Users\il90i\Documenten\GitHub\TelegramAutoDownload\TelegramClient\obj\Debug\net8.0\TelegramClient.AssemblyInfo.cs
+C:\Users\il90i\Documenten\GitHub\TelegramAutoDownload\TelegramClient\obj\Debug\net8.0\TelegramClient.csproj.CoreCompileInputs.cache
+C:\Users\il90i\Documenten\GitHub\TelegramAutoDownload\TelegramClient\obj\Debug\net8.0\TelegramClient.sourcelink.json
+C:\Users\il90i\Documenten\GitHub\TelegramAutoDownload\TelegramClient\bin\Debug\net8.0\TelegramClient.deps.json
+C:\Users\il90i\Documenten\GitHub\TelegramAutoDownload\TelegramClient\bin\Debug\net8.0\TelegramClient.dll
+C:\Users\il90i\Documenten\GitHub\TelegramAutoDownload\TelegramClient\bin\Debug\net8.0\TelegramClient.pdb
+C:\Users\il90i\Documenten\GitHub\TelegramAutoDownload\TelegramClient\bin\Debug\net8.0\BasePlugins.dll
+C:\Users\il90i\Documenten\GitHub\TelegramAutoDownload\TelegramClient\bin\Debug\net8.0\BasePlugins.pdb
+C:\Users\il90i\Documenten\GitHub\TelegramAutoDownload\TelegramClient\obj\Debug\net8.0\Telegram.C9470908.Up2Date
+C:\Users\il90i\Documenten\GitHub\TelegramAutoDownload\TelegramClient\obj\Debug\net8.0\TelegramClient.dll
+C:\Users\il90i\Documenten\GitHub\TelegramAutoDownload\TelegramClient\obj\Debug\net8.0\refint\TelegramClient.dll
+C:\Users\il90i\Documenten\GitHub\TelegramAutoDownload\TelegramClient\obj\Debug\net8.0\TelegramClient.pdb
+C:\Users\il90i\Documenten\GitHub\TelegramAutoDownload\TelegramClient\obj\Debug\net8.0\ref\TelegramClient.dll

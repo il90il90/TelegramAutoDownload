@@ -1,0 +1,4 @@
+{
+  "summary": "Implemented full auto-update system: AppVersion constant (v2.2.0), AutoUpdateService (checks GitHub releases API, compares semver, downloads ZIP, runs batch updater script), UpdateDialog (shows old→new version badge, changelog from release body, download progress bar, Install Now/Skip buttons). Wired check into MainWindow_Loaded. Built Release mode publish, created TelegramAutoDownload_v2.2.0.zip (19 MB), created GitHub Release v2.2.0 at https://github.com/il90il90/TelegramAutoDownload/releases/tag/v2.2.0 with full changelog. Committed and pushed all changes.",
+  "current_status": "v2.2.0 fully released. GitHub Release live with ZIP asset and changelog. App has auto-update on startup. All planned improvements from v2.2.0 plan are complete."
+}

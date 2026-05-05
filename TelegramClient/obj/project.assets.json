@@ -25,6 +25,31 @@
           "bin/placeholder/BasePlugins.dll": {}
         }
       }
+    },
+    "net8.0/win-x64": {
+      "WTelegramClient/4.1.1": {
+        "type": "package",
+        "compile": {
+          "lib/net8.0/WTelegramClient.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net8.0/WTelegramClient.dll": {
+            "related": ".xml"
+          }
+        }
+      },
+      "BasePlugins/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v8.0",
+        "compile": {
+          "bin/placeholder/BasePlugins.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/BasePlugins.dll": {}
+        }
+      }
     }
   },
   "libraries": {
@@ -127,6 +152,11 @@
           }
         },
         "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.420/PortableRuntimeIdentifierGraph.json"
+      }
+    },
+    "runtimes": {
+      "win-x64": {
+        "#import": []
       }
     }
   }

@@ -1,0 +1,4 @@
+{
+  "summary": "Created both distribution formats for v2.2.0: (1) Portable ZIP (TelegramAutoDownload_v2.2.0_Portable.zip, 19.44 MB) - extract and run, no installation needed. (2) Installer EXE (TelegramAutoDownload_v2.2.0_Setup.exe, 20.45 MB) built with Inno Setup 6 - includes Start Menu shortcut, desktop icon option, Windows startup option, .NET 8 check with redirect to download page, and proper uninstaller. Both assets uploaded to GitHub Release v2.2.0. Installer script saved to installer/setup.iss and committed.",
+  "current_status": "v2.2.0 GitHub Release has 2 assets: Portable ZIP + Setup EXE. Auto-update in app downloads the Portable ZIP. All features complete."
+}
