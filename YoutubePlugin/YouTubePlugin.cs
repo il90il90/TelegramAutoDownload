@@ -1,14 +1,19 @@
 ﻿using BasePlugins;
-using YoutubeExplode;
-using YoutubeExplode.Videos;
-using YoutubeExplode.Videos.Streams;
+using ManuHub.Ytdlp.NET;
+using System;
+using System.IO;
+using System.Threading.Tasks;
 
 namespace YoutubePlugin
 {
+    /// <summary>
+    /// YouTube-specific plugin backed by yt-dlp.
+    /// Runs as a secondary fallback (Priority=10) after SocialMediaPlugin (Priority=2),
+    /// which also handles YouTube via yt-dlp. This plugin preserves a per-channel
+    /// subfolder layout: PathSaveFile/YouTube/ChatName/%(channel)s/
+    /// </summary>
     public class YouTubePlugin<TMessage> : BasePlugin<TMessage>
     {
-        readonly YoutubeClient youtube = new();
-
         public override string PluginName => "YouTube";
         public override int Priority => 10;
 
@@ -17,81 +22,139 @@ namespace YoutubePlugin
             return config.Text.StartsWith("https://youtu") || config.Text.StartsWith("https://www.youtu");
         }
 
-        public async Task<Video> GetVideoInfo(string videoUrl)
-        {
-            return await youtube.Videos.GetAsync(videoUrl);
-        }
-
         public override async Task<ResultExecute> ExecuteAsync(Config config)
         {
+            // Resolve yt-dlp executable (AppData tools folder preferred, then install dir)
+            var appDataTools = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "TelegramAutoDownload", "tools", "yt-dlp.exe");
+            var installTools = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "tools", "yt-dlp.exe");
+            var ytdlpPath = File.Exists(appDataTools) ? appDataTools : installTools;
+
+            if (!File.Exists(ytdlpPath))
+            {
+                return new ResultExecute(config.ChatName)
+                {
+                    IsSuccess = false,
+                    ErrorMessage = "yt-dlp.exe not found. It will be downloaded automatically on next startup."
+                };
+            }
+
+            // Output layout: PathSaveFile/YouTube/ChatName/%(channel)s/%(title)s.%(ext)s
+            var baseFolder = Path.Combine(config.PathSaveFile, PluginName, config.ChatName);
+            if (!Directory.Exists(baseFolder))
+                Directory.CreateDirectory(baseFolder);
+
+            // %(channel)s creates a per-channel subfolder; yt-dlp sanitises names automatically
+            var outputTemplate = Path.Combine(baseFolder, "%(channel)s", "%(title)s.%(ext)s");
+
+            // Optional cookies file for authenticated downloads
+            var cookiesAppData = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "TelegramAutoDownload", "tools", "cookies.txt");
+            var cookiesPath = File.Exists(cookiesAppData)
+                ? cookiesAppData
+                : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "tools", "cookies.txt");
+
+            var tempName = config.Text.Length > 80 ? config.Text[..80] + "…" : config.Text;
+
+            var cancelKey = CancellationRegistry.MakeKey(config.ChatName, tempName);
+            var cancelToken = CancellationRegistry.Register(cancelKey);
+
+            string downloadedFile = string.Empty;
+            string actualFilePath = string.Empty;
+            bool hasError = false;
+            string errorMessage = string.Empty;
+
             try
             {
-                var video = await GetVideoInfo(config.Text);
-                var streamManifest = await youtube.Videos.Streams.GetManifestAsync(config.Text);
+                // Best quality: separate video+audio merged into MP4.
+                // Falls back to best single-file stream when FFmpeg is unavailable.
+                var builder = new Ytdlp(ytdlpPath)
+                    .WithFormat("bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best")
+                    .WithMergeOutputFormat("mp4")
+                    .WithOutputTemplate(outputTemplate)
+                    .WithNoPlaylist();
 
-                // Prefer muxed (video+audio) MP4 stream first for simplicity
-                IStreamInfo? streamInfo = streamManifest
-                    .GetMuxedStreams()
-                    .OrderByDescending(s => s.VideoQuality.MaxHeight)
-                    .FirstOrDefault(s => s.Container == Container.Mp4);
+                if (File.Exists(cookiesPath))
+                    builder = builder.WithCookiesFile(cookiesPath);
 
-                // Fall back to any muxed stream
-                streamInfo ??= streamManifest
-                    .GetMuxedStreams()
-                    .OrderByDescending(s => s.VideoQuality.MaxHeight)
-                    .FirstOrDefault();
+                await using var ytdlp = builder;
 
-                // Fall back to highest-quality video-only MP4
-                streamInfo ??= streamManifest
-                    .GetVideoOnlyStreams()
-                    .OrderByDescending(s => s.VideoQuality.MaxHeight)
-                    .FirstOrDefault(s => s.Container == Container.Mp4);
+                OnProgress?.Invoke(config.ChatName, tempName, PluginName, 0, 0, 0);
 
-                if (streamInfo == null)
+                ytdlp.OnProgressDownload += (s, e) =>
                 {
-                    return new ResultExecute(config.ChatName)
+                    OnProgress?.Invoke(config.ChatName, tempName, PluginName, e.Percent, 0, 0);
+                };
+
+                ytdlp.OnOutputMessage += (s, msg) =>
+                {
+                    if (!string.IsNullOrWhiteSpace(msg) && msg.Contains("Destination:"))
                     {
-                        IsSuccess = false,
-                        ErrorMessage = "No suitable video stream found for this YouTube video."
-                    };
-                }
+                        var idx = msg.IndexOf("Destination:");
+                        if (idx >= 0)
+                            actualFilePath = msg[(idx + "Destination:".Length)..].Trim();
+                    }
+                };
 
-                // Sanitize title for use as filename
-                char[] invalidChars = Path.GetInvalidFileNameChars();
-                var title = video.Title;
-                foreach (char c in invalidChars)
-                    title = title.Replace(c, ' ');
+                ytdlp.OnCompleteDownload += (s, msg) =>
+                {
+                    downloadedFile = !string.IsNullOrEmpty(actualFilePath) ? actualFilePath : (msg ?? string.Empty);
+                };
 
-                var path = Path.Combine(config.PathSaveFile, PluginName, config.ChatName,
-                    SanitizeName(video.Author.ChannelTitle));
-                CreateDirectoryIfNotExist(path);
+                ytdlp.OnErrorMessage += (s, err) =>
+                {
+                    if (!string.IsNullOrWhiteSpace(err) && !err.TrimStart().StartsWith("WARNING:"))
+                    {
+                        hasError = true;
+                        errorMessage = err;
+                    }
+                };
 
-                var ext = streamInfo.Container.Name;
-                var filePath = Path.Combine(path, $"{title}.{ext}");
+                await ytdlp.DownloadAsync(config.Text, cancelToken);
+            }
+            catch (Exception ex) when (ex is OperationCanceledException || cancelToken.IsCancellationRequested)
+            {
+                CancellationRegistry.Remove(cancelKey);
+                return new ResultExecute(config.ChatName) { IsSuccess = false, ErrorMessage = "Cancelled" };
+            }
+            catch (Exception)
+            {
+                OnComplete?.Invoke(config.ChatName, tempName, false);
+                CancellationRegistry.Remove(cancelKey);
+                return new ResultExecute(config.ChatName) { IsSuccess = false };
+            }
 
-                await youtube.Videos.Streams.DownloadAsync(streamInfo, filePath);
-
+            if (!string.IsNullOrEmpty(downloadedFile))
+            {
+                var realName = File.Exists(downloadedFile) ? Path.GetFileName(downloadedFile) : downloadedFile;
+                OnComplete?.Invoke(config.ChatName, tempName, true);
+                CancellationRegistry.Remove(cancelKey);
                 return new ResultExecute(config.ChatName)
                 {
                     IsSuccess = true,
-                    FileName = video.Title ?? ""
+                    FileName = realName,
+                    FilePath = File.Exists(downloadedFile) ? downloadedFile : string.Empty,
+                    NotificationKey = tempName
                 };
             }
-            catch (Exception ex)
-            {
-                return new ResultExecute(config.ChatName)
-                {
-                    ErrorMessage = $"YouTube error: {ex.Message}"
-                };
-            }
-        }
 
-        private static string SanitizeName(string name)
-        {
-            char[] invalid = Path.GetInvalidFileNameChars();
-            foreach (char c in invalid)
-                name = name.Replace(c, ' ');
-            return name.Trim();
+            if (hasError)
+            {
+                OnComplete?.Invoke(config.ChatName, tempName, false);
+                CancellationRegistry.Remove(cancelKey);
+                return new ResultExecute(config.ChatName) { IsSuccess = false, NotificationKey = tempName };
+            }
+
+            OnComplete?.Invoke(config.ChatName, tempName, true);
+            CancellationRegistry.Remove(cancelKey);
+            return new ResultExecute(config.ChatName)
+            {
+                IsSuccess = true,
+                FileName = Path.GetFileName(downloadedFile),
+                NotificationKey = tempName
+            };
         }
     }
 }

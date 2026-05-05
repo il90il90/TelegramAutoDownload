@@ -4,6 +4,7 @@ using Serilog;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.IO;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
@@ -27,6 +28,13 @@ namespace TelegramAutoDownload
 
         // Suppress event handlers while loading data to prevent redundant file I/O
         private bool _isLoading = false;
+
+        // Holds the pending release when an update is available (shown via blink)
+        private ReleaseInfo? _pendingRelease;
+
+        // Debounce timer for search — avoids hammering LINQ on every keystroke
+        private System.Windows.Threading.DispatcherTimer? _searchDebounce;
+        private string _pendingSearch = string.Empty;
 
         public MainWindow(TelegramApp telegram, ConfigFile config)
         {
@@ -66,22 +74,29 @@ namespace TelegramAutoDownload
 
         private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
-            tbAppVersion.Text = $"v{AppVersion.Current}";
+            btnAppVersion.Content = $"v{AppVersion.Current}";
             mainLoadingRing.IsActive = true;
-            tbLoadingStatus.Text = "Loading chats...";
+            tbLoadingStatus.Text = "Connecting to Telegram...";
 
-            // Check for app updates in background; show dialog if newer version found
-            _ = CheckForAppUpdateAsync();
-
-            // Ensure yt-dlp is available and up to date; show status in footer
-            YtdlpService.StatusChanged += msg =>
-                Dispatcher.InvokeAsync(() => tbLoadingStatus.Text = msg);
+            // Ensure yt-dlp is available and up to date silently in background
             _ = YtdlpService.EnsureAsync();
 
-            await Task.Delay(500);
+            // Wait for the Telegram session to be established BEFORE loading chats,
+            // so GetAllChats doesn't block WTelegram's internal mutex
+            await Task.Run(() => TelegramApp.WaitForLoginAsync(15000));
+
+            tbLoadingStatus.Text = "Loading chats...";
             await InitAsync();
             mainLoadingRing.IsActive = false;
             tbLoadingStatus.Text = string.Empty;
+
+            // Check for updates AFTER the window is fully loaded and rendered,
+            // with a short delay so the dialog opens cleanly
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(2000);
+                await CheckForAppUpdateAsync();
+            });
         }
 
         private async Task InitAsync()
@@ -94,10 +109,14 @@ namespace TelegramAutoDownload
             TelegramApp.UpdateConfig(configParams);
             UpdatePathOnUI(configParams.PathSaveFile);
 
-            // Send startup notification (skipped if bot is not configured)
+            // Wait for login and send startup notification entirely on a background thread
+            // so the UI stays responsive while the Telegram session connects
             var monitoredCount = configParams.Chats?.Count(c => c.Selected) ?? 0;
-            await TelegramApp.WaitForLoginAsync();
-            _ = _notification.SendStartupNotificationAsync(monitoredCount, TelegramApp.Client.UserId != 0);
+            _ = Task.Run(async () =>
+            {
+                await TelegramApp.WaitForLoginAsync();
+                await _notification.SendStartupNotificationAsync(monitoredCount, TelegramApp.Client.UserId != 0);
+            });
         }
 
         private async Task LoadDataAsync()
@@ -106,36 +125,40 @@ namespace TelegramAutoDownload
             {
                 ConfigParams configParams = ConfigFile.Read();
 
-                // Run the Telegram API call on a background thread to avoid
-                // blocking the WPF SynchronizationContext (prevents "Not Responding")
-                _chats = await Task.Run(() => TelegramApp.GetAllChats());
-
-                foreach (var chat in _chats)
+                // Fetch chats AND merge config settings entirely on background thread
+                _chats = await Task.Run(async () =>
                 {
-                    var fromConfigFile = configParams.Chats?.FirstOrDefault(a => a.Id == chat.Id);
-                    if (fromConfigFile == null) continue;
-
-                    chat.Selected = fromConfigFile.Selected;
-                    chat.ReactionIcon = fromConfigFile.ReactionIcon;
-                    chat.DownloadStartIcon = fromConfigFile.DownloadStartIcon;
-                    if (fromConfigFile.Download != null)
+                    var chats = await TelegramApp.GetAllChats();
+                    foreach (var chat in chats)
                     {
-                        chat.Download.Videos = fromConfigFile.Download.Videos;
-                        chat.Download.Photos = fromConfigFile.Download.Photos;
-                        chat.Download.Music = fromConfigFile.Download.Music;
-                        chat.Download.Files = fromConfigFile.Download.Files;
-                    }
-                    chat.DownloadFromSize = fromConfigFile.DownloadFromSize;
-                    chat.IgnoreFileByRegex = fromConfigFile.IgnoreFileByRegex;
-                    chat.EnabledPlugins = fromConfigFile.EnabledPlugins ?? new Dictionary<string, bool>();
-                }
+                        // Pre-compute lowercase strings once so search never allocates on every keystroke
+                        chat.NameLower = chat.Name?.ToLowerInvariant() ?? string.Empty;
+                        chat.UsernameLower = chat.Username?.ToLowerInvariant() ?? string.Empty;
 
-                await Application.Current.Dispatcher.InvokeAsync(() =>
-                {
-                    _isLoading = true;
-                    ItemsListView.ItemsSource = _chats.OrderByDescending(a => a.Selected);
-                    _isLoading = false;
+                        var fromConfigFile = configParams.Chats?.FirstOrDefault(a => a.Id == chat.Id);
+                        if (fromConfigFile == null) continue;
+
+                        chat.Selected = fromConfigFile.Selected;
+                        chat.ReactionIcon = fromConfigFile.ReactionIcon;
+                        chat.DownloadStartIcon = fromConfigFile.DownloadStartIcon;
+                        if (fromConfigFile.Download != null)
+                        {
+                            chat.Download.Videos = fromConfigFile.Download.Videos;
+                            chat.Download.Photos = fromConfigFile.Download.Photos;
+                            chat.Download.Music = fromConfigFile.Download.Music;
+                            chat.Download.Files = fromConfigFile.Download.Files;
+                        }
+                        chat.DownloadFromSize = fromConfigFile.DownloadFromSize;
+                        chat.IgnoreFileByRegex = fromConfigFile.IgnoreFileByRegex;
+                        chat.EnabledPlugins = fromConfigFile.EnabledPlugins ?? new Dictionary<string, bool>();
+                    }
+                    return chats;
                 });
+
+                // Only the final UI binding happens on the UI thread
+                _isLoading = true;
+                ItemsListView.ItemsSource = _chats.OrderByDescending(a => a.Selected);
+                _isLoading = false;
             }
             catch (Exception ex)
             {
@@ -214,19 +237,47 @@ namespace TelegramAutoDownload
 
         private void SearchTextBox_TextChanged(object sender, TextChangedEventArgs e)
         {
-            TextBox? textBox = sender as TextBox;
-            string textSearch = textBox?.Text.ToLower() ?? string.Empty;
+            _pendingSearch = (sender as TextBox)?.Text ?? string.Empty;
+
+            // Create the timer once; attach Tick only once to avoid duplicate handlers
+            if (_searchDebounce == null)
+            {
+                _searchDebounce = new System.Windows.Threading.DispatcherTimer
+                {
+                    Interval = TimeSpan.FromMilliseconds(250)
+                };
+                _searchDebounce.Tick += (_, _) =>
+                {
+                    _searchDebounce.Stop();
+                    ApplySearch(_pendingSearch);
+                };
+            }
+
+            // Restart the timer so search only fires 250 ms after the user stops typing
+            _searchDebounce.Stop();
+            _searchDebounce.Start();
+        }
+
+        private async void ApplySearch(string text)
+        {
             if (_chats == null) return;
+            var lower = text.ToLowerInvariant();
 
-            var chats = _chats.Cast<ChatDto>().Where(c =>
-                c.Name.ToLower().Contains(textSearch) ||
-                c.Id.ToString().Contains(textSearch) ||
-                (c.Username != null && c.Username.ToLower().Contains(textSearch)) ||
-                c.Type.Contains(textSearch, StringComparison.CurrentCultureIgnoreCase))
-                .OrderByDescending(a => a.Selected);
+            // Run LINQ filtering on a background thread; only bind the result on the UI thread
+            var results = await Task.Run(() =>
+                string.IsNullOrEmpty(lower)
+                    ? _chats.OrderByDescending(c => c.Selected).ToList()
+                    : _chats
+                        .Where(c =>
+                            c.NameLower.Contains(lower) ||
+                            c.Id.ToString().Contains(lower) ||
+                            c.UsernameLower.Contains(lower) ||
+                            c.Type.Contains(lower, StringComparison.OrdinalIgnoreCase))
+                        .OrderByDescending(c => c.Selected)
+                        .ToList());
 
-            ItemsListView.ItemsSource = chats;
-            tbCountChats.Text = chats.Count().ToString();
+            ItemsListView.ItemsSource = results;
+            tbCountChats.Text = results.Count.ToString();
         }
 
         private void SelectChatId_Checked(object sender, RoutedEventArgs e)
@@ -471,6 +522,17 @@ namespace TelegramAutoDownload
             }
         }
 
+        private void BtnAppVersion_Click(object sender, RoutedEventArgs e)
+        {
+            if (_pendingRelease == null) return;
+            var dlg = new UpdateDialog(_pendingRelease) { Owner = this };
+            dlg.ShowDialog();
+            if (dlg.WasSkipped)
+                File.WriteAllText(AppPaths.SkippedVersionFile, _pendingRelease.Version);
+            else
+                try { File.Delete(AppPaths.SkippedVersionFile); } catch { }
+        }
+
         private async Task CheckForAppUpdateAsync()
         {
             try
@@ -478,10 +540,21 @@ namespace TelegramAutoDownload
                 var release = await AutoUpdateService.CheckAsync();
                 if (release == null) return;
 
-                await Dispatcher.InvokeAsync(() =>
+                var skippedVersion = File.Exists(AppPaths.SkippedVersionFile)
+                    ? File.ReadAllText(AppPaths.SkippedVersionFile).Trim()
+                    : string.Empty;
+                if (skippedVersion == release.Version) return;
+
+                _pendingRelease = release;
+
+                Dispatcher.Invoke(() =>
                 {
-                    var dlg = new UpdateDialog(release) { Owner = this };
-                    dlg.ShowDialog();
+                    btnAppVersion.ToolTip = $"New version {release.Version} available — click to update!";
+                    btnAppVersion.Foreground = new System.Windows.Media.SolidColorBrush(
+                        System.Windows.Media.Color.FromRgb(76, 175, 80));
+
+                    var storyboard = (System.Windows.Media.Animation.Storyboard)FindResource("BlinkVersion");
+                    storyboard.Begin();
                 });
             }
             catch (Exception ex)

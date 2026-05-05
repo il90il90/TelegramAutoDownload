@@ -107,9 +107,12 @@ namespace SocialMediaPlugin
 
             try
             {
-                // Build the immutable yt-dlp config
+                // Build the immutable yt-dlp config.
+                // Format selector: prefer best separate video+audio streams merged into MP4;
+                // falls back gracefully to best single-file stream when FFmpeg is unavailable.
                 var builder = new Ytdlp(ytdlpPath)
-                    .WithFormat("best[ext=mp4]/best")
+                    .WithFormat("bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best")
+                    .WithMergeOutputFormat("mp4")
                     .WithOutputTemplate(outputTemplate)
                     .WithNoPlaylist();
 

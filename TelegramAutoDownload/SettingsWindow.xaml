@@ -100,7 +100,10 @@ Enable this only if you want to receive a Telegram message when a download finis
                         <TextBlock Text="Chat ID" FontWeight="SemiBold" Margin="0,0,0,4"/>
                         <TextBox x:Name="txtChatId"
                                  mah:TextBoxHelper.Watermark="e.g. -1001234567890"
-                                 Height="32" Margin="0,0,0,16"/>
+                                 Height="32" Margin="0,0,0,8"/>
+                        <Button x:Name="btnTestBot" Content="Test Bot" Height="32" Width="90"
+                                HorizontalAlignment="Right" Margin="0,0,0,8"
+                                Click="BtnTestBot_Click"/>
 
                         <!-- Notification events -->
                         <TextBlock Text="Notify me when…" FontWeight="SemiBold" Margin="0,0,0,8"

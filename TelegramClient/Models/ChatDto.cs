@@ -9,6 +9,10 @@ namespace TelegramClient.Models
         public string Username { get; set; }
         public bool Selected { get; set; }
         public string Type { get; set; }
+
+        // Pre-computed lowercase fields — set once after load so search never allocates strings per keystroke
+        public string NameLower { get; set; } = string.Empty;
+        public string UsernameLower { get; set; } = string.Empty;
         public string ReactionIcon { get; set; } = string.Empty;
         // Reaction sent when download STARTS (default: ⏳)
         public string DownloadStartIcon { get; set; } = string.Empty;

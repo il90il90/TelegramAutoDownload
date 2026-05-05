@@ -10,6 +10,17 @@
         MinWidth="1100" MinHeight="600"
         WindowStartupLocation="CenterScreen">
 
+    <mah:MetroWindow.Resources>
+        <Storyboard x:Key="BlinkVersion" RepeatBehavior="Forever">
+            <DoubleAnimationUsingKeyFrames Storyboard.TargetName="btnAppVersion"
+                                           Storyboard.TargetProperty="Opacity">
+                <DiscreteDoubleKeyFrame KeyTime="0:0:0.0" Value="1.0"/>
+                <DiscreteDoubleKeyFrame KeyTime="0:0:0.6" Value="0.2"/>
+                <DiscreteDoubleKeyFrame KeyTime="0:0:1.2" Value="1.0"/>
+            </DoubleAnimationUsingKeyFrames>
+        </Storyboard>
+    </mah:MetroWindow.Resources>
+
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -63,6 +74,7 @@
             <ListView x:Name="ItemsListView" Grid.Row="0" SelectionMode="Extended" Margin="0"
                       VirtualizingPanel.IsVirtualizing="True"
                       VirtualizingPanel.VirtualizationMode="Recycling"
+                      ScrollViewer.CanContentScroll="True"
                       ScrollViewer.IsDeferredScrollingEnabled="True">
                 <ListView.Resources>
                     <Style TargetType="GridViewColumnHeader">
@@ -331,7 +343,13 @@
             <DockPanel>
                 <!-- Right: version + connection dot + path controls -->
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock x:Name="tbAppVersion" Text="v2.2.0" VerticalAlignment="Center" Foreground="#999" Margin="0,0,16,0"/>
+                    <Button x:Name="btnAppVersion" Content="v2.2.0"
+                            Style="{x:Null}"
+                            Background="Transparent" BorderThickness="0"
+                            Foreground="#999" Cursor="Hand" Padding="4,0"
+                            VerticalAlignment="Center" Margin="0,0,12,0"
+                            ToolTip="Click to check for updates"
+                            Click="BtnAppVersion_Click"/>
                     <Ellipse x:Name="connectionDot" Width="10" Height="10" Fill="Green" Margin="0,0,8,0" VerticalAlignment="Center"/>
                     <!-- Folder path — click to open in Explorer -->
                     <Button x:Name="btnOpenFolder" Click="HlOpenFolder_Click"

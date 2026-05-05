@@ -4,6 +4,7 @@ using Newtonsoft.Json;
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Net.Http;
 using System.Windows;
 using System.Windows.Navigation;
 using TelegramAutoDownload.Models;
@@ -207,6 +208,50 @@ namespace TelegramAutoDownload
             catch (Exception ex)
             {
                 MessageBox.Show($"Import failed: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private async void BtnTestBot_Click(object sender, RoutedEventArgs e)
+        {
+            var token = pbBotToken.Password.Trim();
+            var chatId = txtChatId.Text.Trim();
+
+            if (string.IsNullOrWhiteSpace(token) || string.IsNullOrWhiteSpace(chatId))
+            {
+                MessageBox.Show("Please enter Bot Token and Chat ID first.", "Test Bot",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            btnTestBot.IsEnabled = false;
+            btnTestBot.Content = "Sending...";
+            try
+            {
+                using var http = new HttpClient();
+                http.Timeout = TimeSpan.FromSeconds(10);
+                var url = $"https://api.telegram.org/bot{token}/sendMessage" +
+                          $"?chat_id={Uri.EscapeDataString(chatId)}" +
+                          $"&text={Uri.EscapeDataString("✅ TelegramAutoDownload — bot is working correctly!")}";
+                var resp = await http.GetAsync(url);
+                if (resp.IsSuccessStatusCode)
+                    MessageBox.Show("✅ Message sent successfully! Check your Telegram.", "Test Bot",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
+                else
+                {
+                    var body = await resp.Content.ReadAsStringAsync();
+                    MessageBox.Show($"❌ Failed: {body}", "Test Bot",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"❌ Error: {ex.Message}", "Test Bot",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                btnTestBot.IsEnabled = true;
+                btnTestBot.Content = "Test Bot";
             }
         }
 

@@ -1,5 +1,6 @@
 using MahApps.Metro.Controls;
 using System;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows;
 using TelegramAutoDownload.Services;
@@ -11,6 +12,9 @@ namespace TelegramAutoDownload
         private readonly ReleaseInfo _release;
         private bool _installing = false;
 
+        /// <summary>True if the user clicked Skip (not Install).</summary>
+        public bool WasSkipped { get; private set; } = false;
+
         public UpdateDialog(ReleaseInfo release)
         {
             InitializeComponent();
@@ -18,7 +22,24 @@ namespace TelegramAutoDownload
 
             tbCurrentVersion.Text = $"Current: v{AppVersion.Current}";
             tbNewVersion.Text = $"New: v{release.Version}";
-            tbChangelog.Text = release.Changelog;
+            tbChangelog.Text = FormatChangelog(release.Changelog);
+        }
+
+        /// <summary>Strips Markdown syntax so the changelog reads as plain text.</summary>
+        private static string FormatChangelog(string markdown)
+        {
+            if (string.IsNullOrWhiteSpace(markdown)) return "No changelog available.";
+
+            var text = markdown;
+            // Remove heading hashes (##, ###, etc.)
+            text = Regex.Replace(text, @"^#{1,6}\s*", string.Empty, RegexOptions.Multiline);
+            // Bold: **text** or __text__
+            text = Regex.Replace(text, @"\*\*(.+?)\*\*|__(.+?)__", m => m.Groups[1].Success ? m.Groups[1].Value : m.Groups[2].Value);
+            // Italic: *text* or _text_
+            text = Regex.Replace(text, @"\*(.+?)\*|_(.+?)_", m => m.Groups[1].Success ? m.Groups[1].Value : m.Groups[2].Value);
+            // Collapse 3+ blank lines to 2
+            text = Regex.Replace(text, @"\n{3,}", "\n\n");
+            return text.Trim();
         }
 
         private async void BtnInstall_Click(object sender, RoutedEventArgs e)
@@ -55,6 +76,7 @@ namespace TelegramAutoDownload
 
         private void BtnSkip_Click(object sender, RoutedEventArgs e)
         {
+            WasSkipped = true;
             Close();
         }
     }

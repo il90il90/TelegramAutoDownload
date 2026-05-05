@@ -14,10 +14,11 @@ namespace TelegramAutoDownload
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                          "TelegramAutoDownload");
 
-        public static string ConfigFile => Path.Combine(DataDir, "config.txt");
-        public static string LogsDir    => Path.Combine(DataDir, "logs");
-        public static string ToolsDir   => Path.Combine(DataDir, "tools");
-        public static string EnvFile    => Path.Combine(DataDir, ".env");
+        public static string ConfigFile          => Path.Combine(DataDir, "config.txt");
+        public static string LogsDir             => Path.Combine(DataDir, "logs");
+        public static string ToolsDir            => Path.Combine(DataDir, "tools");
+        public static string EnvFile             => Path.Combine(DataDir, ".env");
+        public static string SkippedVersionFile  => Path.Combine(DataDir, "skipped_version.txt");
 
         static AppPaths()
         {
