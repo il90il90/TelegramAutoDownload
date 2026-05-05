@@ -6,7 +6,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Title="🔵 Telegram Auto Download"
-        Height="540" Width="460"
+        Height="400" Width="460"
         WindowStartupLocation="CenterScreen"
         ResizeMode="NoResize">
 
@@ -18,94 +18,69 @@
         </Grid.RowDefinitions>
 
         <!-- Header -->
-        <TextBlock Grid.Row="0" Text="Telegram Auto Download" 
-                   FontSize="20" FontWeight="Bold" 
-                   Foreground="#2AABEE" HorizontalAlignment="Center" Margin="0,0,0,16"/>
+        <TextBlock Grid.Row="0" Text="Telegram Auto Download"
+                   FontSize="20" FontWeight="Bold"
+                   Foreground="#2AABEE" HorizontalAlignment="Center" Margin="0,0,0,20"/>
 
-        <!-- Tab Control -->
-        <TabControl Grid.Row="1" x:Name="tabControl">
+        <!-- Phone login steps -->
+        <StackPanel Grid.Row="1" VerticalAlignment="Top">
 
-            <!-- Phone Login Tab -->
-            <TabItem Header="📱 Phone">
-                <StackPanel Margin="10" VerticalAlignment="Top">
+            <!-- Step 1: Phone number -->
+            <StackPanel x:Name="stepPhone" Margin="0,0,0,12">
+                <TextBlock Text="Phone Number" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBox Grid.Column="0" x:Name="txtPhoneNumber"
+                             mah:TextBoxHelper.Watermark="+1 234 567 8900"
+                             VerticalContentAlignment="Center" Height="32" Margin="0,0,8,0"/>
+                    <Button Grid.Column="1" x:Name="btnLogin" Content="Send Code"
+                            Width="90" Height="32" Click="BtnLogin_Click"/>
+                </Grid>
+            </StackPanel>
 
-                    <!-- Step 1: Phone number -->
-                    <StackPanel x:Name="stepPhone" Margin="0,10">
-                        <TextBlock Text="Phone Number" FontWeight="SemiBold" Margin="0,0,0,6"/>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBox Grid.Column="0" x:Name="txtPhoneNumber" 
-                                     mah:TextBoxHelper.Watermark="+1 234 567 8900"
-                                     VerticalContentAlignment="Center" Height="32" Margin="0,0,8,0"/>
-                            <Button Grid.Column="1" x:Name="btnLogin" Content="Send Code" 
-                                    Width="90" Height="32" Click="BtnLogin_Click"/>
-                        </Grid>
-                    </StackPanel>
+            <!-- Step 2: Verification code -->
+            <StackPanel x:Name="stepCode" Visibility="Collapsed" Margin="0,0,0,12">
+                <TextBlock Text="Verification Code" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBox Grid.Column="0" x:Name="txtCode"
+                             mah:TextBoxHelper.Watermark="12345"
+                             VerticalContentAlignment="Center" Height="32" Margin="0,0,8,0"/>
+                    <Button Grid.Column="1" x:Name="btnEnterCode" Content="Verify"
+                            Width="90" Height="32" Click="BtnEnterCode_Click"/>
+                </Grid>
+            </StackPanel>
 
-                    <!-- Step 2: Verification code -->
-                    <StackPanel x:Name="stepCode" Visibility="Collapsed" Margin="0,10">
-                        <TextBlock Text="Verification Code" FontWeight="SemiBold" Margin="0,0,0,6"/>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBox Grid.Column="0" x:Name="txtCode" 
-                                     mah:TextBoxHelper.Watermark="12345"
-                                     VerticalContentAlignment="Center" Height="32" Margin="0,0,8,0"/>
-                            <Button Grid.Column="1" x:Name="btnEnterCode" Content="Verify" 
-                                    Width="90" Height="32" Click="BtnEnterCode_Click"/>
-                        </Grid>
-                    </StackPanel>
+            <!-- Step 3: Two-factor password -->
+            <StackPanel x:Name="stepPassword" Visibility="Collapsed" Margin="0,0,0,12">
+                <TextBlock Text="Two-Factor Password" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <PasswordBox Grid.Column="0" x:Name="txtPassword"
+                                 PasswordChar="●"
+                                 Height="32" Margin="0,0,8,0"/>
+                    <Button Grid.Column="1" x:Name="btnEnterPassword" Content="Login"
+                            Width="90" Height="32" Click="BtnEnterPassword_Click"/>
+                </Grid>
+            </StackPanel>
 
-                    <!-- Step 3: Two-factor password -->
-                    <StackPanel x:Name="stepPassword" Visibility="Collapsed" Margin="0,10">
-                        <TextBlock Text="Two-Factor Password" FontWeight="SemiBold" Margin="0,0,0,6"/>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <PasswordBox Grid.Column="0" x:Name="txtPassword" 
-                                         PasswordChar="●"
-                                         Height="32" Margin="0,0,8,0"/>
-                            <Button Grid.Column="1" x:Name="btnEnterPassword" Content="Login" 
-                                    Width="90" Height="32" Click="BtnEnterPassword_Click"/>
-                        </Grid>
-                    </StackPanel>
+            <!-- Loading indicator -->
+            <mah:ProgressRing x:Name="loadingRing" IsActive="False"
+                              Width="32" Height="32" Margin="0,16,0,0"
+                              HorizontalAlignment="Center"/>
 
-                    <!-- Loading indicator -->
-                    <mah:ProgressRing x:Name="loadingRing" IsActive="False" 
-                                      Width="32" Height="32" Margin="0,16,0,0"
-                                      HorizontalAlignment="Center"/>
-
-                    <!-- Inline error display -->
-                    <TextBlock x:Name="txtError" Foreground="Red" TextWrapping="Wrap"
-                               Margin="0,8,0,0" Visibility="Collapsed"/>
-                </StackPanel>
-            </TabItem>
-
-            <!-- QR Code Login Tab -->
-            <TabItem Header="📷 QR Code">
-                <StackPanel Margin="10" HorizontalAlignment="Center" VerticalAlignment="Center">
-                    <TextBlock Text="Scan this QR code with your Telegram app" 
-                               TextWrapping="Wrap" TextAlignment="Center" Margin="0,0,0,12"/>
-                    <Border Width="200" Height="200" BorderBrush="#CCCCCC" BorderThickness="1" 
-                            HorizontalAlignment="Center">
-                        <Image x:Name="imgQrCode" Width="196" Height="196" 
-                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                    </Border>
-                    <TextBlock x:Name="txtQrCountdown" Text="" 
-                               TextAlignment="Center" Margin="0,10,0,0" Foreground="#666666"/>
-                    <TextBlock x:Name="txtQrStatus" Text="Loading QR code..." 
-                               TextAlignment="Center" Margin="0,6,0,0" Foreground="#2AABEE"/>
-                    <Button x:Name="btnRefreshQr" Content="🔄 Refresh" 
-                            Width="100" Margin="0,12,0,0" Click="BtnRefreshQr_Click"/>
-                </StackPanel>
-            </TabItem>
-        </TabControl>
+            <!-- Inline error display -->
+            <TextBlock x:Name="txtError" Foreground="Red" TextWrapping="Wrap"
+                       Margin="0,8,0,0" Visibility="Collapsed"/>
+        </StackPanel>
     </Grid>
 </mah:MetroWindow>
