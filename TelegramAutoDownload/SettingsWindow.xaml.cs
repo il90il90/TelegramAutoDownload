@@ -31,7 +31,7 @@ namespace TelegramAutoDownload
             pbApiHash.Password = _config.ApiHash ?? string.Empty;
 
             // Notification Bot
-            pbBotToken.Password = _config.BotToken ?? string.Empty;
+            pbBotToken.Text = _config.BotToken ?? string.Empty;
             txtChatId.Text = _config.ChatId ?? string.Empty;
             // Toggle is ON if bot token is filled in; fields are always enabled
             toggleNotifications.IsChecked = !string.IsNullOrWhiteSpace(_config.BotToken);
@@ -98,7 +98,7 @@ namespace TelegramAutoDownload
 
             // Validate: if toggle is on, bot token is required
             bool notificationsEnabled = toggleNotifications.IsChecked == true;
-            if (notificationsEnabled && string.IsNullOrWhiteSpace(pbBotToken.Password))
+            if (notificationsEnabled && string.IsNullOrWhiteSpace(pbBotToken.Text))
             {
                 MessageBox.Show("Enter a Bot Token to enable notifications, or turn the toggle off.", "Validation",
                     MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -113,7 +113,7 @@ namespace TelegramAutoDownload
             _config.AppId = appId;
             _config.ApiHash = pbApiHash.Password;
             // Always save whatever the user typed — toggle controls sending, not storage
-            _config.BotToken = pbBotToken.Password;
+            _config.BotToken = pbBotToken.Text;
             _config.ChatId = txtChatId.Text.Trim();
             _config.PathSaveFile = txtDownloadPath.Text.Trim();
             _config.DownloadThreads = (int)sliderThreads.Value;
@@ -213,7 +213,7 @@ namespace TelegramAutoDownload
 
         private async void BtnTestBot_Click(object sender, RoutedEventArgs e)
         {
-            var token = pbBotToken.Password.Trim();
+            var token = pbBotToken.Text.Trim();
             var chatId = txtChatId.Text.Trim();
 
             if (string.IsNullOrWhiteSpace(token) || string.IsNullOrWhiteSpace(chatId))

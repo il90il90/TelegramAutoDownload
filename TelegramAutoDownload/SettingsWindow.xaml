@@ -93,9 +93,9 @@ Enable this only if you want to receive a Telegram message when a download finis
                                    Foreground="#888" FontSize="11" Margin="0,0,0,12"/>
 
                         <TextBlock Text="Bot Token" FontWeight="SemiBold" Margin="0,0,0,4"/>
-                        <PasswordBox x:Name="pbBotToken"
-                                     mah:TextBoxHelper.Watermark="123456:ABC-DEF..."
-                                     Height="32" Margin="0,0,0,12"/>
+                        <TextBox x:Name="pbBotToken"
+                                 mah:TextBoxHelper.Watermark="123456:ABC-DEF..."
+                                 Height="32" Margin="0,0,0,12"/>
 
                         <TextBlock Text="Chat ID" FontWeight="SemiBold" Margin="0,0,0,4"/>
                         <TextBox x:Name="txtChatId"
