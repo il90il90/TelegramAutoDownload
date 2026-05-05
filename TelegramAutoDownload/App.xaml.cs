@@ -15,12 +15,18 @@ namespace TelegramAutoDownload
 
         protected override void OnStartup(StartupEventArgs e)
         {
-            DotEnv.Load();
+            // Load .env from writable AppData location (fallback to app directory for dev)
+            var envPath = AppPaths.EnvFile;
+            if (!System.IO.File.Exists(envPath))
+                envPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ".env");
+            if (System.IO.File.Exists(envPath))
+                DotEnv.Load(options: new dotenv.net.DotEnvOptions(envFilePaths: new[] { envPath }));
+
             base.OnStartup(e);
 
-            // Initialize file-based logger (rolling daily, keep 7 days)
+            // Initialize file-based logger in writable AppData folder (rolling daily, keep 7 days)
             Log.Logger = new LoggerConfiguration()
-                .WriteTo.File("logs/app-.log",
+                .WriteTo.File(System.IO.Path.Combine(AppPaths.LogsDir, "app-.log"),
                     rollingInterval: RollingInterval.Day,
                     retainedFileCountLimit: 7,
                     outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss} [{Level:u3}] {Message:lj}{NewLine}{Exception}")

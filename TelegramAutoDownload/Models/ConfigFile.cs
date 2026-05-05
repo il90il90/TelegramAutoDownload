@@ -5,18 +5,18 @@ namespace TelegramAutoDownload.Models
 {
     public class ConfigFile
     {
-        private readonly string _fileName = "config.txt";
+        private readonly string _fileName = AppPaths.ConfigFile;
+
         public ConfigFile()
         {
-            var configParams = JsonConvert.SerializeObject(new ConfigParams(), Formatting.Indented);
             if (!File.Exists(_fileName))
-                File.WriteAllText(_fileName, configParams);
+                File.WriteAllText(_fileName,
+                    JsonConvert.SerializeObject(new ConfigParams(), Formatting.Indented));
         }
 
         public void Save(ConfigParams config)
         {
-            var obj = JsonConvert.SerializeObject(config, Formatting.Indented);
-            File.WriteAllText(_fileName, obj);
+            File.WriteAllText(_fileName, JsonConvert.SerializeObject(config, Formatting.Indented));
         }
 
         public ConfigParams Read()

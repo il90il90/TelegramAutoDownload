@@ -35,7 +35,12 @@ namespace TelegramClient
 
         public TelegramApp(int appId, string apiHash)
         {
-            Client = new Client(appId, apiHash, "session.dat");
+            // Store session in writable AppData folder so it survives installs/updates
+            var sessionPath = System.IO.Path.Combine(
+                System.Environment.GetFolderPath(System.Environment.SpecialFolder.ApplicationData),
+                "TelegramAutoDownload", "session.dat");
+            System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(sessionPath)!);
+            Client = new Client(appId, apiHash, sessionPath);
             // Store the login task so callers can await it when needed
             _loginTask = Task.Run(async () =>
             {

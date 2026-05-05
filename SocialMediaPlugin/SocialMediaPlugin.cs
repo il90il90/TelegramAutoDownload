@@ -60,13 +60,19 @@ namespace SocialMediaPlugin
 
         public override async Task<ResultExecute> ExecuteAsync(Config config)
         {
-            var ytdlpPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "tools", "yt-dlp.exe");
+            // Prefer writable AppData tools folder; fall back to install dir (for portable/dev use)
+            var appDataTools = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "TelegramAutoDownload", "tools", "yt-dlp.exe");
+            var installTools = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "tools", "yt-dlp.exe");
+            var ytdlpPath = File.Exists(appDataTools) ? appDataTools : installTools;
+
             if (!File.Exists(ytdlpPath))
             {
                 return new ResultExecute(config.ChatName)
                 {
                     IsSuccess = false,
-                    ErrorMessage = "yt-dlp.exe not found in tools\\ folder"
+                    ErrorMessage = "yt-dlp.exe not found. It will be downloaded automatically on next startup."
                 };
             }
 
@@ -79,8 +85,13 @@ namespace SocialMediaPlugin
             // Build output template: title as filename, yt-dlp sanitises illegal chars on Windows automatically
             var outputTemplate = Path.Combine(outputFolder, "%(title)s.%(ext)s");
 
-            // Optional cookies file — place tools/cookies.txt to unlock X, Instagram, TikTok
-            var cookiesPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "tools", "cookies.txt");
+            // Optional cookies file — place in AppData tools folder or install dir
+            var cookiesAppData = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "TelegramAutoDownload", "tools", "cookies.txt");
+            var cookiesPath = File.Exists(cookiesAppData)
+                ? cookiesAppData
+                : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "tools", "cookies.txt");
 
             // Use the full URL as the identifier (shown in Telegram notifications)
             var tempName = config.Text.Length > 80 ? config.Text[..80] + "…" : config.Text;

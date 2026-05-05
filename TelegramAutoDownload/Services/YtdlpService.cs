@@ -17,11 +17,10 @@ namespace TelegramAutoDownload.Services
         private const string GitHubApiUrl =
             "https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest";
 
-        public static string ToolsFolder =>
-            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "tools");
+        /// <summary>Writable tools folder in %APPDATA%\TelegramAutoDownload\tools\</summary>
+        public static string ToolsFolder => AppPaths.ToolsDir;
 
-        public static string ExePath =>
-            Path.Combine(ToolsFolder, "yt-dlp.exe");
+        public static string ExePath => Path.Combine(ToolsFolder, "yt-dlp.exe");
 
         /// <summary>
         /// Status message updated during update checks (for MainWindow footer display).
@@ -36,7 +35,14 @@ namespace TelegramAutoDownload.Services
         {
             try
             {
-                Directory.CreateDirectory(ToolsFolder);
+                // ToolsFolder is already created by AppPaths static constructor
+                // If yt-dlp is bundled with the installer (read-only install dir), copy it to writable AppData
+                if (!File.Exists(ExePath))
+                {
+                    var bundled = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "tools", "yt-dlp.exe");
+                    if (File.Exists(bundled))
+                        File.Copy(bundled, ExePath, overwrite: false);
+                }
 
                 string? latestVersion = null;
                 string? downloadUrl = null;
