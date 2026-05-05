@@ -166,6 +166,27 @@ namespace TelegramAutoDownload
             }
         }
 
+        private async void BtnSyncChat_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not Button btn || btn.Tag is not ChatDto chat) return;
+            if (!chat.Selected)
+            {
+                MessageBox.Show("Enable monitoring for this chat first (check the checkbox), then try Sync.",
+                    "Sync", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            btn.IsEnabled = false;
+            btn.Content = "…";
+
+            await TelegramApp.SyncHistoryAsync(chat, msg =>
+                Dispatcher.InvokeAsync(() => tbLoadingStatus.Text = msg));
+
+            btn.IsEnabled = true;
+            btn.Content = "⬇ Sync";
+            tbLoadingStatus.Text = string.Empty;
+        }
+
         private void BtnSettings_Click(object sender, RoutedEventArgs e)
         {
             var settingsWindow = new SettingsWindow(ConfigFile) { Owner = this };

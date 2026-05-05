@@ -206,6 +206,104 @@ namespace TelegramClient
             await Task.WhenAll(tasks);
         }
 
+        /// <summary>
+        /// Manually syncs all existing history for a chat — downloads every file that
+        /// hasn't been downloaded yet. Called from the UI "Sync" button.
+        /// </summary>
+        public async Task SyncHistoryAsync(ChatDto chatDto, Action<string>? onStatus = null)
+        {
+            try
+            {
+                onStatus?.Invoke($"Syncing {chatDto.Name}…");
+
+                // Reset watermark so we re-evaluate all messages
+                _highWatermark[chatDto.Id] = 0;
+
+                // Build InputPeer — try access hash cache first, then resolve via GetAllChats
+                InputPeer? peer = null;
+                if (_accessHashes.TryGetValue(chatDto.Id, out var hash))
+                {
+                    peer = hash != 0
+                        ? new InputPeerChannel(chatDto.Id, hash)
+                        : new InputPeerChat(chatDto.Id);
+                }
+                else
+                {
+                    // Try to resolve by fetching dialogs
+                    var dialogs = await Client.Messages_GetDialogs(
+                        offset_date: default, offset_id: 0, offset_peer: null!, limit: 200, hash: 0);
+                    if (dialogs is TL.Messages_Dialogs dlg)
+                    {
+                        if (dlg.chats.TryGetValue(chatDto.Id, out var chatBase) && chatBase is TL.Channel ch)
+                        {
+                            _accessHashes[chatDto.Id] = ch.access_hash;
+                            peer = new InputPeerChannel(chatDto.Id, ch.access_hash);
+                        }
+                        else if (dlg.chats.TryGetValue(chatDto.Id, out var grp) && grp is TL.Chat g)
+                        {
+                            _accessHashes[chatDto.Id] = 0;
+                            peer = new InputPeerChat(chatDto.Id);
+                        }
+                    }
+                }
+
+                if (peer == null)
+                {
+                    onStatus?.Invoke($"Could not resolve peer for {chatDto.Name}");
+                    return;
+                }
+
+                int totalQueued = 0;
+                int offsetId = 0;
+                const int pageSize = 100;
+
+                while (true)
+                {
+                    var history = await Client.Messages_GetHistory(peer,
+                        offset_id: offsetId, limit: pageSize);
+
+                    var messages = history.Messages
+                        .OfType<Message>()
+                        .Where(m => m.media != null)
+                        .ToList();
+
+                    if (messages.Count == 0) break;
+
+                    var tasks = messages.Select(msg => Task.Run(async () =>
+                    {
+                        await _semaphore.WaitAsync();
+                        try
+                        {
+                            var result = await factoryService.ExecuteDirectAsync(msg, chatDto);
+                            if (result.IsSuccess && OnSaved != null)
+                                await OnSaved.Invoke(new ResultMessageEvent
+                                {
+                                    Chat = chatDto,
+                                    Message = msg.message,
+                                    PostAuthor = msg.post_author,
+                                    ResultExecute = result,
+                                });
+                        }
+                        finally { _semaphore.Release(); }
+                    }));
+
+                    await Task.WhenAll(tasks);
+                    totalQueued += messages.Count;
+                    onStatus?.Invoke($"Syncing {chatDto.Name}: {totalQueued} files queued…");
+
+                    if (messages.Count < pageSize) break;
+                    offsetId = messages.Min(m => m.ID);
+                }
+
+                onStatus?.Invoke($"Sync complete: {totalQueued} files from {chatDto.Name}");
+            }
+            catch (Exception ex)
+            {
+                onStatus?.Invoke($"Sync failed: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"SyncHistoryAsync failed: {ex.Message}");
+            }
+        }
+
         /// <summary>Returns the monitored ChatDto for a given peer ID, or null if not monitored.</summary>
         private ChatDto? FindMonitoredChat(long peerId) =>
             _configParams?.Chats?.FirstOrDefault(c => c.Id == peerId || c.Id == -peerId);

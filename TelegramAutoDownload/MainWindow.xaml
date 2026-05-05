@@ -217,6 +217,18 @@
                                 </DataTemplate>
                             </GridViewColumn.CellTemplate>
                         </GridViewColumn>
+
+                        <!-- Sync column: download all existing history from this chat -->
+                        <GridViewColumn Header="Sync" Width="70">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Button Content="⬇ Sync" Height="24" Padding="4,0" FontSize="11"
+                                            ToolTip="Download all existing files from this chat's history"
+                                            Tag="{Binding}"
+                                            Click="BtnSyncChat_Click"/>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
                     </GridView>
                 </ListView.View>
             </ListView>
