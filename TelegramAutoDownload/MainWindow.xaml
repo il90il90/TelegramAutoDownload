@@ -339,7 +339,7 @@
             <DockPanel>
                 <!-- Right: version + connection dot + path controls -->
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Text="v2.2.0" VerticalAlignment="Center" Foreground="#999" Margin="0,0,16,0"/>
+                    <TextBlock x:Name="tbAppVersion" Text="v2.2.0" VerticalAlignment="Center" Foreground="#999" Margin="0,0,16,0"/>
                     <Ellipse x:Name="connectionDot" Width="10" Height="10" Fill="Green" Margin="0,0,8,0" VerticalAlignment="Center"/>
                     <!-- Folder path — click to open in Explorer -->
                     <Button x:Name="btnOpenFolder" Click="HlOpenFolder_Click"

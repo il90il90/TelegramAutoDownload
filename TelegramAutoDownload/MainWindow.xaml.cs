@@ -66,8 +66,12 @@ namespace TelegramAutoDownload
 
         private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
+            tbAppVersion.Text = $"v{AppVersion.Current}";
             mainLoadingRing.IsActive = true;
             tbLoadingStatus.Text = "Loading chats...";
+
+            // Check for app updates in background; show dialog if newer version found
+            _ = CheckForAppUpdateAsync();
 
             // Ensure yt-dlp is available and up to date; show status in footer
             YtdlpService.StatusChanged += msg =>
@@ -464,6 +468,25 @@ namespace TelegramAutoDownload
 
                 ConfigFile.Save(configParams);
                 TelegramApp.UpdateConfig(configParams);
+            }
+        }
+
+        private async Task CheckForAppUpdateAsync()
+        {
+            try
+            {
+                var release = await AutoUpdateService.CheckAsync();
+                if (release == null) return;
+
+                await Dispatcher.InvokeAsync(() =>
+                {
+                    var dlg = new UpdateDialog(release) { Owner = this };
+                    dlg.ShowDialog();
+                });
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Update check failed");
             }
         }
 
