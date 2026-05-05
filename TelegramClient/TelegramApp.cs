@@ -33,6 +33,17 @@ namespace TelegramClient
         private SemaphoreSlim _semaphore = new SemaphoreSlim(3);
         private readonly Task _loginTask;
 
+        // Stored config so we can look up monitored ChatDto objects by peer ID
+        private ConfigParams? _configParams;
+
+        // Cache of channel/chat access hashes populated from incoming updates
+        // so we can construct InputPeer when processing missed history
+        private readonly Dictionary<long, long> _accessHashes = new();
+
+        // Per-chat watermark: highest message ID we have already queued for download.
+        // Prevents re-downloading when we re-fetch history.
+        private readonly Dictionary<long, int> _highWatermark = new();
+
         public TelegramApp(int appId, string apiHash)
         {
             // Store session in writable AppData folder so it survives installs/updates
@@ -63,6 +74,7 @@ namespace TelegramClient
         /// <param name="pathFolderToSaveFiles">The path to the folder where files will be saved.</param>
         public void UpdateConfig(ConfigParams configParams)
         {
+            _configParams = configParams;
             var chatIds = configParams.Chats?.Select(c => c.Id).ToList() ?? new List<long>();
             factoryService = new FactoryMessagesService(Client, configParams.PathSaveFile);
             factoryService.OnProgress = OnProgress;
@@ -76,14 +88,44 @@ namespace TelegramClient
             if (factoryUserService == null)
                 return;
 
+            // Cache access hashes for all channels/chats we see in any update
+            foreach (var kv in updates.Chats)
+            {
+                if (kv.Value is TL.Channel ch)
+                    _accessHashes[ch.ID] = ch.access_hash;
+                else if (kv.Value is TL.Chat grp)
+                    _accessHashes[grp.ID] = 0;
+            }
+
             var chat = factoryUserService.Execute(updates);
 
-            if (chat == null) return;
             List<Task> tasks = [];
             foreach (Update update in updates.UpdateList)
             {
+                if (update is UpdateChannelTooLong tooLong)
+                {
+                    // Telegram is telling us we missed updates — fetch history to catch up
+                    var chatDto = FindMonitoredChat(tooLong.channel_id);
+                    if (chatDto != null)
+                        tasks.Add(Task.Run(() => ProcessMissedMessagesAsync(tooLong.channel_id, chatDto)));
+                    continue;
+                }
+
+                if (chat == null) continue;
+
                 if (update is UpdateNewMessage updateNewMessage)
                 {
+                    // Track watermark so catch-up doesn't re-download this message
+                    if (updateNewMessage.message is Message liveMsg)
+                    {
+                        var peerId = liveMsg.peer_id is PeerChannel pc ? pc.channel_id
+                                   : liveMsg.peer_id is PeerChat pg ? pg.chat_id
+                                   : liveMsg.peer_id is PeerUser pu ? pu.user_id : 0;
+                        if (peerId != 0)
+                            _highWatermark[peerId] = Math.Max(
+                                _highWatermark.GetValueOrDefault(peerId), liveMsg.ID);
+                    }
+
                     var task = Task.Run(async () =>
                     {
                         await _semaphore.WaitAsync();
@@ -162,6 +204,79 @@ namespace TelegramClient
                 }
             }
             await Task.WhenAll(tasks);
+        }
+
+        /// <summary>Returns the monitored ChatDto for a given peer ID, or null if not monitored.</summary>
+        private ChatDto? FindMonitoredChat(long peerId) =>
+            _configParams?.Chats?.FirstOrDefault(c => c.Id == peerId || c.Id == -peerId);
+
+        /// <summary>
+        /// Fetches recent history for a channel/chat and downloads any messages
+        /// that arrived after the last live update we processed (using _highWatermark).
+        /// Called when Telegram sends UpdateChannelTooLong.
+        /// </summary>
+        private async Task ProcessMissedMessagesAsync(long channelId, ChatDto chatDto)
+        {
+            try
+            {
+                if (!_accessHashes.TryGetValue(channelId, out var accessHash)) return;
+
+                InputPeer peer = accessHash != 0
+                    ? new InputPeerChannel(channelId, accessHash)
+                    : new InputPeerChat(channelId);
+
+                int watermark = _highWatermark.GetValueOrDefault(channelId, 0);
+
+                // Paginate history newest-first until we reach the watermark
+                int offsetId = 0;
+                const int pageSize = 100;
+
+                while (true)
+                {
+                    var history = await Client.Messages_GetHistory(peer,
+                        offset_id: offsetId, limit: pageSize);
+
+                    var messages = history.Messages
+                        .OfType<Message>()
+                        .Where(m => m.media != null && m.ID > watermark)
+                        .ToList();
+
+                    if (messages.Count == 0) break;
+
+                    // Process each missed message through the download pipeline
+                    var tasks = messages.Select(msg => Task.Run(async () =>
+                    {
+                        await _semaphore.WaitAsync();
+                        try
+                        {
+                            // Mark as seen so live updates don't re-download it
+                            _highWatermark[channelId] = Math.Max(
+                                _highWatermark.GetValueOrDefault(channelId), msg.ID);
+
+                            var result = await factoryService.ExecuteDirectAsync(msg, chatDto);
+                            if (result.IsSuccess && OnSaved != null)
+                                await OnSaved.Invoke(new ResultMessageEvent
+                                {
+                                    Chat = chatDto,
+                                    Message = msg.message,
+                                    PostAuthor = msg.post_author,
+                                    ResultExecute = result,
+                                });
+                        }
+                        finally { _semaphore.Release(); }
+                    }));
+
+                    await Task.WhenAll(tasks);
+
+                    // If we got a full page, continue paging; otherwise we're done
+                    if (messages.Count < pageSize) break;
+                    offsetId = messages.Min(m => m.ID);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"ProcessMissedMessagesAsync failed for channel {channelId}: {ex.Message}");
+            }
         }
 
         private async Task ReactToMessage(ChatDto chatDto, UpdatesBase updates, Message message, string reactionIcon)

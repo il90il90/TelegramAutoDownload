@@ -67,24 +67,30 @@ namespace TelegramClient.Factory.Service
             if (update is UpdateNewMessage updateNewMessage)
             {
                 if (updateNewMessage.message is Message message)
-                {
-                    var type = GetTypeOfMessage(message);
-
-                    var handleMessage = messageTypes.FirstOrDefault(a => a.TypeMessage.Equals(type));
-                    if (handleMessage == null) return new ResultExecute(chatDto.Name);
-
-                    var downloadPolicyResult = handleMessage.CheckDownloadPolicy(chatDto, message);
-                    if (downloadPolicyResult.IsSuccess)
-                    {
-                        var resultExecute = await handleMessage.ExecuteAsync(message, chatDto);
-                        resultExecute.MessageType = type.ToString();
-                        return resultExecute;
-                    }
-
-                    return downloadPolicyResult;
-                }
+                    return await ExecuteDirectAsync(message, chatDto);
             }
             return new ResultExecute(chatDto.Name);
+        }
+
+        /// <summary>
+        /// Processes a Message directly — used for historical/catch-up messages
+        /// that don't arrive as UpdateNewMessage.
+        /// </summary>
+        public async Task<ResultExecute> ExecuteDirectAsync(Message message, ChatDto chatDto)
+        {
+            var type = GetTypeOfMessage(message);
+            var handleMessage = messageTypes.FirstOrDefault(a => a.TypeMessage.Equals(type));
+            if (handleMessage == null) return new ResultExecute(chatDto.Name);
+
+            var downloadPolicyResult = handleMessage.CheckDownloadPolicy(chatDto, message);
+            if (downloadPolicyResult.IsSuccess)
+            {
+                var resultExecute = await handleMessage.ExecuteAsync(message, chatDto);
+                resultExecute.MessageType = type.ToString();
+                return resultExecute;
+            }
+
+            return downloadPolicyResult;
         }
 
         public MessageTypes GetTypeOfMessage(Message message)
