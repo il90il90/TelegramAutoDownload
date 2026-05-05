@@ -45,7 +45,8 @@ namespace TelegramClient.Factory.Base
             {
                 var documentSizeInMb = document.size / 1024 / 1024;
 
-                if (chatDto.DownloadFromSize != 0 && chatDto.DownloadFromSize <= documentSizeInMb)
+                // Skip download if the file is smaller than the configured minimum threshold
+                if (chatDto.DownloadFromSize != 0 && documentSizeInMb < chatDto.DownloadFromSize)
                 {
                     return new ResultExecute(chatDto.Name)
                     {

@@ -1,14 +1,14 @@
-﻿using System.Configuration;
-using System.Data;
-using System.Windows;
+﻿using System.Windows;
+using dotenv.net;
 
 namespace TelegramAutoDownload
 {
-    /// <summary>
-    /// Interaction logic for App.xaml
-    /// </summary>
     public partial class App : Application
     {
+        protected override void OnStartup(StartupEventArgs e)
+        {
+            DotEnv.Load();
+            base.OnStartup(e);
+        }
     }
-
 }

@@ -21,10 +21,12 @@ namespace TelegramClient.Factory.FactoriesUsers
                 if (updates.Users.Count == 0)
                     return null;
 
-                var user = ((Updates)updates).Users?.FirstOrDefault(u => listenToChannel.Contains(u.Key));
-                var username = user.Value.Value?.ToString().Replace("@", "");
+                if (updates is not Updates typedUpdates) return null;
+                var user = typedUpdates.Users?.FirstOrDefault(u => listenToChannel.Contains(u.Key));
+                var username = user?.Value.Value?.ToString().Replace("@", "");
                 if (username == null) return null;
                 var chatParams = ConfigParams.Chats.FirstOrDefault(a => a.Id == user.Value.Key);
+                if (chatParams == null) return null;
 
                 return new ChatDto()
                 {

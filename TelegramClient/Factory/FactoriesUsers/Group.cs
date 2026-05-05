@@ -20,13 +20,14 @@ namespace TelegramClient.Factory.FactoriesUsers
 
             if (group != null)
             {
-                var chat = updates.Chats?.Values?.FirstOrDefault();
-                var chatParams = ConfigParams.Chats.FirstOrDefault(a => a.Id == chat.ID);
+                var chatParams = ConfigParams.Chats.FirstOrDefault(a => a.Id == group.ID);
+                if (chatParams == null) return null;
+
                 return new ChatDto()
                 {
-                    Id = chat.ID,
-                    Name = chat.Title,
-                    Username = chat.MainUsername,
+                    Id = group.ID,
+                    Name = group.Title,
+                    Username = group.MainUsername,
                     ReactionIcon = chatParams.ReactionIcon,
                     Download = chatParams.Download,
                     Type = chatParams.Type,

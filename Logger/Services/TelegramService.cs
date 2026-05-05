@@ -30,7 +30,8 @@ namespace Logger.Services
             var data = new FormUrlEncodedContent(
             [
                 new KeyValuePair<string, string>("chat_id", ChatId),
-                new KeyValuePair<string, string>("text", text)
+                new KeyValuePair<string, string>("text", text),
+                new KeyValuePair<string, string>("parse_mode", "HTML")
             ]);
 
             try
@@ -44,7 +45,6 @@ namespace Logger.Services
             {
                 Console.WriteLine(e.Message);
             }
-            await Task.CompletedTask;
         }
     }
 }

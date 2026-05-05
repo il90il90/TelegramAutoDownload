@@ -7,6 +7,7 @@ namespace DownloadPlugin
     public class DownladerPlugin<TMessage> : BasePlugin<TMessage>
     {
         public override string PluginName => "Other";
+        public override int Priority => 100;
 
         public override bool CanHandle(Config config)
         {

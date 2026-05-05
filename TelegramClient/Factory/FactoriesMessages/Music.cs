@@ -15,11 +15,8 @@ namespace TelegramClient.Factory.FactoriesMessages
 {
     internal class Music : BaseMessage
     {
-        private readonly Client client;
-
         public Music(Client client, string pathFolderToSaveFiles) : base(client, pathFolderToSaveFiles)
         {
-            this.client = client;
         }
 
         public override MessageTypes TypeMessage => MessageTypes.Music;
@@ -42,8 +39,8 @@ namespace TelegramClient.Factory.FactoriesMessages
                     };
                 }
                 var pathFolderLocation = PathLocationFolder(chatDto, fileName);
-                using var stream = File.OpenWrite(pathFolderLocation);
-                await client.DownloadFileAsync(document, stream);
+                using var stream = File.Create(pathFolderLocation);
+                await Client.DownloadFileAsync(document, stream);
                 return new ResultExecute(chatDto.Name)
                 {
                     IsSuccess = true,

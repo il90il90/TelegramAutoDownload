@@ -45,28 +45,38 @@ namespace TelegramClient.Factory.Service
         public override async Task<ResultExecute> ExecuteAsync(Message message, ChatDto chatDto)
         {
             ResultExecute resultExecute = new(chatDto.Name);
-            var split = message.message.Split('\n');
+            var split = (message.message ?? string.Empty).Split('\n');
             foreach (var line in split)
             {
-                foreach (var pluginType in _pluginTypes)
+                // Sort by priority on each line to ensure deterministic ordering
+                var orderedPlugins = _pluginTypes
+                    .Select(t => t.MakeGenericType(typeof(Message)))
+                    .Select(t => Activator.CreateInstance(t) as BasePlugin<Message>)
+                    .Where(p => p != null)
+                    .OrderBy(p => p!.Priority)
+                    .ToList();
+
+                foreach (var pluginInstance in orderedPlugins)
                 {
-                    var genericType = pluginType.MakeGenericType(typeof(Message));
-
-                    if (Activator.CreateInstance(genericType) is BasePlugin<Message> pluginInstance)
+                    var config = new BasePlugins.Config
                     {
-                        var config = new BasePlugins.Config
-                        {
-                            Text = line,
-                            PathSaveFile = PathFolderToSaveFiles,
-                            ChatName = chatDto.Name,
-                        };
+                        Text = line,
+                        PathSaveFile = PathFolderToSaveFiles,
+                        ChatName = chatDto.Name,
+                        EnabledPlugins = chatDto.EnabledPlugins,
+                    };
 
-                        if (pluginInstance.CanHandle(config))
-                        {
-                            resultExecute = await pluginInstance.ExecuteAsync(config);
-                        }
-                    }
+                    if (!pluginInstance!.CanHandle(config)) continue;
+
+                    // Skip if plugin is explicitly disabled for this chat (missing key = enabled)
+                    if (config.EnabledPlugins.TryGetValue(pluginInstance.PluginName, out var enabled) && !enabled)
+                        continue;
+
+                    resultExecute = await pluginInstance.ExecuteAsync(config);
+                    if (resultExecute.IsSuccess) break;
                 }
+
+                if (resultExecute.IsSuccess) break;
             }
             return resultExecute;
         }

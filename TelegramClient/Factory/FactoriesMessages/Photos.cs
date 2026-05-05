@@ -1,10 +1,7 @@
 ﻿using BasePlugins;
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.IO.Pipes;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using TelegramClient.Factory.Base;
 using TelegramClient.Factory.FactoriesMessages.Enum;
@@ -30,7 +27,10 @@ namespace TelegramClient.Factory.Factories
 
             if (message.media is MessageMediaDocument { document: Document document })
             {
-                fileName = document.Filename;
+                // Assign filename before duplicate check so fileExist return has a valid name
+                fileName = !string.IsNullOrEmpty(document.Filename)
+                    ? document.Filename
+                    : $"{document.id}.{document.mime_type.Split('/').Last()}";
                 var fileExist = GetPathOfDuplicateFile(fileName);
                 if (fileExist != null)
                 {
@@ -40,11 +40,9 @@ namespace TelegramClient.Factory.Factories
                         ErrorMessage = $"{fileName} is exist on {fileExist}"
                     };
                 }
-                fileName ??= $"{document.id}.{document.mime_type[(document.mime_type.IndexOf('/') + 1)..]}";
                 var folderLocation = PathLocationFolder(chatDto, fileName);
                 using var fileStream = File.Create(folderLocation);
                 await Client.DownloadFileAsync(document, fileStream);
-                fileStream.Close();
             }
             else if (message.media is MessageMediaPhoto { photo: Photo photo })
             {
@@ -60,8 +58,7 @@ namespace TelegramClient.Factory.Factories
                 }
                 var folderLocation = PathLocationFolder(chatDto, fileName);
                 using var fileStream = File.Create(folderLocation);
-                var type = await Client.DownloadFileAsync(photo, fileStream);
-                fileStream.Close();
+                await Client.DownloadFileAsync(photo, fileStream);
             }
             return new ResultExecute(chatDto.Name)
             {

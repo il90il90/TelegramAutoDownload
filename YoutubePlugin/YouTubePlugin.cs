@@ -9,7 +9,7 @@ namespace YoutubePlugin
         readonly YoutubeClient youtube = new();
 
         public override string PluginName => "YouTube";
-
+        public override int Priority => 10;
 
         public override bool CanHandle(Config config)
         {
@@ -29,20 +29,26 @@ namespace YoutubePlugin
                 var streamManifest = await youtube.Videos.Streams.GetManifestAsync(config.Text);
 
                 var streamInfo = streamManifest.Streams.OrderByDescending(a => a.Size.Bytes).FirstOrDefault(a => a.Container.Name.Contains("mp4"));
-                if (streamInfo != null)
+                if (streamInfo == null)
                 {
-                    char[] invalidChars = Path.GetInvalidFileNameChars();
-                    var title = video.Title;
-                    foreach (char c in invalidChars)
+                    return new ResultExecute(config.ChatName)
                     {
-                        title = title.Replace(c, ' ');
-                    }
-
-                    var path = $"{config.PathSaveFile}/{PluginName}/{config.ChatName}/{video.Author.ChannelTitle}";
-                    CreateDirectoryIfNotExist(path);
-
-                    await youtube.Videos.Streams.DownloadAsync(streamInfo, $"{path}/{title}-{video.Author?.ChannelTitle}.{streamInfo.Container}");
+                        IsSuccess = false,
+                        ErrorMessage = "No mp4 stream available"
+                    };
                 }
+
+                char[] invalidChars = Path.GetInvalidFileNameChars();
+                var title = video.Title;
+                foreach (char c in invalidChars)
+                {
+                    title = title.Replace(c, ' ');
+                }
+
+                var path = Path.Combine(config.PathSaveFile, PluginName, config.ChatName, video.Author.ChannelTitle);
+                CreateDirectoryIfNotExist(path);
+
+                await youtube.Videos.Streams.DownloadAsync(streamInfo, Path.Combine(path, $"{title}-{video.Author?.ChannelTitle}.{streamInfo.Container}"));
 
                 return new ResultExecute(config.ChatName)
                 {

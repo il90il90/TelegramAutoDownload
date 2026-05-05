@@ -22,7 +22,7 @@ namespace TelegramAutoDownload.Models
         public ConfigParams Read()
         {
             var data = File.ReadAllText(_fileName);
-            return JsonConvert.DeserializeObject<ConfigParams>(data);
+            return JsonConvert.DeserializeObject<ConfigParams>(data) ?? new ConfigParams();
         }
     }
 }

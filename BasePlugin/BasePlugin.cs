@@ -4,6 +4,7 @@ namespace BasePlugins
     public abstract class BasePlugin<TMessage> : IBasePlugin
     {
         public abstract string PluginName { get; }
+        public virtual int Priority => 50;
 
         public abstract bool CanHandle(Config config);
         public abstract Task<ResultExecute> ExecuteAsync(Config config);

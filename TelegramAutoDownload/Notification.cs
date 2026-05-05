@@ -1,6 +1,6 @@
 ﻿using Logger.Config;
 using Logger.Services;
-using Newtonsoft.Json;
+using System.Text;
 using TelegramClient.Models;
 
 namespace TelegramAutoDownload
@@ -19,27 +19,42 @@ namespace TelegramAutoDownload
 
         public async Task<ResultMessageEvent> OnUpdateResultMessageAsync(ResultMessageEvent eventMessage)
         {
-            await telegramService.SendMessageAsync("✅\n" + JsonConvert.SerializeObject(new
-            {
-                Message = eventMessage.Message,
-                Chat = eventMessage.Chat,
-                PostAuthor = eventMessage.PostAuthor,
-            }, Formatting.Indented));
+            var chat = eventMessage.Chat;
+            var result = eventMessage.ResultExecute;
+            var sb = new StringBuilder();
+            sb.AppendLine("✅ <b>Downloaded Successfully</b>");
+            sb.AppendLine();
+            sb.AppendLine($"📁 <b>Chat:</b> {HtmlEncode(chat.Name)}");
+            sb.AppendLine($"🎬 <b>Type:</b> {HtmlEncode(result.MessageType ?? "-")}");
+            sb.AppendLine($"📄 <b>File:</b> {HtmlEncode(result.FileName ?? "-")}");
+            if (!string.IsNullOrWhiteSpace(eventMessage.PostAuthor))
+                sb.AppendLine($"👤 <b>Author:</b> {HtmlEncode(eventMessage.PostAuthor)}");
 
+            await telegramService.SendMessageAsync(sb.ToString());
             return eventMessage;
         }
 
         public async Task<ResultMessageEvent> OnWarnningMessageAsync(ResultMessageEvent eventMessage)
         {
-            await telegramService.SendMessageAsync("⚠️\n" + JsonConvert.SerializeObject(new
-            {
-                Message = eventMessage.Message,
-                Chat = eventMessage.Chat,
-                ResultExecute = eventMessage.ResultExecute,
-                PostAuthor = eventMessage.PostAuthor,
-            }, Formatting.Indented));
+            var chat = eventMessage.Chat;
+            var result = eventMessage.ResultExecute;
+            var snippet = eventMessage.Message?.Length > 80
+                ? eventMessage.Message[..80] + "…"
+                : eventMessage.Message ?? string.Empty;
 
+            var sb = new StringBuilder();
+            sb.AppendLine("⚠️ <b>Warning</b>");
+            sb.AppendLine();
+            sb.AppendLine($"📁 <b>Chat:</b> {HtmlEncode(chat.Name)}");
+            sb.AppendLine($"🎬 <b>Type:</b> {HtmlEncode(result.MessageType ?? "-")}");
+            sb.AppendLine($"❌ <b>Error:</b> {HtmlEncode(result.ErrorMessage ?? "-")}");
+            sb.AppendLine($"💬 <b>Message:</b> {HtmlEncode(snippet)}");
+
+            await telegramService.SendMessageAsync(sb.ToString());
             return eventMessage;
         }
+
+        private static string HtmlEncode(string text) =>
+            text.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;");
     }
 }

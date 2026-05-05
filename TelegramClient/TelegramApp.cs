@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using TelegramAutoDownload.Models;
 using TelegramClient.Factory.Service;
@@ -19,6 +20,7 @@ namespace TelegramClient
         public readonly Client Client;
         private FactoryMessagesService factoryService;
         private FactoryUserService factoryUserService;
+        private SemaphoreSlim _semaphore = new SemaphoreSlim(3);
 
         public TelegramApp(int appId, string apiHash)
         {
@@ -34,9 +36,10 @@ namespace TelegramClient
         /// <param name="pathFolderToSaveFiles">The path to the folder where files will be saved.</param>
         public void UpdateConfig(ConfigParams configParams)
         {
-            var chatIds = configParams.Chats.Select(c => c.Id).ToList();
+            var chatIds = configParams.Chats?.Select(c => c.Id).ToList() ?? new List<long>();
             factoryService = new FactoryMessagesService(Client, configParams.PathSaveFile);
             factoryUserService = new FactoryUserService(chatIds, configParams);
+            _semaphore = new SemaphoreSlim(Math.Max(1, configParams.DownloadThreads));
         }
         private async Task Client_OnUpdates(UpdatesBase updates)
         {
@@ -53,6 +56,10 @@ namespace TelegramClient
                 {
                     var task = Task.Run(async () =>
                     {
+                        await _semaphore.WaitAsync();
+                        try
+                        {
+
                         ResultExecute resultExecute = new ResultExecute(chat.Name);
 
                         if (updateNewMessage.message is Message infoMessage)
@@ -72,15 +79,25 @@ namespace TelegramClient
                                 {
                                     if (updateNewMessage != null && !string.IsNullOrEmpty(chat.ReactionIcon))
                                     {
-                                        await ReactToMessage(chat, updates, infoMessage, chat.ReactionIcon);
+                                        try
+                                        {
+                                            await ReactToMessage(chat, updates, infoMessage, chat.ReactionIcon);
+                                        }
+                                        catch (Exception reactionEx)
+                                        {
+                                            // Reaction failure must not suppress the OnSaved notification
+                                            resultExecute.ErrorMessage = reactionEx.Message;
+                                        }
                                     }
-                                    OnSaved?.Invoke(resultMessageEvent);
+                                    if (OnSaved != null)
+                                        await OnSaved.Invoke(resultMessageEvent);
                                 }
                                 else
                                 {
                                     if (!string.IsNullOrEmpty(resultExecute.ErrorMessage))
                                     {
-                                        OnWarnningMessage?.Invoke(resultMessageEvent);
+                                        if (OnWarnningMessage != null)
+                                            await OnWarnningMessage.Invoke(resultMessageEvent);
                                     }
                                 }
                             }
@@ -97,6 +114,11 @@ namespace TelegramClient
                             }
                         }
 
+                        }
+                        finally
+                        {
+                            _semaphore.Release();
+                        }
                     });
                     tasks.Add(task);
                 }
@@ -112,28 +134,28 @@ namespace TelegramClient
             {
                 InputPeer inputPeer;
 
-                if (updates.Chats.First().Value is TL.Channel channel)
+                if (updates.Chats.Count > 0 && updates.Chats.First().Value is TL.Channel channel)
                 {
                     inputPeer = new InputPeerChannel(channel.ID, channel.access_hash);
                 }
-                else if (updates.Chats.First().Value is TL.Chat chat)
+                else if (updates.Chats.Count > 0 && updates.Chats.First().Value is TL.Chat chat)
                 {
                     inputPeer = new InputPeerChat(chat.ID);
                 }
-                else if (updates.Users.First().Value is User user)
+                else if (updates.Users.Count > 0 && updates.Users.First().Value is User user)
                 {
                     inputPeer = new InputPeerUser(user.id, user.access_hash);
                 }
                 else
                 {
-                    throw new InvalidOperationException($"reaction: Unknown peer type, isCahnnel: {isChannel}, isGroup: {isGroup}");
+                    throw new InvalidOperationException($"reaction: Unknown peer type, isChannel: {isChannel}, isGroup: {isGroup}");
                 }
 
                 await Client.Messages_SendReaction(inputPeer, message.ID, new[] { new ReactionEmoji { emoticon = reactionIcon } });
             }
             catch (Exception e)
             {
-                throw new Exception($"failed to send reaction {chatDto.Name} {e.Message} isCahnnel: {isChannel}, isGroup: {isGroup}", e);
+                throw new Exception($"failed to send reaction {chatDto.Name} {e.Message} isChannel: {isChannel}, isGroup: {isGroup}", e);
             }
         }
 

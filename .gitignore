@@ -1,4 +1,11 @@
 
+# Sensitive runtime files
+config.txt
+.env
+
+# External tools (download separately; see README)
+tools/*.exe
+
 TelegramAutoDownload/bin/Debug/net8.0-windows/config.txt
 *.bin
 *.vsidx

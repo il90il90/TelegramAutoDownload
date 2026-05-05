@@ -14,13 +14,10 @@ namespace TelegramClient.Factory.Factories
 
     public class Videos : BaseMessage
     {
-        private readonly Client client;
-
         public override MessageTypes TypeMessage => MessageTypes.Videos;
 
         public Videos(Client client, string pathFolderToSaveFiles) : base(client, pathFolderToSaveFiles)
         {
-            this.client = client;
         }
 
         public override async Task<ResultExecute> ExecuteAsync(Message message, ChatDto chatDto)
@@ -54,8 +51,8 @@ namespace TelegramClient.Factory.Factories
                         };
                     }
                     var pathFolderLocation = PathLocationFolder(chatDto, fileName);
-                    using var stream = File.OpenWrite(pathFolderLocation);
-                    await client.DownloadFileAsync(document, stream);
+                    using var stream = File.Create(pathFolderLocation);
+                    await Client.DownloadFileAsync(document, stream);
 
                     return new ResultExecute(chatDto.Name)
                     {

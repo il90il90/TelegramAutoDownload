@@ -13,6 +13,8 @@ namespace TelegramClient.Models
         public Download Download { get; set; } = new Download();
         public int DownloadFromSize { get; set; }
         public List<string> IgnoreFileByRegex { get; set; } = [];
+        // Keys are PluginName values; missing key = enabled by default
+        public Dictionary<string, bool> EnabledPlugins { get; set; } = new();
     }
 
     public class Download
