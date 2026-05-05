@@ -1,8 +1,8 @@
 ﻿<Application x:Class="TelegramAutoDownload.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:local="clr-namespace:TelegramAutoDownload"
-             StartupUri="LoginWindow.xaml">
+             xmlns:local="clr-namespace:TelegramAutoDownload">
+    <!-- StartupUri removed — window routing handled in App.OnStartup -->
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>

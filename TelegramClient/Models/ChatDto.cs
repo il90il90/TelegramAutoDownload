@@ -10,6 +10,8 @@ namespace TelegramClient.Models
         public bool Selected { get; set; }
         public string Type { get; set; }
         public string ReactionIcon { get; set; } = string.Empty;
+        // Reaction sent when download STARTS (default: ⏳)
+        public string DownloadStartIcon { get; set; } = string.Empty;
         public Download Download { get; set; } = new Download();
         public int DownloadFromSize { get; set; }
         public List<string> IgnoreFileByRegex { get; set; } = [];

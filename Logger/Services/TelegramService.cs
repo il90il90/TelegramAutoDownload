@@ -1,4 +1,5 @@
 ﻿using Logger.Config;
+using System.Text.Json;
 
 namespace Logger.Services
 {
@@ -20,12 +21,11 @@ namespace Logger.Services
             }
         }
 
-        public async Task SendMessageAsync(string text)
+        /// <summary>Sends a message and returns the Telegram message_id (0 on failure).</summary>
+        public async Task<long> SendMessageAsync(string text)
         {
-            if (!IsActive)
-            {
-                return;
-            }
+            if (!IsActive) return 0;
+
             var url = $"https://api.telegram.org/bot{BotToken}/sendMessage";
             var data = new FormUrlEncodedContent(
             [
@@ -38,13 +38,32 @@ namespace Logger.Services
             {
                 var response = await client.PostAsync(url, data);
                 response.EnsureSuccessStatusCode();
-
-                string responseBody = await response.Content.ReadAsStringAsync();
+                var body = await response.Content.ReadAsStringAsync();
+                using var doc = JsonDocument.Parse(body);
+                return doc.RootElement.GetProperty("result").GetProperty("message_id").GetInt64();
             }
-            catch (HttpRequestException e)
+            catch
             {
-                Console.WriteLine(e.Message);
+                return 0;
             }
+        }
+
+        /// <summary>Edits a previously sent message.</summary>
+        public async Task EditMessageAsync(long messageId, string text)
+        {
+            if (!IsActive || messageId == 0) return;
+
+            var url = $"https://api.telegram.org/bot{BotToken}/editMessageText";
+            var data = new FormUrlEncodedContent(
+            [
+                new KeyValuePair<string, string>("chat_id", ChatId),
+                new KeyValuePair<string, string>("message_id", messageId.ToString()),
+                new KeyValuePair<string, string>("text", text),
+                new KeyValuePair<string, string>("parse_mode", "HTML")
+            ]);
+
+            try { await client.PostAsync(url, data); }
+            catch { /* non-critical */ }
         }
     }
 }

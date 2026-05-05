@@ -22,16 +22,20 @@ namespace TelegramClient.Factory.FactoriesUsers
                     return null;
 
                 if (updates is not Updates typedUpdates) return null;
-                var user = typedUpdates.Users?.FirstOrDefault(u => listenToChannel.Contains(u.Key));
-                var username = user?.Value.Value?.ToString().Replace("@", "");
+
+                // Enumerate without Cast — Dictionary<long, UserBase> yields KeyValuePair<long, UserBase>
+                var userKvp = typedUpdates.Users?
+                    .FirstOrDefault(u => listenToChannel.Contains(u.Key));
+                if (userKvp == null || userKvp.Value.Value is not TL.User tlUser) return null;
+                var username = tlUser.MainUsername?.Replace("@", "");
                 if (username == null) return null;
-                var chatParams = ConfigParams.Chats.FirstOrDefault(a => a.Id == user.Value.Key);
+                var chatParams = ConfigParams.Chats.FirstOrDefault(a => a.Id == userKvp.Value.Key);
                 if (chatParams == null) return null;
 
                 return new ChatDto()
                 {
-                    Id = user.Value.Value.ID,
-                    Name = $"{user.Value.Value.first_name} {user.Value.Value.last_name}",
+                    Id = tlUser.ID,
+                    Name = $"{tlUser.first_name} {tlUser.last_name}",
                     Username = username,
                     ReactionIcon = chatParams.ReactionIcon,
                     Download = chatParams.Download,

@@ -68,8 +68,12 @@ namespace TelegramAutoDownload.Tests
             var document = new Document
             {
                 size = fileSizeBytes,
-                Filename = filename,
-                mime_type = "application/zip"
+                mime_type = "application/zip",
+                // TL.Document.Filename is computed from attributes; set it via DocumentAttributeFilename
+                attributes = new DocumentAttribute[]
+                {
+                    new DocumentAttributeFilename { file_name = filename }
+                }
             };
             return new Message
             {

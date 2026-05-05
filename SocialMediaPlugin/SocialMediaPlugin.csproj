@@ -3,6 +3,8 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <!-- Copy all NuGet assemblies to the build output so Ytdlp.NET.dll is available for dynamic plugin loading -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Ytdlp.NET" Version="3.0.4" />
@@ -10,4 +12,15 @@
   <ItemGroup>
     <ProjectReference Include="..\BasePlugin\BasePlugins.csproj" />
   </ItemGroup>
+
+  <!-- After each build, deploy the plugin DLLs to the main app's Plugins\SocialMedia folder -->
+  <Target Name="DeployPlugin" AfterTargets="Build">
+    <PropertyGroup>
+      <PluginsDir>$(MSBuildProjectDirectory)\..\TelegramAutoDownload\bin\$(Configuration)\net8.0-windows\Plugins\SocialMedia</PluginsDir>
+    </PropertyGroup>
+    <MakeDir Directories="$(PluginsDir)" />
+    <Copy SourceFiles="$(OutputPath)SocialMediaPlugin.dll" DestinationFolder="$(PluginsDir)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="$(OutputPath)Ytdlp.NET.dll" DestinationFolder="$(PluginsDir)" SkipUnchangedFiles="true"
+          Condition="Exists('$(OutputPath)Ytdlp.NET.dll')" />
+  </Target>
 </Project>

@@ -12,53 +12,83 @@ namespace TelegramAutoDownload
 {
     public partial class LoginWindow : MetroWindow
     {
-        private readonly TelegramApp _telegram;
+        private TelegramApp? _telegram;
         private readonly ConfigFile _configFile;
-        private DispatcherTimer _qrTimer;
+        private ConfigParams _configParams = null!;
+        private DispatcherTimer? _qrTimer;
         private int _qrCountdown;
 
-        public LoginWindow()
+        public LoginWindow(ConfigFile configFile)
         {
+            InitializeComponent();
+            _configFile = configFile;
+            _configParams = configFile.Read();
+            tabControl.SelectionChanged += TabControl_SelectionChanged;
+
+            // Start async init after window is fully rendered
+            Loaded += async (_, __) => await InitAsync();
+        }
+
+        private async System.Threading.Tasks.Task InitAsync()
+        {
+            // Missing credentials — open Settings immediately
+            if (_configParams.AppId == 0 || string.IsNullOrEmpty(_configParams.ApiHash))
+            {
+                ShowError("APP_ID and API_HASH are not configured. Opening Settings...");
+                await System.Threading.Tasks.Task.Delay(600);
+                var settings = new SettingsWindow(_configFile) { Owner = this };
+                if (settings.ShowDialog() == true)
+                {
+                    txtError.Visibility = Visibility.Collapsed;
+                    _configParams = _configFile.Read();
+                }
+                else return; // User cancelled settings, stay on login screen
+            }
+
             try
             {
-                InitializeComponent();
-                _configFile = new ConfigFile();
-                var configParams = _configFile.Read();
+                loadingRing.IsActive = true;
+                txtQrStatus.Text = "Connecting to Telegram...";
 
-                if (configParams.AppId == 0 || string.IsNullOrEmpty(configParams.ApiHash))
-                    throw new InvalidOperationException(
-                        "APP_ID and API_HASH are not set. Please add them to your .env file.");
+                // Create TelegramApp off the UI thread to avoid capturing the WPF
+                // SynchronizationContext inside WTelegram (prevents deadlocks)
+                _telegram = await System.Threading.Tasks.Task.Run(() =>
+                    new TelegramApp(_configParams.AppId, _configParams.ApiHash));
 
-                _telegram = new TelegramApp(configParams.AppId, configParams.ApiHash);
-                MoveToMainWindowIfConnected();
+                // Allow WTelegram to establish the TCP connection and validate the session
+                await System.Threading.Tasks.Task.Delay(2000);
 
-                // Initialize QR tab when tab is switched
-                tabControl.SelectionChanged += TabControl_SelectionChanged;
+                if (_telegram.Client.UserId != 0)
+                {
+                    // Already authenticated — go directly to MainWindow
+                    MoveToMainWindow();
+                    return;
+                }
+
+                // Auto-start QR if that tab is already selected
+                if (tabControl.SelectedIndex == 1)
+                    _ = StartQrLoginAsync();
             }
-            catch (Exception e)
+            catch (Exception ex)
             {
-                ShowError(e.Message);
+                ShowError(ex.Message);
+            }
+            finally
+            {
+                loadingRing.IsActive = false;
             }
         }
 
         private void ShowError(string message)
         {
-            if (txtError != null)
-            {
-                txtError.Text = message;
-                txtError.Visibility = Visibility.Visible;
-            }
-            else
-            {
-                MessageBox.Show(message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
+            txtError.Text = message;
+            txtError.Visibility = Visibility.Visible;
         }
 
-        private void MoveToMainWindowIfConnected()
+        private void MoveToMainWindow()
         {
             if (_telegram?.Client.UserId == 0) return;
-
-            var mainWindow = new MainWindow(_telegram, _configFile);
+            var mainWindow = new MainWindow(_telegram!, _configFile);
             mainWindow.Show();
             Close();
         }
@@ -71,9 +101,13 @@ namespace TelegramAutoDownload
                 loadingRing.IsActive = true;
                 btnLogin.IsEnabled = false;
 
+                // Ensure TelegramApp exists (may not if credentials were just entered)
+                _telegram ??= await System.Threading.Tasks.Task.Run(() =>
+                    new TelegramApp(_configParams.AppId, _configParams.ApiHash));
+
                 var phoneNumber = txtPhoneNumber.Text;
                 var prefixPhoneNumber = !phoneNumber.StartsWith("+") ? $"+{phoneNumber}" : phoneNumber;
-                await _telegram.Client.Login(prefixPhoneNumber);
+                await _telegram!.Client.Login(prefixPhoneNumber);
 
                 stepCode.Visibility = Visibility.Visible;
             }
@@ -96,9 +130,11 @@ namespace TelegramAutoDownload
                 loadingRing.IsActive = true;
                 btnEnterCode.IsEnabled = false;
 
-                await _telegram.Client.Login(txtCode.Text);
-                MoveToMainWindowIfConnected();
-                stepPassword.Visibility = Visibility.Visible;
+                await _telegram!.Client.Login(txtCode.Text);
+                if (_telegram.Client.UserId != 0)
+                    MoveToMainWindow();
+                else
+                    stepPassword.Visibility = Visibility.Visible;
             }
             catch (Exception ex)
             {
@@ -119,8 +155,8 @@ namespace TelegramAutoDownload
                 loadingRing.IsActive = true;
                 btnEnterPassword.IsEnabled = false;
 
-                await _telegram.Client.Login(txtPassword.Password);
-                MoveToMainWindowIfConnected();
+                await _telegram!.Client.Login(txtPassword.Password);
+                MoveToMainWindow();
             }
             catch (Exception ex)
             {
@@ -135,15 +171,23 @@ namespace TelegramAutoDownload
 
         private void TabControl_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
         {
-            if (tabControl.SelectedIndex == 1)
+            if (tabControl.SelectedIndex != 1) return;
+
+            if (_telegram == null)
             {
-                // QR tab selected - start QR login flow
-                _ = StartQrLoginAsync();
+                txtQrStatus.Text = "Connecting... please wait, then click Refresh.";
+                return;
             }
+            _ = StartQrLoginAsync();
         }
 
         private void BtnRefreshQr_Click(object sender, RoutedEventArgs e)
         {
+            if (_telegram == null)
+            {
+                txtQrStatus.Text = "Still connecting... please wait.";
+                return;
+            }
             _ = StartQrLoginAsync();
         }
 
@@ -155,52 +199,47 @@ namespace TelegramAutoDownload
                 txtQrStatus.Text = "Generating QR code...";
                 imgQrCode.Source = null;
 
-                var exportedToken = await _telegram.Client.Auth_ExportLoginToken(
-                    _telegram.Client.TLConfig.api_id,
-                    _telegram.Client.TLConfig.api_hash,
+                var exportedToken = await _telegram!.Client.Auth_ExportLoginToken(
+                    _configParams.AppId,
+                    _configParams.ApiHash,
                     Array.Empty<long>());
 
                 if (exportedToken is Auth_LoginToken loginToken)
                 {
-                    var tokenBytes = loginToken.token;
-                    var base64Token = Convert.ToBase64String(tokenBytes);
-                    var qrUrl = $"tg://login?token={Uri.EscapeDataString(base64Token)}";
+                    var base64Token = Convert.ToBase64String(loginToken.token)
+                        .Replace('+', '-').Replace('/', '_').TrimEnd('=');
 
-                    DisplayQrCode(qrUrl);
+                    DisplayQrCode($"tg://login?token={base64Token}");
                     StartQrCountdown(loginToken.expires);
 
-                    // Listen for login token updates
                     _telegram.Client.OnUpdates += async updates =>
                     {
                         foreach (var update in updates.UpdateList)
                         {
-                            if (update is UpdateLoginToken)
-                            {
-                                await Dispatcher.InvokeAsync(async () =>
-                                {
-                                    try
-                                    {
-                                        var result = await _telegram.Client.Auth_ExportLoginToken(
-                                            _telegram.Client.TLConfig.api_id,
-                                            _telegram.Client.TLConfig.api_hash,
-                                            Array.Empty<long>());
+                            if (update is not UpdateLoginToken) continue;
 
-                                        if (result is Auth_LoginTokenSuccess)
-                                        {
-                                            _qrTimer?.Stop();
-                                            MoveToMainWindowIfConnected();
-                                        }
-                                        else if (result is Auth_LoginToken newToken)
-                                        {
-                                            var newBase64 = Convert.ToBase64String(newToken.token);
-                                            var newUrl = $"tg://login?token={Uri.EscapeDataString(newBase64)}";
-                                            DisplayQrCode(newUrl);
-                                            StartQrCountdown(newToken.expires);
-                                        }
+                            await Dispatcher.InvokeAsync(async () =>
+                            {
+                                try
+                                {
+                                    var result = await _telegram.Client.Auth_ExportLoginToken(
+                                        _configParams.AppId, _configParams.ApiHash, Array.Empty<long>());
+
+                                    if (result is Auth_LoginTokenSuccess)
+                                    {
+                                        _qrTimer?.Stop();
+                                        MoveToMainWindow();
                                     }
-                                    catch { }
-                                });
-                            }
+                                    else if (result is Auth_LoginToken newToken)
+                                    {
+                                        var newBase64 = Convert.ToBase64String(newToken.token)
+                                            .Replace('+', '-').Replace('/', '_').TrimEnd('=');
+                                        DisplayQrCode($"tg://login?token={newBase64}");
+                                        StartQrCountdown(newToken.expires);
+                                    }
+                                }
+                                catch { }
+                            });
                         }
                     };
                 }
@@ -217,9 +256,17 @@ namespace TelegramAutoDownload
             {
                 var qrGenerator = new QRCodeGenerator();
                 var qrData = qrGenerator.CreateQrCode(url, QRCodeGenerator.ECCLevel.Q);
-                var qrCode = new XamlQRCode(qrData);
-                var qrImage = qrCode.GetGraphic(20);
-                imgQrCode.Source = qrImage;
+                var pngQr = new PngByteQRCode(qrData);
+                var pngBytes = pngQr.GetGraphic(10);
+
+                using var ms = new System.IO.MemoryStream(pngBytes);
+                var bitmap = new BitmapImage();
+                bitmap.BeginInit();
+                bitmap.StreamSource = ms;
+                bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                bitmap.EndInit();
+                imgQrCode.Source = bitmap;
+
                 txtQrStatus.Text = "Scan with Telegram to login";
             }
             catch (Exception ex)
@@ -228,10 +275,10 @@ namespace TelegramAutoDownload
             }
         }
 
-        private void StartQrCountdown(int expiresUnixTime)
+        private void StartQrCountdown(DateTime expires)
         {
             _qrTimer?.Stop();
-            _qrCountdown = 25;
+            _qrCountdown = Math.Max(1, (int)(expires - DateTime.UtcNow).TotalSeconds);
             _qrTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
             _qrTimer.Tick += (s, e) =>
             {
@@ -239,7 +286,7 @@ namespace TelegramAutoDownload
                 txtQrCountdown.Text = $"Expires in {_qrCountdown}s";
                 if (_qrCountdown <= 0)
                 {
-                    _qrTimer.Stop();
+                    _qrTimer!.Stop();
                     txtQrStatus.Text = "QR code expired. Click Refresh.";
                     txtQrCountdown.Text = string.Empty;
                 }

@@ -43,12 +43,15 @@ namespace TelegramClient.Factory.Factories
                 }
 
                 var pathFolderLocation = PathLocationFolder(chatDto, fileName);
+                OnProgress?.Invoke(chatDto.Name, fileName, TypeMessage.ToString(), 0, 0, document.size);
                 using var stream = File.Create(pathFolderLocation);
-                await Client.DownloadFileAsync(document, stream);
+                await Client.DownloadFileAsync(document, stream, null, MakeProgress(chatDto.Name, fileName, document.size));
+                OnComplete?.Invoke(chatDto.Name, fileName, true);
                 return new ResultExecute(chatDto.Name)
                 {
                     IsSuccess = true,
-                    FileName = fileName
+                    FileName = fileName,
+                    FilePath = pathFolderLocation
                 };
             }
             return new ResultExecute(chatDto.Name);

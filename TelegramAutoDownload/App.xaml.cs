@@ -1,5 +1,6 @@
-﻿using System.Windows;
-using dotenv.net;
+﻿using dotenv.net;
+using System.Windows;
+using TelegramAutoDownload.Models;
 
 namespace TelegramAutoDownload
 {
@@ -9,6 +10,12 @@ namespace TelegramAutoDownload
         {
             DotEnv.Load();
             base.OnStartup(e);
+
+            // Show LoginWindow immediately — never leave the user with a blank screen.
+            // LoginWindow itself handles the "already connected → go to MainWindow" logic
+            // asynchronously after it is displayed.
+            var configFile = new ConfigFile();
+            new LoginWindow(configFile).Show();
         }
     }
 }

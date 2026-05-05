@@ -1,3 +1,4 @@
+using System;
 using System.ComponentModel;
 
 namespace TelegramAutoDownload.Models
@@ -6,21 +7,90 @@ namespace TelegramAutoDownload.Models
     {
         private double _progress;
         private string _status = "Downloading";
+        private string _speed = "";
+        private string _eta = "";
+        private string _progressText = "0%";
+        private string _sizeText = "";
+        private long _totalBytes;
+        private long _bytesDownloaded;
 
         public string FileName { get; set; } = string.Empty;
         public string ChatName { get; set; } = string.Empty;
         public string PluginName { get; set; } = string.Empty;
 
+        // Key used to cancel this download via CancellationRegistry
+        public string CancellationKey { get; set; } = string.Empty;
+
+        // Timestamp when this download started (used for speed/ETA calculation)
+        public DateTime StartTime { get; } = DateTime.UtcNow;
+
         public double Progress
         {
             get => _progress;
-            set { _progress = value; OnPropertyChanged(nameof(Progress)); }
+            set
+            {
+                _progress = value;
+                _progressText = $"{value:F0}%";
+                OnPropertyChanged(nameof(Progress));
+                OnPropertyChanged(nameof(ProgressText));
+            }
         }
 
         public string Status
         {
             get => _status;
             set { _status = value; OnPropertyChanged(nameof(Status)); }
+        }
+
+        public string Speed
+        {
+            get => _speed;
+            set { _speed = value; OnPropertyChanged(nameof(Speed)); }
+        }
+
+        public string Eta
+        {
+            get => _eta;
+            set { _eta = value; OnPropertyChanged(nameof(Eta)); }
+        }
+
+        public string ProgressText
+        {
+            get => _progressText;
+        }
+
+        public string SizeText
+        {
+            get => _sizeText;
+            set { _sizeText = value; OnPropertyChanged(nameof(SizeText)); }
+        }
+
+        public long TotalBytes
+        {
+            get => _totalBytes;
+            set { _totalBytes = value; UpdateSizeText(); }
+        }
+
+        public long BytesDownloaded
+        {
+            get => _bytesDownloaded;
+            set { _bytesDownloaded = value; UpdateSizeText(); }
+        }
+
+        private void UpdateSizeText()
+        {
+            if (_totalBytes > 0)
+                SizeText = $"{FormatBytes(_bytesDownloaded)} / {FormatBytes(_totalBytes)}";
+            else if (_bytesDownloaded > 0)
+                SizeText = FormatBytes(_bytesDownloaded);
+        }
+
+        private static string FormatBytes(long bytes)
+        {
+            if (bytes >= 1_073_741_824) return $"{bytes / 1_073_741_824.0:F1} GB";
+            if (bytes >= 1_048_576) return $"{bytes / 1_048_576.0:F1} MB";
+            if (bytes >= 1024) return $"{bytes / 1024.0:F0} KB";
+            return $"{bytes} B";
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;

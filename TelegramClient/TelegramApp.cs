@@ -17,17 +17,39 @@ namespace TelegramClient
         public Func<ResultMessageEvent, Task<ResultMessageEvent>> OnSaved;
         public Func<ResultMessageEvent, Task<ResultMessageEvent>> OnWarnningMessage;
         public Func<ResultMessageEvent, Task<ResultMessageEvent>> OnErrorResultMessage;
+
+        /// <summary>
+        /// Fired during file downloads: (chatName, fileName, pluginName, percent, bytesDownloaded, totalBytes)
+        /// </summary>
+        public Action<string, string, string, double, long, long>? OnProgress { get; set; }
+
+        /// <summary>
+        /// Fired when a file download finishes: (chatName, fileName, success)
+        /// </summary>
+        public Action<string, string, bool>? OnComplete { get; set; }
         public readonly Client Client;
         private FactoryMessagesService factoryService;
         private FactoryUserService factoryUserService;
         private SemaphoreSlim _semaphore = new SemaphoreSlim(3);
+        private readonly Task _loginTask;
 
         public TelegramApp(int appId, string apiHash)
         {
             Client = new Client(appId, apiHash, "session.dat");
-            Client.LoginUserIfNeeded();
+            // Store the login task so callers can await it when needed
+            _loginTask = Task.Run(async () =>
+            {
+                try { await Client.LoginUserIfNeeded(); }
+                catch { /* login handled manually via Login() calls in LoginWindow */ }
+            });
             Client.OnUpdates += Client_OnUpdates;
         }
+
+        /// <summary>
+        /// Waits for the background login task to complete (with optional timeout).
+        /// </summary>
+        public Task WaitForLoginAsync(int timeoutMs = 10000) =>
+            Task.WhenAny(_loginTask, Task.Delay(timeoutMs)).ContinueWith(_ => { });
 
         /// <summary>
         /// Update the configuration for chat IDs and folder for file saving.
@@ -38,6 +60,9 @@ namespace TelegramClient
         {
             var chatIds = configParams.Chats?.Select(c => c.Id).ToList() ?? new List<long>();
             factoryService = new FactoryMessagesService(Client, configParams.PathSaveFile);
+            factoryService.OnProgress = OnProgress;
+            factoryService.OnComplete = OnComplete;
+            factoryService.WireProgressCallbacks();
             factoryUserService = new FactoryUserService(chatIds, configParams);
             _semaphore = new SemaphoreSlim(Math.Max(1, configParams.DownloadThreads));
         }
@@ -66,6 +91,13 @@ namespace TelegramClient
                         {
                             try
                             {
+                                // Send "download starting" reaction before the download begins
+                                if (!string.IsNullOrEmpty(chat.DownloadStartIcon))
+                                {
+                                    try { await ReactToMessage(chat, updates, infoMessage, chat.DownloadStartIcon); }
+                                    catch { /* non-critical */ }
+                                }
+
                                 resultExecute = await factoryService.ExecuteAsync(updateNewMessage, chat);
 
                                 var resultMessageEvent = new ResultMessageEvent
@@ -159,28 +191,57 @@ namespace TelegramClient
             }
         }
 
+        /// <summary>
+        /// Returns the display name of the currently logged-in account.
+        /// Falls back to username, then phone number, then "Unknown".
+        /// </summary>
+        public string GetCurrentUserName()
+        {
+            var user = Client.User;
+            if (user == null) return "Unknown";
+
+            var name = $"{user.first_name} {user.last_name}".Trim();
+            if (!string.IsNullOrWhiteSpace(name)) return name;
+            if (!string.IsNullOrWhiteSpace(user.MainUsername)) return $"@{user.MainUsername}";
+            if (!string.IsNullOrWhiteSpace(user.phone)) return user.phone;
+            return "Unknown";
+        }
+
         public async Task<IList<ChatDto>> GetAllChats()
         {
             var groups = new List<ChatDto>();
-            var dialogs = await Client.Messages_GetAllDialogs();
-            foreach (var dialog in dialogs.chats)
+
+            // Fetch only one page (200 dialogs max) to avoid memory/freeze issues on
+            // accounts with thousands of channels. null offset_peer = start from beginning.
+            var dialogsBase = await Client.Messages_GetDialogs(
+                offset_date: default,
+                offset_id: 0,
+                offset_peer: null!,
+                limit: 200,
+                hash: 0);
+
+            // In WTelegram 4.1.1, Messages_DialogsSlice inherits Messages_Dialogs
+            if (dialogsBase is not TL.Messages_Dialogs dlg) return groups;
+
+            foreach (var kv in dlg.chats)
             {
-                if (!dialog.Value.IsActive) continue;
+                if (!kv.Value.IsActive) continue;
                 groups.Add(new ChatDto()
                 {
-                    Id = dialog.Value.ID,
-                    Name = dialog.Value.Title,
-                    Username = dialog.Value.MainUsername,
-                    Type = dialog.Value.IsGroup ? "Group" : "Channel"
+                    Id = kv.Value.ID,
+                    Name = kv.Value.Title,
+                    Username = kv.Value.MainUsername,
+                    Type = kv.Value.IsGroup ? "Group" : "Channel"
                 });
             }
-            foreach (var dialog in dialogs.users)
+            foreach (var kv in dlg.users)
             {
+                if (kv.Value is not TL.User user) continue;
                 groups.Add(new ChatDto()
                 {
-                    Id = dialog.Value.ID,
-                    Name = $"{dialog.Value.first_name} {dialog.Value.last_name}",
-                    Username = dialog.Value.MainUsername,
+                    Id = user.ID,
+                    Name = $"{user.first_name} {user.last_name}",
+                    Username = user.MainUsername,
                     Type = "User"
                 });
             }

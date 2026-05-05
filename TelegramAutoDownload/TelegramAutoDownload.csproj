@@ -27,6 +27,10 @@
   <ItemGroup>
     <ProjectReference Include="..\Logger\Logger.csproj" />
     <ProjectReference Include="..\TelegramClient\TelegramClient.csproj" />
+    <!-- Plugin projects: ReferenceOutputAssembly=false means we don't link against them,
+         but MSBuild still builds them (and their DeployPlugin post-build target fires) -->
+    <ProjectReference Include="..\SocialMediaPlugin\SocialMediaPlugin.csproj"
+                      ReferenceOutputAssembly="false" />
   </ItemGroup>
 
   <ItemGroup>

@@ -19,12 +19,41 @@ namespace TelegramClient.Factory.Base
         public string PathFolderToSaveFiles { get; }
         public abstract MessageTypes TypeMessage { get; }
 
+        /// <summary>
+        /// Called periodically during download: (chatName, fileName, pluginName, percent, bytesDownloaded, totalBytes)
+        /// </summary>
+        public Action<string, string, string, double, long, long>? OnProgress { get; set; }
+
+        /// <summary>
+        /// Called when download finishes: (chatName, fileName, success)
+        /// </summary>
+        public Action<string, string, bool>? OnComplete { get; set; }
+
         public BaseMessage(Client client, string pathFolderToSaveFiles)
         {
             Client = client;
             PathFolderToSaveFiles = pathFolderToSaveFiles;
         }
         public abstract Task<ResultExecute> ExecuteAsync(Message message, ChatDto chatDto);
+
+        /// <summary>
+        /// Creates a WTelegram ProgressCallback that reports download bytes to OnProgress.
+        /// Also checks the CancellationRegistry on each chunk so the UI can cancel mid-stream.
+        /// </summary>
+        protected Client.ProgressCallback? MakeProgress(string chatName, string fileName, long totalBytes)
+        {
+            if (OnProgress == null) return null;
+            var cancelKey = CancellationRegistry.MakeKey(chatName, fileName);
+            var cts = new System.Threading.CancellationTokenSource();
+            // Store in registry so the UI cancel button can trigger it
+            CancellationRegistry.Register(cancelKey);
+            return (transmitted, total) =>
+            {
+                long effectiveTotal = total > 0 ? total : totalBytes;
+                double pct = effectiveTotal > 0 ? transmitted * 100.0 / effectiveTotal : 0;
+                OnProgress.Invoke(chatName, fileName, TypeMessage.ToString(), Math.Min(99, pct), transmitted, effectiveTotal);
+            };
+        }
 
         public string PathLocationFolder(ChatDto chatDto, string fileName)
         {

@@ -24,10 +24,10 @@ namespace TelegramClient.Factory.Factories
         {
             if (!chatDto.Download.Photos) return new ResultExecute(chatDto.Name);
             string fileName = "";
+            string savedPath = "";
 
             if (message.media is MessageMediaDocument { document: Document document })
             {
-                // Assign filename before duplicate check so fileExist return has a valid name
                 fileName = !string.IsNullOrEmpty(document.Filename)
                     ? document.Filename
                     : $"{document.id}.{document.mime_type.Split('/').Last()}";
@@ -40,9 +40,11 @@ namespace TelegramClient.Factory.Factories
                         ErrorMessage = $"{fileName} is exist on {fileExist}"
                     };
                 }
-                var folderLocation = PathLocationFolder(chatDto, fileName);
-                using var fileStream = File.Create(folderLocation);
-                await Client.DownloadFileAsync(document, fileStream);
+                savedPath = PathLocationFolder(chatDto, fileName);
+                OnProgress?.Invoke(chatDto.Name, fileName, TypeMessage.ToString(), 0, 0, document.size);
+                using var fileStream = File.Create(savedPath);
+                await Client.DownloadFileAsync(document, fileStream, null, MakeProgress(chatDto.Name, fileName, document.size));
+                OnComplete?.Invoke(chatDto.Name, fileName, true);
             }
             else if (message.media is MessageMediaPhoto { photo: Photo photo })
             {
@@ -56,14 +58,17 @@ namespace TelegramClient.Factory.Factories
                         ErrorMessage = $"{fileName} is exist on {fileExist}"
                     };
                 }
-                var folderLocation = PathLocationFolder(chatDto, fileName);
-                using var fileStream = File.Create(folderLocation);
+                savedPath = PathLocationFolder(chatDto, fileName);
+                OnProgress?.Invoke(chatDto.Name, fileName, TypeMessage.ToString(), 0, 0, 0);
+                using var fileStream = File.Create(savedPath);
                 await Client.DownloadFileAsync(photo, fileStream);
+                OnComplete?.Invoke(chatDto.Name, fileName, true);
             }
             return new ResultExecute(chatDto.Name)
             {
                 IsSuccess = true,
                 FileName = fileName,
+                FilePath = savedPath
             };
         }
     }

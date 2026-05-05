@@ -72,6 +72,10 @@ namespace TelegramClient.Factory.Service
                     if (config.EnabledPlugins.TryGetValue(pluginInstance.PluginName, out var enabled) && !enabled)
                         continue;
 
+                    // Wire progress callbacks so the plugin can report to the UI
+                    pluginInstance.OnProgress = OnProgress;
+                    pluginInstance.OnComplete = OnComplete;
+
                     resultExecute = await pluginInstance.ExecuteAsync(config);
                     if (resultExecute.IsSuccess) break;
                 }

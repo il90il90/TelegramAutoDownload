@@ -1,6 +1,8 @@
 ﻿using Logger.Config;
 using Logger.Services;
+using System.Collections.Concurrent;
 using System.Text;
+using TelegramAutoDownload.Models;
 using TelegramClient.Models;
 
 namespace TelegramAutoDownload
@@ -8,50 +10,184 @@ namespace TelegramAutoDownload
     public class Notification
     {
         private readonly TelegramService telegramService;
-        public Notification()
+        private readonly ConfigParams _config;
+
+        // Tracks in-progress download message IDs so we can edit them live
+        // Key = "chatName|fileName", Value = Telegram message_id
+        private readonly ConcurrentDictionary<string, long> _progressMessages = new();
+        // Throttle: only update Telegram every 10%
+        private readonly ConcurrentDictionary<string, double> _lastReportedPct = new();
+
+        public Notification(ConfigParams config)
         {
+            _config = config;
             telegramService = new TelegramService(new ConfigTelegramLogger
             {
-                BotToken = Environment.GetEnvironmentVariable("BOT_TOKEN"),
-                ChatId = Environment.GetEnvironmentVariable("CHAT_ID"),
+                BotToken = config.BotToken,
+                ChatId = config.ChatId,
             });
+        }
+
+        /// <summary>
+        /// Called on download progress. Sends an initial "downloading" message the first time,
+        /// then edits it every ~25% to avoid Telegram notification spam.
+        /// </summary>
+        public async Task OnProgressAsync(string chatName, string fileName, string pluginName, double percent)
+        {
+            if (!telegramService.IsActive) return;
+            if (!_config.NotifyOnProgress) return;
+
+            var key = $"{chatName}|{fileName}";
+
+            // First call: claim the slot atomically with a sentinel (0) before awaiting.
+            // TryAdd is atomic — if another concurrent call already claimed it, skip.
+            if (!_progressMessages.ContainsKey(key))
+            {
+                if (!_progressMessages.TryAdd(key, 0))
+                    return; // Another concurrent call already claimed this slot
+
+                var text = BuildProgressText(chatName, fileName, pluginName, 0);
+                var msgId = await telegramService.SendMessageAsync(text);
+                _progressMessages[key] = msgId; // Replace sentinel with real message ID
+                _lastReportedPct[key] = 0;
+                return;
+            }
+
+            // Skip if message ID is still the sentinel (initial send not finished yet)
+            if (_progressMessages.TryGetValue(key, out var currentMsgId) && currentMsgId == 0)
+                return;
+
+            // Throttle: only edit every 25% to avoid spam push-notifications
+            _lastReportedPct.TryGetValue(key, out var last);
+            if (percent - last < 25) return;
+            _lastReportedPct[key] = percent;
+
+            var updatedText = BuildProgressText(chatName, fileName, pluginName, percent);
+            _ = telegramService.EditMessageAsync(_progressMessages[key], updatedText);
         }
 
         public async Task<ResultMessageEvent> OnUpdateResultMessageAsync(ResultMessageEvent eventMessage)
         {
+            if (!telegramService.IsActive) return eventMessage;
+            if (!_config.NotifyOnComplete) return eventMessage;
             var chat = eventMessage.Chat;
             var result = eventMessage.ResultExecute;
-            var sb = new StringBuilder();
-            sb.AppendLine("✅ <b>Downloaded Successfully</b>");
-            sb.AppendLine();
-            sb.AppendLine($"📁 <b>Chat:</b> {HtmlEncode(chat.Name)}");
-            sb.AppendLine($"🎬 <b>Type:</b> {HtmlEncode(result.MessageType ?? "-")}");
-            sb.AppendLine($"📄 <b>File:</b> {HtmlEncode(result.FileName ?? "-")}");
-            if (!string.IsNullOrWhiteSpace(eventMessage.PostAuthor))
-                sb.AppendLine($"👤 <b>Author:</b> {HtmlEncode(eventMessage.PostAuthor)}");
 
-            await telegramService.SendMessageAsync(sb.ToString());
+            var lines = new List<string>
+            {
+                "✅ <b>Downloaded Successfully</b>",
+                "",
+                $"📁 <b>Chat:</b> {HtmlEncode(chat.Name)}",
+                $"🎬 <b>Type:</b> {HtmlEncode(result.MessageType ?? "-")}",
+                $"📄 <b>File:</b> {HtmlEncode(result.FileName ?? "-")}"
+            };
+
+            if (!string.IsNullOrWhiteSpace(result.FilePath))
+                lines.Add($"📂 <b>Path:</b> <code>{HtmlEncode(result.FilePath)}</code>");
+
+            if (!string.IsNullOrWhiteSpace(eventMessage.PostAuthor))
+                lines.Add($"👤 <b>Author:</b> {HtmlEncode(eventMessage.PostAuthor)}");
+
+            var finalText = string.Join("\n", lines);
+
+            // Use NotificationKey if set (plugins that report progress use a temp name as key)
+            var lookupKey = !string.IsNullOrEmpty(result.NotificationKey)
+                ? $"{chat.Name}|{result.NotificationKey}"
+                : $"{chat.Name}|{result.FileName}";
+
+            // Wait up to 5 seconds for the initial SendMessageAsync to finish (sentinel = 0 → real ID)
+            var deadline = DateTime.UtcNow.AddSeconds(5);
+            while (DateTime.UtcNow < deadline
+                   && _progressMessages.TryGetValue(lookupKey, out var pendingId)
+                   && pendingId == 0)
+            {
+                await Task.Delay(80);
+            }
+
+            if (_progressMessages.TryRemove(lookupKey, out var msgId))
+            {
+                _lastReportedPct.TryRemove(lookupKey, out _);
+                if (msgId != 0)
+                    await telegramService.EditMessageAsync(msgId, finalText);
+                else
+                    await telegramService.SendMessageAsync(finalText);
+            }
+            else
+            {
+                await telegramService.SendMessageAsync(finalText);
+            }
+
             return eventMessage;
+        }
+
+        /// <summary>
+        /// Sends a startup status message. Skipped silently if bot credentials are not configured.
+        /// </summary>
+        public async Task SendStartupNotificationAsync(int monitoredChats, bool connected)
+        {
+            if (!telegramService.IsActive) return;
+            if (!_config.NotifyOnStartup) return;
+
+            string message;
+            if (connected)
+            {
+                message = string.Join("\n",
+                    "🟢 <b>TelegramAutoDownload — Started</b>",
+                    "",
+                    $"📡 <b>Monitoring:</b> {monitoredChats} chat(s)",
+                    "✅ <b>Status:</b> Connected and listening");
+            }
+            else
+            {
+                message = string.Join("\n",
+                    "🔴 <b>TelegramAutoDownload — Start Failed</b>",
+                    "",
+                    "❌ <b>Status:</b> Could not connect to Telegram");
+            }
+
+            try { await telegramService.SendMessageAsync(message); }
+            catch { /* Do not crash the app if the notification fails */ }
         }
 
         public async Task<ResultMessageEvent> OnWarnningMessageAsync(ResultMessageEvent eventMessage)
         {
+            if (!telegramService.IsActive) return eventMessage;
+            if (!_config.NotifyOnError) return eventMessage;
             var chat = eventMessage.Chat;
             var result = eventMessage.ResultExecute;
-            var snippet = eventMessage.Message?.Length > 80
-                ? eventMessage.Message[..80] + "…"
+            var snippet = eventMessage.Message?.Length > 120
+                ? eventMessage.Message[..120] + "…"
                 : eventMessage.Message ?? string.Empty;
 
-            var sb = new StringBuilder();
-            sb.AppendLine("⚠️ <b>Warning</b>");
-            sb.AppendLine();
-            sb.AppendLine($"📁 <b>Chat:</b> {HtmlEncode(chat.Name)}");
-            sb.AppendLine($"🎬 <b>Type:</b> {HtmlEncode(result.MessageType ?? "-")}");
-            sb.AppendLine($"❌ <b>Error:</b> {HtmlEncode(result.ErrorMessage ?? "-")}");
-            sb.AppendLine($"💬 <b>Message:</b> {HtmlEncode(snippet)}");
+            var message = string.Join("\n",
+                "⚠️ <b>Warning</b>",
+                "",
+                $"📁 <b>Chat:</b> {HtmlEncode(chat.Name)}",
+                $"🎬 <b>Type:</b> {HtmlEncode(result.MessageType ?? "-")}",
+                $"❌ <b>Error:</b> {HtmlEncode(result.ErrorMessage ?? "-")}",
+                $"💬 <b>Message:</b> {HtmlEncode(snippet)}");
 
-            await telegramService.SendMessageAsync(sb.ToString());
+            await telegramService.SendMessageAsync(message);
             return eventMessage;
+        }
+
+        private static string BuildProgressText(string chatName, string fileName, string pluginName, double percent)
+        {
+            var bar = BuildProgressBar(percent);
+            return string.Join("\n",
+                "⬇️ <b>Downloading…</b>",
+                "",
+                $"📁 <b>Chat:</b> {HtmlEncode(chatName)}",
+                $"📄 <b>File:</b> {HtmlEncode(fileName)}",
+                $"🔌 <b>Plugin:</b> {HtmlEncode(pluginName)}",
+                $"{bar} <b>{percent:F0}%</b>");
+        }
+
+        private static string BuildProgressBar(double percent)
+        {
+            const int bars = 10;
+            var filled = (int)(percent / 100 * bars);
+            return new string('█', filled) + new string('░', bars - filled);
         }
 
         private static string HtmlEncode(string text) =>

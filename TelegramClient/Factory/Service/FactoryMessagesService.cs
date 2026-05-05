@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using TelegramClient.Factory.Base;
 using TelegramClient.Factory.Factories;
 using TelegramClient.Factory.FactoriesMessages;
 using TelegramClient.Factory.FactoriesMessages.Enum;
@@ -17,17 +18,48 @@ namespace TelegramClient.Factory.Service
     public class FactoryMessagesService
     {
         private readonly List<IMessageType> messageTypes;
+        private readonly MessageTextFactoryService _messageTextFactory;
+
+        /// <summary>
+        /// (chatName, fileName, pluginName, percent, bytesDownloaded, totalBytes)
+        /// </summary>
+        public Action<string, string, string, double, long, long>? OnProgress { get; set; }
+
+        /// <summary>
+        /// (chatName, fileName, success)
+        /// </summary>
+        public Action<string, string, bool>? OnComplete { get; set; }
+
         public FactoryMessagesService(Client client, string pathFolderToSaveFiles)
         {
-            var messageTextFactoryService = new MessageTextFactoryService(client, pathFolderToSaveFiles);
+            _messageTextFactory = new MessageTextFactoryService(client, pathFolderToSaveFiles);
             messageTypes =
             [
-                new Messages(client,pathFolderToSaveFiles,messageTextFactoryService ),
+                new Messages(client, pathFolderToSaveFiles, _messageTextFactory),
                 new Videos(client, pathFolderToSaveFiles),
                 new Photos(client, pathFolderToSaveFiles),
                 new Files(client, pathFolderToSaveFiles),
                 new Music(client, pathFolderToSaveFiles)
             ];
+        }
+
+        /// <summary>
+        /// Distributes progress callbacks to all registered message handlers,
+        /// including the text/plugin handler (MessageTextFactoryService).
+        /// Must be called after constructing if you want progress reporting.
+        /// </summary>
+        public void WireProgressCallbacks()
+        {
+            foreach (var mt in messageTypes.OfType<BaseMessage>())
+            {
+                mt.OnProgress = OnProgress;
+                mt.OnComplete = OnComplete;
+            }
+
+            // MessageTextFactoryService is not in messageTypes (it's passed as a dependency),
+            // so wire it explicitly so plugins loaded inside it receive the callbacks.
+            _messageTextFactory.OnProgress = OnProgress;
+            _messageTextFactory.OnComplete = OnComplete;
         }
 
         public async Task<ResultExecute> ExecuteAsync(Update update, ChatDto chatDto)

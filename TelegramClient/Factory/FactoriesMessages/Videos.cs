@@ -15,6 +15,7 @@ namespace TelegramClient.Factory.Factories
     public class Videos : BaseMessage
     {
         public override MessageTypes TypeMessage => MessageTypes.Videos;
+        private string PluginName => "Videos";
 
         public Videos(Client client, string pathFolderToSaveFiles) : base(client, pathFolderToSaveFiles)
         {
@@ -51,18 +52,22 @@ namespace TelegramClient.Factory.Factories
                         };
                     }
                     var pathFolderLocation = PathLocationFolder(chatDto, fileName);
+                    OnProgress?.Invoke(chatDto.Name, fileName, PluginName, 0, 0, document.size);
                     using var stream = File.Create(pathFolderLocation);
-                    await Client.DownloadFileAsync(document, stream);
+                    await Client.DownloadFileAsync(document, stream, null, MakeProgress(chatDto.Name, fileName, document.size));
+                    OnComplete?.Invoke(chatDto.Name, fileName, true);
 
                     return new ResultExecute(chatDto.Name)
                     {
                         IsSuccess = true,
-                        FileName = fileName
+                        FileName = fileName,
+                        FilePath = pathFolderLocation
                     };
                 }
             }
             catch (Exception e)
             {
+                OnComplete?.Invoke(chatDto.Name, fileName, false);
                 return new ResultExecute(chatDto.Name)
                 {
                     IsSuccess = false,
