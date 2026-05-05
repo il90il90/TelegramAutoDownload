@@ -87,7 +87,7 @@ Enable this only if you want to receive a Telegram message when a download finis
                     </StackPanel>
                 </Border>
                 <Border Background="#F5F5F5" CornerRadius="6" Padding="16,12" Margin="0,0,0,20"
-                        x:Name="pnlNotifications">
+                        x:Name="pnlNotifications" IsEnabled="True">
                     <StackPanel>
                         <TextBlock Text="Create a bot via @BotFather to receive download notifications."
                                    Foreground="#888" FontSize="11" Margin="0,0,0,12"/>

@@ -30,12 +30,10 @@ namespace TelegramAutoDownload
             pbApiHash.Password = _config.ApiHash ?? string.Empty;
 
             // Notification Bot
-            bool hasBot = !string.IsNullOrWhiteSpace(_config.BotToken);
-            toggleNotifications.IsChecked = hasBot;
             pbBotToken.Password = _config.BotToken ?? string.Empty;
             txtChatId.Text = _config.ChatId ?? string.Empty;
-            pnlNotifications.Opacity = hasBot ? 1.0 : 0.5;
-            pnlNotifications.IsEnabled = hasBot;
+            // Toggle is ON if bot token is filled in; fields are always enabled
+            toggleNotifications.IsChecked = !string.IsNullOrWhiteSpace(_config.BotToken);
 
             // General
             txtDownloadPath.Text = _config.PathSaveFile ?? string.Empty;
@@ -52,9 +50,7 @@ namespace TelegramAutoDownload
 
         private void ToggleNotifications_Changed(object sender, RoutedEventArgs e)
         {
-            bool enabled = toggleNotifications.IsChecked == true;
-            pnlNotifications.Opacity = enabled ? 1.0 : 0.5;
-            pnlNotifications.IsEnabled = enabled;
+            // Toggle only controls whether notifications are active — fields stay always editable
         }
 
         private void ToggleDarkMode_Changed(object sender, RoutedEventArgs e)
@@ -99,10 +95,11 @@ namespace TelegramAutoDownload
                 return;
             }
 
+            // Validate: if toggle is on, bot token is required
             bool notificationsEnabled = toggleNotifications.IsChecked == true;
             if (notificationsEnabled && string.IsNullOrWhiteSpace(pbBotToken.Password))
             {
-                MessageBox.Show("Bot Token cannot be empty when notifications are enabled.", "Validation",
+                MessageBox.Show("Enter a Bot Token to enable notifications, or turn the toggle off.", "Validation",
                     MessageBoxButton.OK, MessageBoxImage.Warning);
                 pbBotToken.Focus();
                 return;
@@ -114,8 +111,9 @@ namespace TelegramAutoDownload
 
             _config.AppId = appId;
             _config.ApiHash = pbApiHash.Password;
-            _config.BotToken = notificationsEnabled ? pbBotToken.Password : string.Empty;
-            _config.ChatId = notificationsEnabled ? txtChatId.Text.Trim() : string.Empty;
+            // Always save whatever the user typed — toggle controls sending, not storage
+            _config.BotToken = pbBotToken.Password;
+            _config.ChatId = txtChatId.Text.Trim();
             _config.PathSaveFile = txtDownloadPath.Text.Trim();
             _config.DownloadThreads = (int)sliderThreads.Value;
             _config.DarkMode = toggleDarkMode.IsChecked == true;

@@ -1,11 +1,11 @@
 #define AppName "Telegram Auto Download"
-#define AppVersion "2.2.0"
+#define AppVersion "2.2.1"
 #define AppPublisher "TelegramAutoDownload"
 #define AppURL "https://github.com/il90il90/TelegramAutoDownload"
 #define AppExeName "TelegramAutoDownload.exe"
-#define SourceDir "..\publish_v2.2.0"
+#define SourceDir "..\publish_out"
 #define OutputDir ".."
-#define OutputName "TelegramAutoDownload_v2.2.0_Setup"
+#define OutputName "TelegramAutoDownload_v2.2.1_Setup"
 
 [Setup]
 AppId={{A3F2C8E1-4D7B-4E9A-B5C0-1234567890AB}
@@ -56,11 +56,8 @@ Source: "{#SourceDir}\*.pdb";                   DestDir: "{app}"; Flags: ignorev
 ; Localization resources
 Source: "{#SourceDir}\de\*";                    DestDir: "{app}\de";                    Flags: ignoreversion recursesubdirs createallsubdirs
 
-; Plugins
-Source: "{#SourceDir}\Plugins\*";              DestDir: "{app}\Plugins";               Flags: ignoreversion recursesubdirs createallsubdirs
-
-; Tools (yt-dlp)
-Source: "{#SourceDir}\tools\*";                DestDir: "{app}\tools";                 Flags: ignoreversion recursesubdirs createallsubdirs
+; Plugin DLLs are in the root alongside the main exe (loaded dynamically at runtime)
+; yt-dlp is downloaded automatically on first run to %APPDATA%\TelegramAutoDownload\tools\
 
 [Icons]
 Name: "{group}\{#AppName}";                     Filename: "{app}\{#AppExeName}"
