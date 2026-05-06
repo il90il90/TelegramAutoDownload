@@ -31,14 +31,14 @@ namespace TelegramClient.Factory.FactoriesMessages
                 var fileName = !string.IsNullOrEmpty(document.Filename) ? document.Filename : document.ID.ToString();
                 // Primary dedup: Telegram document ID (unique content fingerprint)
                 if (FileDownloadIndex.IsAlreadyDownloaded(document.ID))
-                    return new ResultExecute(chatDto.Name) { IsSuccess = true, ErrorMessage = $"{fileName} already downloaded (id match)" };
+                    return new ResultExecute(chatDto.Name) { IsSuccess = true, FileName = fileName, ErrorMessage = $"{fileName} already downloaded (id match)" };
 
                 // Secondary dedup: filename + file size match on disk
                 var fileExist = GetPathOfDuplicateFile(fileName, document.size);
                 if (fileExist != null)
                 {
                     FileDownloadIndex.MarkDownloaded(document.ID);
-                    return new ResultExecute(chatDto.Name) { IsSuccess = true, ErrorMessage = $"{fileName} is exist on {fileExist}" };
+                    return new ResultExecute(chatDto.Name) { IsSuccess = true, FileName = fileName, ErrorMessage = $"{fileName} is exist on {fileExist}" };
                 }
                 var pathFolderLocation = PathLocationFolder(chatDto, fileName);
                 OnProgress?.Invoke(chatDto.Name, fileName, TypeMessage.ToString(), 0, 0, document.size);

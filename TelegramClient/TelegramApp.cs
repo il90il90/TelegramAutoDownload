@@ -300,7 +300,8 @@ namespace TelegramClient
                         {
                             OnStarted?.Invoke(chatDto.Name, msg.ID);
                             var result = await factoryService.ExecuteDirectAsync(msg, chatDto);
-                            if (result.IsSuccess && OnSaved != null)
+                            // Only notify on genuine new downloads — not dedup skips (which have ErrorMessage set)
+                            if (result.IsSuccess && string.IsNullOrEmpty(result.ErrorMessage) && OnSaved != null)
                                 await OnSaved.Invoke(new ResultMessageEvent
                                 {
                                     Chat = chatDto,
@@ -401,7 +402,8 @@ namespace TelegramClient
                                 _highWatermark.GetValueOrDefault(channelId), msg.ID);
 
                             var result = await factoryService.ExecuteDirectAsync(msg, chatDto);
-                            if (result.IsSuccess && OnSaved != null)
+                            // Only notify on genuine new downloads — not dedup skips (which have ErrorMessage set)
+                            if (result.IsSuccess && string.IsNullOrEmpty(result.ErrorMessage) && OnSaved != null)
                                 await OnSaved.Invoke(new ResultMessageEvent
                                 {
                                     Chat = chatDto,

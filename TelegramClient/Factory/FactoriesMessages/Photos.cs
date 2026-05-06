@@ -34,14 +34,14 @@ namespace TelegramClient.Factory.Factories
                     : $"{document.id}.{document.mime_type.Split('/').Last()}";
                 // Primary dedup: Telegram document ID (unique content fingerprint)
                 if (FileDownloadIndex.IsAlreadyDownloaded(document.ID))
-                    return new ResultExecute(chatDto.Name) { IsSuccess = true, ErrorMessage = $"{fileName} already downloaded (id match)" };
+                    return new ResultExecute(chatDto.Name) { IsSuccess = true, FileName = fileName, ErrorMessage = $"{fileName} already downloaded (id match)" };
 
                 // Secondary dedup: filename + file size match on disk
                 var fileExist = GetPathOfDuplicateFile(fileName, document.size);
                 if (fileExist != null)
                 {
                     FileDownloadIndex.MarkDownloaded(document.ID);
-                    return new ResultExecute(chatDto.Name) { IsSuccess = true, ErrorMessage = $"{fileName} is exist on {fileExist}" };
+                    return new ResultExecute(chatDto.Name) { IsSuccess = true, FileName = fileName, ErrorMessage = $"{fileName} is exist on {fileExist}" };
                 }
                 savedPath = PathLocationFolder(chatDto, fileName);
                 OnProgress?.Invoke(chatDto.Name, fileName, TypeMessage.ToString(), 0, 0, document.size);
@@ -81,14 +81,14 @@ namespace TelegramClient.Factory.Factories
 
                 // Primary dedup: photo.id is Telegram's unique content fingerprint for native photos
                 if (FileDownloadIndex.IsAlreadyDownloaded(photo.id))
-                    return new ResultExecute(chatDto.Name) { IsSuccess = true, ErrorMessage = $"{fileName} already downloaded (id match)" };
+                    return new ResultExecute(chatDto.Name) { IsSuccess = true, FileName = fileName, ErrorMessage = $"{fileName} already downloaded (id match)" };
 
                 // Secondary dedup: filename match on disk (photos have predictable names from photo.id)
                 var fileExist = GetPathOfDuplicateFile(fileName);
                 if (fileExist != null)
                 {
                     FileDownloadIndex.MarkDownloaded(photo.id);
-                    return new ResultExecute(chatDto.Name) { IsSuccess = true, ErrorMessage = $"{fileName} is exist on {fileExist}" };
+                    return new ResultExecute(chatDto.Name) { IsSuccess = true, FileName = fileName, ErrorMessage = $"{fileName} is exist on {fileExist}" };
                 }
                 savedPath = PathLocationFolder(chatDto, fileName);
                 OnProgress?.Invoke(chatDto.Name, fileName, TypeMessage.ToString(), 0, 0, 0);
