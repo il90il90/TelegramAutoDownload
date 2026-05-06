@@ -361,6 +361,24 @@ namespace TelegramAutoDownload.Services
             });
         }
 
+        /// <summary>
+        /// Returns the sum of all active downloads' current speeds as a formatted string.
+        /// Speed is estimated as bytes-downloaded / elapsed-seconds since StartTime.
+        /// Returns an empty string when no downloads are active.
+        /// </summary>
+        public string GetTotalCurrentSpeed()
+        {
+            double totalBytesPerSec = 0;
+            foreach (var d in Downloads)
+            {
+                if (d.Status != "⬇ Downloading" || d.StartTime == default) continue;
+                var sec = (DateTime.UtcNow - d.StartTime).TotalSeconds;
+                if (sec > 0.5 && d.BytesDownloaded > 0)
+                    totalBytesPerSec += d.BytesDownloaded / sec;
+            }
+            return totalBytesPerSec > 0 ? FormatSpeed(totalBytesPerSec) : string.Empty;
+        }
+
         private static string FormatSpeed(double bytesPerSec)
         {
             if (bytesPerSec >= 1_048_576) return $"{bytesPerSec / 1_048_576:F1} MB/s";

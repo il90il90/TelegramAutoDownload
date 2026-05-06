@@ -1,9 +1,13 @@
 ﻿using System.Collections.Generic;
+using System.ComponentModel;
 
 namespace TelegramClient.Models
 {
-    public class ChatDto
+    public class ChatDto : INotifyPropertyChanged
     {
+        private bool _muted;
+        private List<string>? _availableReactions;
+
         public long Id { get; set; }
         public string Name { get; set; }
         public string Username { get; set; }
@@ -17,13 +21,40 @@ namespace TelegramClient.Models
         // Reaction sent when download STARTS
         public string DownloadStartIcon { get; set; } = string.Empty;
 
+        // Number of members/participants — populated from Telegram API on refresh
+        public int MembersCount { get; set; }
+
+        // Whether Telegram notifications are muted for this chat
+        public bool Muted
+        {
+            get => _muted;
+            set { _muted = value; OnPropertyChanged(nameof(Muted)); }
+        }
+
         // Reactions available in this chat, fetched on demand from Telegram. Null means not yet loaded.
-        public List<string>? AvailableReactions { get; set; } = null;
+        public List<string>? AvailableReactions
+        {
+            get => _availableReactions;
+            set
+            {
+                _availableReactions = value;
+                OnPropertyChanged(nameof(AvailableReactions));
+                OnPropertyChanged(nameof(HasReactions));
+            }
+        }
+
+        // False only after reactions have been fetched and the list is confirmed empty (reactions disabled)
+        public bool HasReactions => _availableReactions == null || _availableReactions.Count > 0;
+
         public Download Download { get; set; } = new Download();
         public int DownloadFromSize { get; set; }
         public List<string> IgnoreFileByRegex { get; set; } = [];
         // Keys are PluginName values; missing key = enabled by default
         public Dictionary<string, bool> EnabledPlugins { get; set; } = new();
+
+        public event PropertyChangedEventHandler? PropertyChanged;
+        protected void OnPropertyChanged(string name) =>
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
     }
 
     public class Download
@@ -32,7 +63,5 @@ namespace TelegramClient.Models
         public bool Photos { get; set; }
         public bool Music { get; set; }
         public bool Files { get; set; }
-
     }
-
 }

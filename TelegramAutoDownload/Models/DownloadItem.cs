@@ -45,7 +45,12 @@ namespace TelegramAutoDownload.Models
         public string Status
         {
             get => _status;
-            set { _status = value; OnPropertyChanged(nameof(Status)); }
+            set
+            {
+                _status = value;
+                OnPropertyChanged(nameof(Status));
+                OnPropertyChanged(nameof(SortOrder));
+            }
         }
 
         public string Speed
@@ -98,6 +103,14 @@ namespace TelegramAutoDownload.Models
             if (bytes >= 1024) return $"{bytes / 1024.0:F0} KB";
             return $"{bytes} B";
         }
+
+        // 0 = Downloading (top), 1 = Queued, 2 = finished/error — used by the CollectionView sort
+        public int SortOrder => Status switch
+        {
+            "⬇ Downloading" => 0,
+            "⏳ Queued"     => 1,
+            _               => 2
+        };
 
         public event PropertyChangedEventHandler? PropertyChanged;
         protected void OnPropertyChanged(string name) =>

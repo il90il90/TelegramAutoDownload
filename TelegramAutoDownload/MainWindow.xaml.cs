@@ -10,6 +10,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Documents;
 using System.Windows.Media;
 using TelegramAutoDownload.Models;
@@ -25,6 +26,9 @@ namespace TelegramAutoDownload
         private readonly ConfigFile ConfigFile;
         private IList<ChatDto> _chats = new List<ChatDto>();
         private Notification _notification = null!;
+
+        // Sorted view for the downloads DataGrid — keeps active items at top
+        private ICollectionView? _downloadsView;
 
         // Suppress event handlers while loading data to prevent redundant file I/O
         private bool _isLoading = false;
@@ -68,8 +72,12 @@ namespace TelegramAutoDownload
             DownloadProgressService.Instance.DownloadCompleted += (chatName, fileName, bytes, duration) =>
                 _ = _notification.OnDownloadCompletedAsync(chatName, fileName, bytes, duration);
 
-            // Bind active downloads panel and keep badge count + stats in sync
-            dgDownloads.ItemsSource = DownloadProgressService.Instance.Downloads;
+            // Bind active downloads panel through a sorted CollectionView so active downloads stay at top
+            _downloadsView = CollectionViewSource.GetDefaultView(DownloadProgressService.Instance.Downloads);
+            _downloadsView.SortDescriptions.Add(new SortDescription(nameof(DownloadItem.SortOrder), ListSortDirection.Ascending));
+            _downloadsView.SortDescriptions.Add(new SortDescription(nameof(DownloadItem.StartTime), ListSortDirection.Descending));
+            dgDownloads.ItemsSource = _downloadsView;
+
             DownloadProgressService.Instance.Downloads.CollectionChanged += (_, __) =>
             {
                 UpdateDownloadBadges();
@@ -145,6 +153,8 @@ namespace TelegramAutoDownload
                     DownloadFromSize = c.DownloadFromSize,
                     IgnoreFileByRegex = c.IgnoreFileByRegex,
                     EnabledPlugins = c.EnabledPlugins ?? new Dictionary<string, bool>(),
+                    MembersCount = c.MembersCount,
+                    Muted = c.Muted,
                 }).ToList();
 
                 _isLoading = true;
@@ -191,6 +201,8 @@ namespace TelegramAutoDownload
                         chat.DownloadFromSize = saved.DownloadFromSize;
                         chat.IgnoreFileByRegex = saved.IgnoreFileByRegex;
                         chat.EnabledPlugins = saved.EnabledPlugins ?? new Dictionary<string, bool>();
+                        chat.Muted = saved.Muted;
+                        // MembersCount is populated from the live Telegram API data — no need to restore from config
                     }
                     return chats;
                 });
@@ -244,6 +256,37 @@ namespace TelegramAutoDownload
             btn.IsEnabled = true;
             btn.Content = "⬇ Sync";
             tbLoadingStatus.Text = string.Empty;
+        }
+
+        private async void BtnMuteChat_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not Button btn || btn.Tag is not ChatDto chat) return;
+
+            btn.IsEnabled = false;
+            try
+            {
+                bool newMuted = !chat.Muted;
+                await TelegramApp.MuteChatAsync(chat, newMuted);
+
+                // Update model and persist
+                chat.Muted = newMuted;
+                var config = ConfigFile.Read();
+                var saved = config.Chats.FirstOrDefault(c => c.Id == chat.Id);
+                if (saved != null)
+                {
+                    saved.Muted = newMuted;
+                    ConfigFile.Save(config);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Could not change mute state: {ex.Message}", "Mute",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+            finally
+            {
+                btn.IsEnabled = true;
+            }
         }
 
         private void BtnSettings_Click(object sender, RoutedEventArgs e)
@@ -302,13 +345,28 @@ namespace TelegramAutoDownload
             {
                 var all = DownloadProgressService.Instance.Downloads;
                 int queued = all.Count(d => d.Status == "⏳ Queued");
-                int active = all.Count(d => d.Status != "⏳ Queued");
+                int active = all.Count(d => d.Status == "⬇ Downloading");
 
                 tbDownloadCount.Text = active.ToString();
                 tbQueueCount.Text = queued.ToString();
                 queueCountBadge.Visibility = queued > 0
                     ? System.Windows.Visibility.Visible
                     : System.Windows.Visibility.Collapsed;
+
+                // Total speed badge — only shown while downloads are active
+                var speed = DownloadProgressService.Instance.GetTotalCurrentSpeed();
+                if (!string.IsNullOrEmpty(speed))
+                {
+                    tbTotalSpeed.Text = speed;
+                    totalSpeedBadge.Visibility = System.Windows.Visibility.Visible;
+                }
+                else
+                {
+                    totalSpeedBadge.Visibility = System.Windows.Visibility.Collapsed;
+                }
+
+                // Refresh sort so newly completed items move to the bottom
+                _downloadsView?.Refresh();
             });
         }
 
@@ -483,12 +541,57 @@ namespace TelegramAutoDownload
             }
         }
 
+        /// <summary>
+        /// Updates the Visibility of the Start and End icon ComboBoxes in the same row.
+        /// Hidden when the chat's available reactions list is known to be empty (reactions disabled).
+        /// </summary>
+        private static void UpdateIconComboBoxVisibility(ChatDto chatDto, ListViewItem? row)
+        {
+            if (row == null) return;
+            var visibility = chatDto.AvailableReactions?.Count == 0
+                ? Visibility.Collapsed
+                : Visibility.Visible;
+
+            // Walk the visual tree to find all ComboBoxes tagged "start" or "end" in this row
+            foreach (var combo in FindVisualChildren<ComboBox>(row))
+            {
+                var tag = combo.Tag as string;
+                if (tag == "start" || tag == "end")
+                    combo.Visibility = visibility;
+            }
+        }
+
+        private static IEnumerable<T> FindVisualChildren<T>(DependencyObject parent) where T : DependencyObject
+        {
+            int count = VisualTreeHelper.GetChildrenCount(parent);
+            for (int i = 0; i < count; i++)
+            {
+                var child = VisualTreeHelper.GetChild(parent, i);
+                if (child is T typed)
+                    yield return typed;
+                foreach (var descendant in FindVisualChildren<T>(child))
+                    yield return descendant;
+            }
+        }
+
+        private static ListViewItem? GetListViewItemFromComboBox(ComboBox comboBox)
+        {
+            DependencyObject parent = VisualTreeHelper.GetParent(comboBox);
+            while (parent is not ListViewItem && parent != null)
+                parent = VisualTreeHelper.GetParent(parent);
+            return parent as ListViewItem;
+        }
+
         private void DownloadStartIcon_Loaded(object sender, RoutedEventArgs e)
         {
             if (sender is not ComboBox comboBox) return;
             var chatDto = GetChatDtoFromComboBox(comboBox);
             if (chatDto == null) return;
             SetupEmojiComboBox(comboBox, chatDto, chatDto.DownloadStartIcon);
+
+            // Hide immediately if reactions are already known to be disabled
+            if (chatDto.AvailableReactions?.Count == 0)
+                comboBox.Visibility = Visibility.Collapsed;
         }
 
         private void EndIconComboBox_Loaded(object sender, RoutedEventArgs e)
@@ -497,6 +600,10 @@ namespace TelegramAutoDownload
             var chatDto = GetChatDtoFromComboBox(comboBox);
             if (chatDto == null) return;
             SetupEmojiComboBox(comboBox, chatDto, chatDto.ReactionIcon);
+
+            // Hide immediately if reactions are already known to be disabled
+            if (chatDto.AvailableReactions?.Count == 0)
+                comboBox.Visibility = Visibility.Collapsed;
         }
 
         /// <summary>
@@ -524,6 +631,10 @@ namespace TelegramAutoDownload
                 var currentValue = isStart ? chatDto.DownloadStartIcon : chatDto.ReactionIcon;
 
                 SetupEmojiComboBox(comboBox, chatDto, currentValue);
+
+                // Update visibility for both icon ComboBoxes in the same row
+                var row = GetListViewItemFromComboBox(comboBox);
+                UpdateIconComboBoxVisibility(chatDto, row);
             }
             catch { /* non-critical */ }
         }

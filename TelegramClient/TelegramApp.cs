@@ -686,6 +686,36 @@ namespace TelegramClient
             return groups;
         }
 
+        /// <summary>
+        /// Mutes or unmutes Telegram notifications for the given chat.
+        /// Mute sets mute_until to int.MaxValue (indefinite); unmute sets it to 0.
+        /// </summary>
+        public async Task MuteChatAsync(ChatDto chatDto, bool mute)
+        {
+            try
+            {
+                _accessHashes.TryGetValue(chatDto.Id, out var hash);
+                InputPeer peer = hash != 0
+                    ? (InputPeer)new InputPeerChannel(chatDto.Id, hash)
+                    : new InputPeerChat(chatDto.Id);
+
+                // mute_until is a DateTime in WTelegramClient — use far-future date for indefinite mute,
+                // or epoch (unix 0) to unmute immediately.
+                await Client.Account_UpdateNotifySettings(
+                    new TL.InputNotifyPeer { peer = peer },
+                    new TL.InputPeerNotifySettings
+                    {
+                        flags      = TL.InputPeerNotifySettings.Flags.has_mute_until,
+                        mute_until = mute ? DateTime.UnixEpoch.AddSeconds(int.MaxValue) : DateTime.UnixEpoch
+                    });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"MuteChatAsync failed for {chatDto.Name}: {ex.Message}");
+                throw;
+            }
+        }
+
         private async Task FetchDialogFolder(int folderId, List<ChatDto> groups, HashSet<long> seenIds)
         {
             int offsetId = 0;
@@ -746,10 +776,12 @@ namespace TelegramClient
 
                     groups.Add(new ChatDto
                     {
-                        Id       = kv.Value.ID,
-                        Name     = kv.Value.Title,
-                        Username = kv.Value.MainUsername,
-                        Type     = kv.Value.IsGroup ? "Group" : "Channel"
+                        Id           = kv.Value.ID,
+                        Name         = kv.Value.Title,
+                        Username     = kv.Value.MainUsername,
+                        Type         = kv.Value.IsGroup ? "Group" : "Channel",
+                        MembersCount = kv.Value is TL.Channel chMc ? chMc.participants_count
+                                     : kv.Value is TL.Chat grpMc  ? grpMc.participants_count : 0
                     });
                 }
 
