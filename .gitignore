@@ -10,6 +10,7 @@ tools/*.exe
 publish/
 publish_out/
 publish_v*/
+release_pkg/
 tmp/
 
 # Release artifacts (uploaded to GitHub Releases directly, not via git)

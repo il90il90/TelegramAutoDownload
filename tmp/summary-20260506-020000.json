@@ -1,4 +1,0 @@
-{
-  "summary": "Added Sync button feature (v2.2.6). User reported 300 files uploaded to channel while app was running but only 4 downloaded. Explained that UpdateChannelTooLong fix (v2.2.5) only works for files uploaded AFTER that version is installed. For existing files already in channel, added a per-chat Sync button in the chat ListView. Clicking it calls SyncHistoryAsync which paginates through Messages_GetHistory (100/page), processes each media message via ExecuteDirectAsync, and shows progress in status bar. v2.2.6 released with portable ZIP and Setup EXE.",
-  "current_status": "v2.2.6 released. All features: Sync button, UpdateChannelTooLong catch-up, best quality downloads, search performance, Test Bot button, blinking version label, auto-update via Setup EXE."
-}
