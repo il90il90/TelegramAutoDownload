@@ -45,6 +45,19 @@ namespace TelegramClient
             }
         }
 
+        /// <summary>
+        /// Removes a document ID from the index (e.g. stale entry: ID is recorded but file no longer on disk).
+        /// The next download attempt will treat the file as new.
+        /// </summary>
+        public static void Remove(long documentId)
+        {
+            lock (_lock)
+            {
+                if (_ids.Remove(documentId))
+                    Save();
+            }
+        }
+
         private static void Load()
         {
             try

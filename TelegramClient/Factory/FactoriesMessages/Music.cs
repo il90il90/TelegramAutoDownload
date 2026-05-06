@@ -31,7 +31,14 @@ namespace TelegramClient.Factory.FactoriesMessages
                 var fileName = !string.IsNullOrEmpty(document.Filename) ? document.Filename : document.ID.ToString();
                 // Primary dedup: Telegram document ID (unique content fingerprint)
                 if (FileDownloadIndex.IsAlreadyDownloaded(document.ID))
-                    return new ResultExecute(chatDto.Name) { IsSuccess = true, FileName = fileName, ErrorMessage = $"{fileName} already downloaded (id match)" };
+                {
+                    // Verify the file still exists on disk — guards against stale index after reinstall / moved files
+                    var existingFile = GetPathOfDuplicateFile(fileName, document.size);
+                    if (existingFile != null)
+                        return new ResultExecute(chatDto.Name) { IsSuccess = true, FileName = fileName, ErrorMessage = $"{fileName} already downloaded (id match)" };
+                    // Stale index entry — file gone from disk, remove and re-download
+                    FileDownloadIndex.Remove(document.ID);
+                }
 
                 // Secondary dedup: filename + file size match on disk
                 var fileExist = GetPathOfDuplicateFile(fileName, document.size);

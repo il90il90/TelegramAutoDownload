@@ -34,7 +34,14 @@ namespace TelegramClient.Factory.Factories
                     : $"{document.id}.{document.mime_type.Split('/').Last()}";
                 // Primary dedup: Telegram document ID (unique content fingerprint)
                 if (FileDownloadIndex.IsAlreadyDownloaded(document.ID))
-                    return new ResultExecute(chatDto.Name) { IsSuccess = true, FileName = fileName, ErrorMessage = $"{fileName} already downloaded (id match)" };
+                {
+                    // Verify the file still exists on disk — guards against stale index after reinstall / moved files
+                    var existingFile = GetPathOfDuplicateFile(fileName, document.size);
+                    if (existingFile != null)
+                        return new ResultExecute(chatDto.Name) { IsSuccess = true, FileName = fileName, ErrorMessage = $"{fileName} already downloaded (id match)" };
+                    // Stale index entry — file gone from disk, remove and re-download
+                    FileDownloadIndex.Remove(document.ID);
+                }
 
                 // Secondary dedup: filename + file size match on disk
                 var fileExist = GetPathOfDuplicateFile(fileName, document.size);
@@ -83,7 +90,14 @@ namespace TelegramClient.Factory.Factories
 
                 // Primary dedup: photo.id is Telegram's unique content fingerprint for native photos
                 if (FileDownloadIndex.IsAlreadyDownloaded(photo.id))
-                    return new ResultExecute(chatDto.Name) { IsSuccess = true, FileName = fileName, ErrorMessage = $"{fileName} already downloaded (id match)" };
+                {
+                    // Verify the file still exists on disk — guards against stale index after reinstall / moved files
+                    var existingFile = GetPathOfDuplicateFile(fileName);
+                    if (existingFile != null)
+                        return new ResultExecute(chatDto.Name) { IsSuccess = true, FileName = fileName, ErrorMessage = $"{fileName} already downloaded (id match)" };
+                    // Stale index entry — file gone from disk, remove and re-download
+                    FileDownloadIndex.Remove(photo.id);
+                }
 
                 // Secondary dedup: filename match on disk (photos have predictable names from photo.id)
                 var fileExist = GetPathOfDuplicateFile(fileName);
