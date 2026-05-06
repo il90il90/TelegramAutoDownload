@@ -90,6 +90,15 @@ namespace TelegramAutoDownload
             telegram.OnRetryReady = (chatName, fileName, retryAction) =>
                 DownloadProgressService.Instance.SetRetryAction(chatName, fileName, retryAction);
 
+            // Wire history entries: append each incoming message to the chat's JSONL file
+            telegram.OnHistoryEntry = (chat, entry) =>
+            {
+                var basePath = ConfigFile.Read().PathSaveFile;
+                if (string.IsNullOrWhiteSpace(basePath)) return;
+                _ = TelegramClient.ChatHistoryService.AppendEntryAsync(
+                        chat.Type ?? "Other", chat.Name, entry, basePath);
+            };
+
             // Enhanced completion notification with size, duration, avg speed
             DownloadProgressService.Instance.DownloadCompleted += (chatName, fileName, bytes, duration) =>
                 _ = _notification.OnDownloadCompletedAsync(chatName, fileName, bytes, duration);
@@ -936,6 +945,61 @@ namespace TelegramAutoDownload
                 ConfigFile.Save(config);
                 TelegramApp.UpdateConfig(config);
             }
+        }
+
+        // ── History (SaveHistory toggle + Export) ────────────────────────────────────
+
+        private void HistoryCheckBox_Loaded(object sender, RoutedEventArgs e)
+        {
+            if (sender is CheckBox cb && cb.DataContext is ChatDto chat)
+                cb.IsChecked = chat.SaveHistory;
+        }
+
+        private void HistoryCheckBox_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not CheckBox cb || cb.DataContext is not ChatDto chat) return;
+
+            chat.SaveHistory = cb.IsChecked == true;
+
+            var config = ConfigFile.Read();
+            var found = config.Chats.FirstOrDefault(c => c.Id == chat.Id);
+            if (found != null)
+            {
+                found.SaveHistory = chat.SaveHistory;
+                ConfigFile.Save(config);
+                TelegramApp.UpdateConfig(config);
+            }
+        }
+
+        private async void BtnExportHistory_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not Button btn || btn.Tag is not ChatDto chat) return;
+            if (!chat.Selected)
+            {
+                MessageBox.Show(
+                    "Enable monitoring for this chat first, then export its history.",
+                    "Export History", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var basePath = ConfigFile.Read().PathSaveFile;
+            if (string.IsNullOrWhiteSpace(basePath))
+            {
+                MessageBox.Show(
+                    "Please set a download folder in Settings before exporting history.",
+                    "Export History", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            btn.IsEnabled = false;
+            btn.Content   = "…";
+
+            await TelegramApp.ExportChatHistoryAsync(chat, basePath,
+                msg => Dispatcher.InvokeAsync(() => tbLoadingStatus.Text = msg));
+
+            btn.IsEnabled = true;
+            btn.Content   = "📤";
+            tbLoadingStatus.Text = string.Empty;
         }
 
         // ── Retry ─────────────────────────────────────────────────────────────────────

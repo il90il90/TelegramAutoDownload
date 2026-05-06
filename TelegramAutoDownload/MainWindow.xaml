@@ -264,7 +264,7 @@
                             </GridViewColumn.CellTemplate>
                         </GridViewColumn>
 
-                        <!-- Sync column: download all existing history from this chat -->
+                        <!-- Sync column: download all existing media files from history -->
                         <GridViewColumn Header="Sync" Width="85">
                             <GridViewColumn.CellTemplate>
                                 <DataTemplate>
@@ -273,6 +273,28 @@
                                             ToolTip="Download all existing files from this chat's history"
                                             Tag="{Binding}"
                                             Click="BtnSyncChat_Click"/>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+
+                        <!-- History: save every message to a JSONL log file -->
+                        <GridViewColumn Width="105">
+                            <GridViewColumn.Header>
+                                <TextBlock Text="History" ToolTip="Save all messages to a JSONL file in History/{Type}/{Chat}.jsonl"/>
+                            </GridViewColumn.Header>
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal">
+                                        <CheckBox Height="22" VerticalAlignment="Center" Margin="4,0,4,0"
+                                                  ToolTip="Track new messages in a JSONL history file"
+                                                  Loaded="HistoryCheckBox_Loaded"
+                                                  Click="HistoryCheckBox_Click"/>
+                                        <Button Content="📤" Height="22" Width="26" FontSize="11"
+                                                Padding="0" VerticalAlignment="Center"
+                                                Tag="{Binding}"
+                                                Click="BtnExportHistory_Click"
+                                                ToolTip="Export full chat history to JSONL file now"/>
+                                    </StackPanel>
                                 </DataTemplate>
                             </GridViewColumn.CellTemplate>
                         </GridViewColumn>

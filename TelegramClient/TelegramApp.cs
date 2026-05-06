@@ -11,6 +11,7 @@ using TelegramClient.Factory.Service;
 using TelegramClient.Models;
 using TL;
 using WTelegram;
+using HistoryEntry = TelegramClient.Models.HistoryEntry;
 
 namespace TelegramClient
 {
@@ -47,6 +48,12 @@ namespace TelegramClient
         /// Arguments: (chatName, fileName, retryAction).
         /// </summary>
         public Action<string, string, Func<Task>>? OnRetryReady { get; set; }
+
+        /// <summary>
+        /// Fired for every incoming message when the chat has SaveHistory = true.
+        /// Arguments: (chatDto, entry). The receiver should call ChatHistoryService.AppendEntryAsync.
+        /// </summary>
+        public Action<ChatDto, HistoryEntry>? OnHistoryEntry { get; set; }
         public readonly Client Client;
         private FactoryMessagesService factoryService;
         private FactoryUserService factoryUserService;
@@ -223,6 +230,17 @@ namespace TelegramClient
 
                         if (updateNewMessage.message is Message infoMessage)
                         {
+                            // Append to JSONL history file if the chat has SaveHistory enabled
+                            if (chat.SaveHistory && OnHistoryEntry != null)
+                            {
+                                try
+                                {
+                                    var entry = ChatHistoryService.CreateEntry(infoMessage);
+                                    OnHistoryEntry.Invoke(chat, entry);
+                                }
+                                catch { /* history write must never break downloads */ }
+                            }
+
                             // Mark as actively downloading (was "Queued")
                             OnStarted?.Invoke(chat.Name, infoMessage.ID);
 
@@ -482,6 +500,101 @@ namespace TelegramClient
             {
                 onStatus?.Invoke($"Sync failed: {ex.Message}");
                 System.Diagnostics.Debug.WriteLine($"SyncHistoryAsync failed: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Exports the full message history of a chat to a JSONL file.
+        /// Fetches all messages (newest → oldest) and writes them oldest-first.
+        /// File: {basePath}/History/{ChatType}/{ChatName}.jsonl
+        /// </summary>
+        public async Task ExportChatHistoryAsync(
+            ChatDto chatDto, string basePath, Action<string>? onStatus = null)
+        {
+            try
+            {
+                onStatus?.Invoke($"Exporting history for {chatDto.Name}…");
+
+                // Resolve InputPeer — identical logic to SyncHistoryAsync
+                InputPeer? peer = null;
+                if (_accessHashes.TryGetValue(chatDto.Id, out var hash))
+                {
+                    peer = hash != 0
+                        ? new InputPeerChannel(chatDto.Id, hash)
+                        : new InputPeerChat(chatDto.Id);
+                }
+                else
+                {
+                    var dialogs = await Client.Messages_GetDialogs(
+                        offset_date: default, offset_id: 0, offset_peer: null!, limit: 200, hash: 0);
+                    if (dialogs is TL.Messages_Dialogs dlg)
+                    {
+                        if (dlg.chats.TryGetValue(chatDto.Id, out var cb) && cb is TL.Channel ch)
+                        {
+                            _accessHashes[chatDto.Id] = ch.access_hash;
+                            peer = new InputPeerChannel(chatDto.Id, ch.access_hash);
+                        }
+                        else if (dlg.chats.TryGetValue(chatDto.Id, out var grp) && grp is TL.Chat)
+                        {
+                            _accessHashes[chatDto.Id] = 0;
+                            peer = new InputPeerChat(chatDto.Id);
+                        }
+                    }
+                }
+
+                if (peer == null)
+                {
+                    onStatus?.Invoke($"Could not resolve peer for {chatDto.Name}");
+                    return;
+                }
+
+                // Collect all messages oldest-first using the same pagination as SyncHistoryAsync
+                var allEntries = new List<HistoryEntry>();
+                int offsetId  = 0;
+                const int pageSize = 100;
+
+                while (true)
+                {
+                    var history = await Client.Messages_GetHistory(peer,
+                        offset_id: offsetId, limit: pageSize);
+
+                    var rawMessages = history.Messages.OfType<Message>().ToList();
+                    if (rawMessages.Count == 0) break;
+
+                    // Resolve user display names when available (only in full messages responses)
+                    Dictionary<long, User>? userMap = null;
+                    if (history is TL.Messages_Messages mm)    userMap = mm.users;
+                    else if (history is TL.Messages_MessagesSlice ms) userMap = ms.users;
+                    else if (history is TL.Messages_ChannelMessages mc) userMap = mc.users;
+
+                    foreach (var msg in rawMessages)
+                    {
+                        string? senderName = null;
+                        if (userMap != null && msg.from_id is PeerUser pu && userMap.TryGetValue(pu.user_id, out var u))
+                            senderName = u.first_name + (string.IsNullOrEmpty(u.last_name) ? "" : " " + u.last_name);
+
+                        allEntries.Add(ChatHistoryService.CreateEntry(msg, senderName));
+                    }
+
+                    onStatus?.Invoke($"Exporting {chatDto.Name}: {allEntries.Count} messages…");
+
+                    if (rawMessages.Count < pageSize) break;
+                    offsetId = rawMessages.Min(m => m.ID);
+                }
+
+                // Sort oldest-first before writing
+                allEntries.Sort((a, b) => a.Id.CompareTo(b.Id));
+
+                await ChatHistoryService.WriteFullHistoryAsync(
+                    chatDto.Type ?? "Other", chatDto.Name, allEntries, basePath);
+
+                onStatus?.Invoke(
+                    $"History export complete: {allEntries.Count} messages → History/{chatDto.Type}/{chatDto.Name}.jsonl");
+            }
+            catch (Exception ex)
+            {
+                onStatus?.Invoke($"History export failed: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"ExportChatHistoryAsync failed for {chatDto.Name}: {ex}");
             }
         }
 

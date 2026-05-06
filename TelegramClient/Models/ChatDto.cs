@@ -61,6 +61,13 @@ namespace TelegramClient.Models
         /// </summary>
         public string FolderTemplate { get; set; } = string.Empty;
 
+        /// <summary>
+        /// When true, every incoming message is appended to a JSONL history file and
+        /// the full history can be exported on demand.
+        /// File: {DownloadPath}/History/{Type}/{ChatName}.jsonl
+        /// </summary>
+        public bool SaveHistory { get; set; } = false;
+
         public event PropertyChangedEventHandler? PropertyChanged;
         protected void OnPropertyChanged(string name) =>
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
