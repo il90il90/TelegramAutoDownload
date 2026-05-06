@@ -412,7 +412,7 @@
             <DockPanel>
                 <!-- Right: version + connection dot + path controls -->
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Button x:Name="btnAppVersion" Content="v2.2.24"
+                    <Button x:Name="btnAppVersion" Content="v2.2.25"
                             Style="{x:Null}"
                             Background="Transparent" BorderThickness="0"
                             Foreground="#999" Cursor="Hand" Padding="4,0"
