@@ -288,7 +288,7 @@ namespace TelegramClient
 
                     var messages = history.Messages
                         .OfType<Message>()
-                        .Where(m => m.media != null)
+                        .Where(m => m.media != null && IsMessageTypeEnabled(m, chatDto))
                         .ToList();
 
                     if (messages.Count == 0) break;
@@ -342,6 +342,27 @@ namespace TelegramClient
         /// Extracts a display filename from a message for queue preview.
         /// Returns null if the message has no downloadable media.
         /// </summary>
+        /// <summary>
+        /// Returns true if the message's media type is enabled in the chat's download settings.
+        /// Used to skip enqueuing and downloading messages whose type the user has not selected.
+        /// </summary>
+        private static bool IsMessageTypeEnabled(Message msg, ChatDto chatDto)
+        {
+            if (msg.media is MessageMediaPhoto)
+                return chatDto.Download.Photos;
+
+            if (msg.media is MessageMediaDocument { document: Document doc })
+            {
+                var mime = doc.mime_type ?? string.Empty;
+                if (mime.Contains("image")) return chatDto.Download.Photos;
+                if (mime.Contains("video")) return chatDto.Download.Videos;
+                if (mime.Contains("audio")) return chatDto.Download.Music;
+                return chatDto.Download.Files;
+            }
+
+            return false;
+        }
+
         private static string? GetPreviewFileName(Message msg)
         {
             if (msg.media is MessageMediaDocument { document: Document doc })

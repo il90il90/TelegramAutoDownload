@@ -215,6 +215,15 @@ namespace TelegramAutoDownload
                 return;
             }
 
+            // Guard: at least one download type must be selected
+            var dl = chat.Download;
+            if (!dl.Videos && !dl.Photos && !dl.Music && !dl.Files)
+            {
+                MessageBox.Show("No download types selected.\nPlease check at least one type (Videos, Photos, Music, or Files) before syncing.",
+                    "Sync", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
             btn.IsEnabled = false;
             btn.Content = "…";
 
