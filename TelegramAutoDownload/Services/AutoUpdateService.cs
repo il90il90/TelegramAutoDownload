@@ -100,6 +100,10 @@ namespace TelegramAutoDownload.Services
         /// </summary>
         public static async Task DownloadAndInstallAsync(ReleaseInfo release, Action<int>? onProgress = null)
         {
+            if (string.IsNullOrEmpty(release.AssetUrl))
+                throw new InvalidOperationException(
+                    "No installer asset is attached to this release yet.\nPlease download manually from GitHub.");
+
             var tmpFile = Path.Combine(Path.GetTempPath(), release.AssetName);
             bool isInstaller = release.AssetName.EndsWith(".exe", StringComparison.OrdinalIgnoreCase);
 
