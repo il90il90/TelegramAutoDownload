@@ -20,11 +20,20 @@ namespace TelegramClient.Factory.Service
 
         public MessageTextFactoryService(Client client, string pathFolderToSaveFiles) : base(client, pathFolderToSaveFiles)
         {
-            var PluginFolderName = "Plugins";
-            if (!Directory.Exists(PluginFolderName))
-                Directory.CreateDirectory(PluginFolderName);
+            // Use the absolute path next to the executable so the app works both
+            // as a portable install (writable folder) and as a Program Files install
+            // (read-only folder — Plugins were placed there by the installer).
+            var pluginsDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Plugins");
+            if (!Directory.Exists(pluginsDir))
+            {
+                // Only try to create the folder; silently skip if the install dir is read-only
+                // (Program Files) — the installer is responsible for creating it there.
+                try { Directory.CreateDirectory(pluginsDir); } catch { /* read-only install, skip */ }
+            }
 
-            var folders = Directory.GetDirectories($"{AppDomain.CurrentDomain.BaseDirectory}/{PluginFolderName}");
+            var folders = Directory.Exists(pluginsDir)
+                ? Directory.GetDirectories(pluginsDir)
+                : Array.Empty<string>();
 
             foreach (var folder in folders)
             {
