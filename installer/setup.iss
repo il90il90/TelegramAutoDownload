@@ -1,11 +1,11 @@
 #define AppName "Telegram Auto Download"
-#define AppVersion "2.2.8"
+#define AppVersion "2.2.9"
 #define AppPublisher "TelegramAutoDownload"
 #define AppURL "https://github.com/il90il90/TelegramAutoDownload"
 #define AppExeName "TelegramAutoDownload.exe"
 #define SourceDir "..\publish_out"
 #define OutputDir ".."
-#define OutputName "TelegramAutoDownload_v2.2.8_Setup"
+#define OutputName "TelegramAutoDownload_v2.2.9_Setup"
 
 [Setup]
 AppId={{A3F2C8E1-4D7B-4E9A-B5C0-1234567890AB}
@@ -72,8 +72,9 @@ Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; \
   Flags: uninsdeletevalue; Tasks: startupicon
 
 [Run]
+; Launch app after install — works both in GUI mode (as a checkbox) and silent/auto-update mode
 Filename: "{app}\{#AppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(AppName, '&', '&&')}}"; \
-  Flags: nowait postinstall skipifsilent
+  Flags: nowait postinstall
 
 [UninstallRun]
 Filename: "taskkill.exe"; Parameters: "/f /im {#AppExeName}"; Flags: runhidden; RunOnceId: "KillApp"
