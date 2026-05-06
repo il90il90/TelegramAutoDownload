@@ -287,6 +287,20 @@ namespace TelegramAutoDownload.Services
         }
 
         /// <summary>
+        /// Attaches a retry callback to a failed download item so the UI can offer a Retry button.
+        /// Called from TelegramApp after a download ends with IsSuccess == false.
+        /// </summary>
+        public void SetRetryAction(string chatName, string fileName, Func<Task> retry)
+        {
+            Application.Current?.Dispatcher.InvokeAsync(() =>
+            {
+                var item = Downloads.FirstOrDefault(d => d.ChatName == chatName && d.FileName == fileName);
+                if (item != null)
+                    item.RetryAsync = retry;
+            });
+        }
+
+        /// <summary>
         /// Cancels the download identified by chatName + fileName.
         /// Queued items (never started) are removed immediately; active downloads
         /// are cancelled via the CancellationRegistry and removed after a short delay.

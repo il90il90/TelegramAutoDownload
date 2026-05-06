@@ -60,31 +60,36 @@ namespace TelegramClient.Factory.Factories
             }
 
             var pathFolderLocation = PathLocationFolder(chatDto, fileName);
+            var partPath = GetPartFilePath(pathFolderLocation);
             OnProgress?.Invoke(chatDto.Name, fileName, PluginName, 0, 0, document.size);
-            var (progress, downloadToken) = MakeProgress(chatDto.Name, fileName, document.size);
+            var (progress, downloadToken, userCancelToken) = MakeProgress(chatDto.Name, fileName, document.size);
             try
             {
                 await WithRetryAsync(async () =>
                 {
-                    using var stream = File.Create(pathFolderLocation);
-                    // Dispose the stream on cancel so a hung DownloadFileAsync is force-interrupted
+                    // Resume from existing .part file if present; WTelegram reads stream.Position as offset
+                    using var stream = OpenOrResumePartFile(partPath);
                     using var _ = downloadToken.Register(() => { try { stream.Dispose(); } catch { } });
                     await Client.DownloadFileAsync(document, stream, null, progress);
                     return true;
                 }, downloadToken);
+                // Rename .part → final name once the download is complete
+                File.Move(partPath, pathFolderLocation, overwrite: true);
                 FileDownloadIndex.MarkDownloaded(document.ID);
                 OnComplete?.Invoke(chatDto.Name, fileName, true);
                 return new ResultExecute(chatDto.Name) { IsSuccess = true, FileName = fileName, FilePath = pathFolderLocation };
             }
             catch (OperationCanceledException)
             {
-                DeletePartialFile(pathFolderLocation);
+                // Delete .part only when the user explicitly cancelled — keep it for resume on timeout/crash
+                if (userCancelToken.IsCancellationRequested)
+                    DeletePartialFile(partPath);
                 CancellationRegistry.Remove(CancellationRegistry.MakeKey(chatDto.Name, fileName));
                 return new ResultExecute(chatDto.Name) { IsSuccess = false, FileName = fileName, ErrorMessage = "Cancelled by user" };
             }
             catch (Exception) when (downloadToken.IsCancellationRequested)
             {
-                DeletePartialFile(pathFolderLocation);
+                // Inactivity timeout or network failure — keep .part file so the next attempt can resume
                 CancellationRegistry.Remove(CancellationRegistry.MakeKey(chatDto.Name, fileName));
                 return new ResultExecute(chatDto.Name) { IsSuccess = false, FileName = fileName, ErrorMessage = "Download cancelled (no progress)" };
             }

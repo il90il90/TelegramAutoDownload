@@ -51,15 +51,24 @@ namespace TelegramAutoDownload.Tests
             plugin.CanHandle(MakeConfig(url)).Should().BeTrue();
         }
 
+        // SocialMedia handles YouTube domains too (youtube.com + youtu.be are in _supportedDomains).
+        // Priority 2 (lower number = runs first) ensures it processes YouTube links before YouTubePlugin (10).
         [Theory]
         [InlineData("https://youtu.be/dQw4w9WgXcQ")]
         [InlineData("https://www.youtube.com/watch?v=abc")]
-        [InlineData("magnet:?xt=urn:btih:abc")]
-        [InlineData("just some text")]
-        public void SocialMedia_CanHandle_ReturnsFalse_ForYouTubeOrMagnet(string url)
+        public void SocialMedia_CanHandle_ReturnsTrue_ForYouTubeUrls(string url)
         {
             var plugin = new SocialMediaPlugin<object>();
-            plugin.CanHandle(MakeConfig(url)).Should().BeFalse();
+            plugin.CanHandle(MakeConfig(url)).Should().BeTrue();
+        }
+
+        [Theory]
+        [InlineData("magnet:?xt=urn:btih:abc")]
+        [InlineData("just some text")]
+        public void SocialMedia_CanHandle_ReturnsFalse_ForNonHttpInput(string input)
+        {
+            var plugin = new SocialMediaPlugin<object>();
+            plugin.CanHandle(MakeConfig(input)).Should().BeFalse();
         }
 
         // --- TorrentPlugin ---

@@ -12,5 +12,7 @@ namespace BasePlugins
         public Dictionary<string, bool> EnabledPlugins { get; set; } = new();
         // Cancellation token registered by the host so the UI cancel button can abort the download
         public CancellationToken CancellationToken { get; set; } = CancellationToken.None;
+        // yt-dlp quality label: "best", "4K", "1080p", "720p", "480p", "audio"
+        public string YtdlpQuality { get; set; } = "best";
     }
 }

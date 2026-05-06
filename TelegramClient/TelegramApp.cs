@@ -41,6 +41,12 @@ namespace TelegramClient
         /// The UI should remove the queued/downloading entry without showing an error.
         /// </summary>
         public Action<string, int>? OnSkipped { get; set; }
+
+        /// <summary>
+        /// Fired after a download failure so the UI layer can attach a Retry callback to the item.
+        /// Arguments: (chatName, fileName, retryAction).
+        /// </summary>
+        public Action<string, string, Func<Task>>? OnRetryReady { get; set; }
         public readonly Client Client;
         private FactoryMessagesService factoryService;
         private FactoryUserService factoryUserService;
@@ -62,6 +68,10 @@ namespace TelegramClient
 
         // Cached result of Messages_GetAvailableReactions (global list), shared across all chats that allow all reactions
         private List<string>? _cachedAllReactions;
+
+        // Delegates to the extracted helper so the logic is unit-testable
+        private static bool IsInQuietHours(ConfigParams config) =>
+            QuietHoursHelper.IsInQuietHours(config);
 
         public TelegramApp(int appId, string apiHash)
         {
@@ -102,6 +112,11 @@ namespace TelegramClient
             factoryService.WireProgressCallbacks();
             factoryUserService = new FactoryUserService(chatIds, configParams);
             _semaphore = new SemaphoreSlim(Math.Max(1, configParams.DownloadThreads));
+
+            // Clean up stale .part files in the background so startup is not blocked.
+            // Files older than 7 days are treated as abandoned (resume is unlikely after that long).
+            if (!string.IsNullOrEmpty(configParams.PathSaveFile))
+                _ = Task.Run(() => PartFileCleanup.CleanStaleParts(configParams.PathSaveFile));
         }
 
         /// <summary>
@@ -186,6 +201,14 @@ namespace TelegramClient
                             OnEnqueued?.Invoke(chat.Name, liveMsg.ID, previewName);
                     }
 
+                    // Skip new downloads during quiet hours — Sync can catch up afterwards
+                    if (_configParams != null && IsInQuietHours(_configParams))
+                    {
+                        if (updateNewMessage.message is Message quietMsg)
+                            OnSkipped?.Invoke(chat.Name, quietMsg.ID);
+                        continue;
+                    }
+
                     // Capture the current semaphore instance so a concurrent UpdateConfig
                     // call that replaces _semaphore does not cause a SemaphoreFullException
                     // when the finally block calls Release() on the wrong instance.
@@ -250,6 +273,32 @@ namespace TelegramClient
                                     {
                                         if (OnWarnningMessage != null)
                                             await OnWarnningMessage.Invoke(resultMessageEvent);
+
+                                        // Offer retry when a genuine failure occurred (not a dedup skip)
+                                        if (!resultExecute.IsSuccess && !string.IsNullOrEmpty(resultExecute.FileName))
+                                        {
+                                            var capturedUpdate = updateNewMessage;
+                                            var capturedChat   = chat;
+                                            var capturedSem    = sem;
+                                            OnRetryReady?.Invoke(capturedChat.Name, resultExecute.FileName, async () =>
+                                            {
+                                                await capturedSem.WaitAsync();
+                                                try
+                                                {
+                                                    OnStarted?.Invoke(capturedChat.Name, infoMessage.ID);
+                                                    var retryResult = await factoryService.ExecuteAsync(capturedUpdate, capturedChat);
+                                                    if (retryResult.IsSuccess && string.IsNullOrEmpty(retryResult.ErrorMessage) && OnSaved != null)
+                                                        await OnSaved.Invoke(new ResultMessageEvent
+                                                        {
+                                                            Chat = capturedChat,
+                                                            Message = infoMessage.message,
+                                                            PostAuthor = infoMessage.post_author,
+                                                            ResultExecute = retryResult,
+                                                        });
+                                                }
+                                                finally { capturedSem.Release(); }
+                                            });
+                                        }
                                     }
                                 }
                             }
@@ -338,22 +387,38 @@ namespace TelegramClient
                     var history = await Client.Messages_GetHistory(peer,
                         offset_id: offsetId, limit: pageSize);
 
-                    var messages = history.Messages
-                        .OfType<Message>()
+                    // Use the raw message list for pagination control.
+                    // Pages may contain many text-only messages with no media — we must not
+                    // stop early just because none of them matched the download filter.
+                    var rawMessages = history.Messages.OfType<Message>().ToList();
+
+                    if (rawMessages.Count == 0) break;
+
+                    // Native media that matches this chat's download settings (Videos, Photos, Music, Files)
+                    var mediaMessages = rawMessages
                         .Where(m => m.media != null && IsMessageTypeEnabled(m, chatDto))
                         .ToList();
 
-                    if (messages.Count == 0) break;
+                    // Text messages that contain URLs — handled by plugins (YouTube, SocialMedia, Torrent, etc.)
+                    // These are processed silently without a UI queue entry because we can't know
+                    // upfront whether any plugin will actually handle the URL.
+                    var urlMessages = rawMessages
+                        .Where(m => !mediaMessages.Contains(m) &&
+                                    !string.IsNullOrEmpty(m.message) &&
+                                    m.message.Contains("http", StringComparison.OrdinalIgnoreCase))
+                        .ToList();
 
-                    // Enqueue all messages for this page in the UI before starting downloads
-                    foreach (var msg in messages)
+                    // Enqueue only native media messages in the UI (URL messages show no queue entry)
+                    foreach (var msg in mediaMessages)
                     {
                         var previewName = GetPreviewFileName(msg) ?? $"file_{msg.ID}";
                         OnEnqueued?.Invoke(chatDto.Name, msg.ID, previewName);
                     }
 
                     var sem = _semaphore; // Capture before lambda — see Client_OnUpdates for explanation
-                    var tasks = messages.Select(msg => Task.Run(async () =>
+
+                    // Process native media with full UI lifecycle (queued → downloading → complete)
+                    var mediaTasks = mediaMessages.Select(msg => Task.Run(async () =>
                     {
                         await sem.WaitAsync();
                         try
@@ -380,12 +445,35 @@ namespace TelegramClient
                         finally { sem.Release(); }
                     }));
 
-                    await Task.WhenAll(tasks);
-                    totalQueued += messages.Count;
+                    // Process URL messages silently — no UI queue entry, notification only on success
+                    var urlTasks = urlMessages.Select(msg => Task.Run(async () =>
+                    {
+                        await sem.WaitAsync();
+                        try
+                        {
+                            var result = await factoryService.ExecuteDirectAsync(msg, chatDto);
+                            if (result.IsSuccess && string.IsNullOrEmpty(result.ErrorMessage) && OnSaved != null)
+                            {
+                                await OnSaved.Invoke(new ResultMessageEvent
+                                {
+                                    Chat = chatDto,
+                                    Message = msg.message,
+                                    PostAuthor = msg.post_author,
+                                    ResultExecute = result,
+                                });
+                            }
+                        }
+                        finally { sem.Release(); }
+                    }));
+
+                    await Task.WhenAll(mediaTasks.Concat(urlTasks));
+                    totalQueued += mediaMessages.Count;
                     onStatus?.Invoke($"Syncing {chatDto.Name}: {totalQueued} files queued…");
 
-                    if (messages.Count < pageSize) break;
-                    offsetId = messages.Min(m => m.ID);
+                    // Pagination: stop only when the API returns fewer messages than requested.
+                    // Use the min ID from the RAW page so we don't skip messages that had no media.
+                    if (rawMessages.Count < pageSize) break;
+                    offsetId = rawMessages.Min(m => m.ID);
                 }
 
                 onStatus?.Invoke($"Sync complete: {totalQueued} files from {chatDto.Name}");
@@ -442,6 +530,11 @@ namespace TelegramClient
 
             if (msg.media is MessageMediaDocument { document: Document doc })
             {
+                // Stickers and voice messages are chat artifacts — never queue them for download
+                if (doc.attributes?.Any(a => a is DocumentAttributeSticker) == true) return false;
+                if (doc.attributes?.Any(a => a is DocumentAttributeAudio audio &&
+                        audio.flags.HasFlag(DocumentAttributeAudio.Flags.voice)) == true) return false;
+
                 var mime = doc.mime_type ?? string.Empty;
                 if (mime.Contains("image")) return chatDto.Download.Photos;
                 if (mime.Contains("video")) return chatDto.Download.Videos;
@@ -502,16 +595,22 @@ namespace TelegramClient
                     var history = await Client.Messages_GetHistory(peer,
                         offset_id: offsetId, limit: pageSize);
 
-                    var messages = history.Messages
-                        .OfType<Message>()
+                    // Use the raw list for pagination decisions — a page full of text messages
+                    // must not cause early termination before we reach the watermark.
+                    var rawMessages = history.Messages.OfType<Message>().ToList();
+
+                    if (rawMessages.Count == 0) break;
+
+                    // Stop paginating once all messages on this page are at or below the watermark
+                    if (rawMessages.All(m => m.ID <= watermark)) break;
+
+                    // Only process media messages that arrived after the watermark
+                    var mediaMessages = rawMessages
                         .Where(m => m.media != null && m.ID > watermark)
                         .ToList();
 
-                    if (messages.Count == 0) break;
-
                     var sem = _semaphore; // Capture before lambda — see Client_OnUpdates for explanation
-                    // Process each missed message through the download pipeline
-                    var tasks = messages.Select(msg => Task.Run(async () =>
+                    var tasks = mediaMessages.Select(msg => Task.Run(async () =>
                     {
                         await sem.WaitAsync();
                         try
@@ -535,9 +634,9 @@ namespace TelegramClient
 
                     await Task.WhenAll(tasks);
 
-                    // If we got a full page, continue paging; otherwise we're done
-                    if (messages.Count < pageSize) break;
-                    offsetId = messages.Min(m => m.ID);
+                    // Pagination: base decision on the raw page size, offset on the raw min ID
+                    if (rawMessages.Count < pageSize) break;
+                    offsetId = rawMessages.Min(m => m.ID);
                 }
             }
             catch (Exception ex)

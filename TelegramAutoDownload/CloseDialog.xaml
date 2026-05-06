@@ -1,0 +1,58 @@
+<mah:MetroWindow x:Class="TelegramAutoDownload.CloseDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
+        Title="Close"
+        Height="230" Width="400"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        ShowMinButton="False" ShowMaxRestoreButton="False"
+        ShowInTaskbar="False">
+
+    <Grid Margin="24,20,24,20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="16"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Icon + message -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal">
+            <TextBlock Text="❓" FontSize="32" VerticalAlignment="Center" Margin="0,0,14,0"/>
+            <StackPanel VerticalAlignment="Center">
+                <TextBlock Text="What would you like to do?" FontSize="14" FontWeight="SemiBold"/>
+                <TextBlock Text="Downloads that are in progress will continue in the background."
+                           FontSize="11" Foreground="#888" TextWrapping="Wrap" Margin="0,6,0,0" MaxWidth="270"/>
+            </StackPanel>
+        </StackPanel>
+
+        <!-- Buttons -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
+
+            <Button x:Name="btnCancel" Content="Cancel" Width="80" Height="34" Margin="0,0,8,0"
+                    Click="BtnCancel_Click" IsCancel="True"/>
+
+            <Button x:Name="btnTray" Height="34" Margin="0,0,8,0" Width="130"
+                    Click="BtnTray_Click"
+                    ToolTip="Hide the window — downloads keep running">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="🗕  " FontSize="12" VerticalAlignment="Center"/>
+                    <TextBlock Text="Minimize to Tray" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Button>
+
+            <Button x:Name="btnExit" Height="34" Width="100"
+                    Click="BtnExit_Click"
+                    Style="{DynamicResource MahApps.Styles.Button.Square.Accent}"
+                    Background="#F44336" BorderBrush="#F44336"
+                    ToolTip="Quit the application completely">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="⏻  " FontSize="12" VerticalAlignment="Center"/>
+                    <TextBlock Text="Exit" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Button>
+
+        </StackPanel>
+    </Grid>
+
+</mah:MetroWindow>

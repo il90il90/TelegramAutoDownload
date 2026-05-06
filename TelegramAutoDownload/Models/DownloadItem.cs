@@ -50,6 +50,7 @@ namespace TelegramAutoDownload.Models
                 _status = value;
                 OnPropertyChanged(nameof(Status));
                 OnPropertyChanged(nameof(SortOrder));
+                OnPropertyChanged(nameof(CanRetry));
             }
         }
 
@@ -111,6 +112,27 @@ namespace TelegramAutoDownload.Models
             "⏳ Queued"     => 1,
             _               => 2
         };
+
+        private Func<Task>? _retryAsync;
+
+        /// <summary>
+        /// Set by TelegramApp after a failed download so the UI can offer a Retry button.
+        /// Null when retry is not available (e.g. dedup skip, cancelled by user).
+        /// </summary>
+        public Func<Task>? RetryAsync
+        {
+            get => _retryAsync;
+            set
+            {
+                _retryAsync = value;
+                OnPropertyChanged(nameof(RetryAsync));
+                OnPropertyChanged(nameof(CanRetry));
+            }
+        }
+
+        /// <summary>True when the item failed and a retry callback is available.</summary>
+        public bool CanRetry => _retryAsync != null &&
+            (Status == "✖ Error" || Status == "✖ Timeout");
 
         public event PropertyChangedEventHandler? PropertyChanged;
         protected void OnPropertyChanged(string name) =>

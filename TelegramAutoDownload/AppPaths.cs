@@ -19,6 +19,7 @@ namespace TelegramAutoDownload
         public static string ToolsDir            => Path.Combine(DataDir, "tools");
         public static string EnvFile             => Path.Combine(DataDir, ".env");
         public static string SkippedVersionFile  => Path.Combine(DataDir, "skipped_version.txt");
+        public static string StatsFile           => Path.Combine(DataDir, "stats.json");
 
         static AppPaths()
         {

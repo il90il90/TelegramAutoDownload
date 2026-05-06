@@ -107,14 +107,18 @@ namespace SocialMediaPlugin
 
             try
             {
-                // Build the immutable yt-dlp config.
-                // Format selector: prefer best separate video+audio streams merged into MP4;
-                // falls back gracefully to best single-file stream when FFmpeg is unavailable.
+                // Build the yt-dlp command using the per-chat quality setting.
+                var format = YtdlpFormatHelper.GetFormatString(config.YtdlpQuality);
+                var isAudioOnly = YtdlpFormatHelper.IsAudioOnly(config.YtdlpQuality);
+
                 var builder = new Ytdlp(ytdlpPath)
-                    .WithFormat("bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best")
-                    .WithMergeOutputFormat("mp4")
+                    .WithFormat(format)
                     .WithOutputTemplate(outputTemplate)
                     .WithNoPlaylist();
+
+                // Merging into MP4 only makes sense for video+audio; skip for audio-only downloads
+                if (!isAudioOnly)
+                    builder = builder.WithMergeOutputFormat("mp4");
 
                 // Attach cookies.txt if present (enables X, Instagram, TikTok authenticated downloads)
                 if (File.Exists(cookiesPath))

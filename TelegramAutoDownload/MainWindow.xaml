@@ -57,7 +57,11 @@
                         <TextBlock Text="|" Foreground="#90CAF9" FontSize="11" Margin="0,0,12,0"/>
                         <TextBlock x:Name="tbStatsBytes" Text="0 B" FontWeight="SemiBold" Foreground="#1565C0" FontSize="11" Margin="0,0,12,0"/>
                         <TextBlock Text="|" Foreground="#90CAF9" FontSize="11" Margin="0,0,12,0"/>
-                        <TextBlock x:Name="tbStatsActive" Text="0 active" Foreground="#1565C0" FontSize="11"/>
+                        <TextBlock x:Name="tbStatsActive" Text="0 active" Foreground="#1565C0" FontSize="11" Margin="0,0,20,0"/>
+                        <TextBlock Text="🗄 All-time: " Foreground="#555" FontSize="11"/>
+                        <TextBlock x:Name="tbAllTimeFiles" Text="0 files" FontWeight="SemiBold" Foreground="#555" FontSize="11" Margin="0,0,8,0"/>
+                        <TextBlock Text="|" Foreground="#BDBDBD" FontSize="11" Margin="0,0,8,0"/>
+                        <TextBlock x:Name="tbAllTimeBytes" Text="0 B" FontWeight="SemiBold" Foreground="#555" FontSize="11"/>
                     </StackPanel>
                 </Border>
             </StackPanel>
@@ -224,6 +228,42 @@
                             </GridViewColumn.CellTemplate>
                         </GridViewColumn>
 
+                        <!-- Quality: per-chat yt-dlp quality for URL-based plugins -->
+                        <GridViewColumn Header="Quality" Width="100">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <ComboBox Width="82"
+                                              Loaded="QualityComboBox_Loaded"
+                                              SelectionChanged="QualityComboBox_SelectionChanged"
+                                              ToolTip="yt-dlp download quality for YouTube / Social media links"/>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+
+                        <!-- Filter: regex patterns — files matching any pattern are skipped -->
+                        <GridViewColumn Header="Filter" Width="115">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBox Width="100"
+                                             Loaded="FilterTextBox_Loaded"
+                                             LostFocus="FilterTextBox_LostFocus"
+                                             ToolTip="Skip files whose name matches any pattern (semicolon-separated regex). Example: \.jpg$; thumb_"/>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+
+                        <!-- Folder: custom download folder template per chat -->
+                        <GridViewColumn Header="Folder" Width="120">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBox Width="105"
+                                             Loaded="FolderTemplateTextBox_Loaded"
+                                             LostFocus="FolderTemplateTextBox_LostFocus"
+                                             ToolTip="Custom folder path template. Tokens: {Type}, {ChatName}, {Year}, {Month}, {Day}. Empty = default layout.&#x0a;Example: {ChatName}/{Year}-{Month}"/>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+
                         <!-- Sync column: download all existing history from this chat -->
                         <GridViewColumn Header="Sync" Width="85">
                             <GridViewColumn.CellTemplate>
@@ -367,6 +407,31 @@
                                                 </Style>
                                             </TextBlock.Style>
                                         </TextBlock>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+
+                            <!-- Retry button — visible only when CanRetry is true -->
+                            <DataGridTemplateColumn Header="" Width="50">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Button Content="↺" Width="34" Height="22" FontSize="13"
+                                                Tag="{Binding}"
+                                                Click="RetryDownload_Click"
+                                                Foreground="#2196F3" Background="Transparent"
+                                                BorderBrush="#2196F3" BorderThickness="1"
+                                                Cursor="Hand" ToolTip="Retry failed download">
+                                            <Button.Style>
+                                                <Style TargetType="Button">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding CanRetry}" Value="True">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Button.Style>
+                                        </Button>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>

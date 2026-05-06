@@ -97,6 +97,9 @@ namespace TelegramAutoDownload
 
         protected override void OnExit(ExitEventArgs e)
         {
+            // Flush the download index before exit so no completed-download records are lost.
+            // The index uses a debounced background save; this ensures pending writes are persisted.
+            TelegramClient.FileDownloadIndex.Flush();
             TrayIcon?.Dispose();
             Log.Information("Application shutting down");
             Log.CloseAndFlush();

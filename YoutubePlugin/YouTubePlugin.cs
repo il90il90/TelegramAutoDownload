@@ -68,13 +68,16 @@ namespace YoutubePlugin
 
             try
             {
-                // Best quality: separate video+audio merged into MP4.
-                // Falls back to best single-file stream when FFmpeg is unavailable.
+                var format = YtdlpFormatHelper.GetFormatString(config.YtdlpQuality);
+                var isAudioOnly = YtdlpFormatHelper.IsAudioOnly(config.YtdlpQuality);
+
                 var builder = new Ytdlp(ytdlpPath)
-                    .WithFormat("bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best")
-                    .WithMergeOutputFormat("mp4")
+                    .WithFormat(format)
                     .WithOutputTemplate(outputTemplate)
                     .WithNoPlaylist();
+
+                if (!isAudioOnly)
+                    builder = builder.WithMergeOutputFormat("mp4");
 
                 if (File.Exists(cookiesPath))
                     builder = builder.WithCookiesFile(cookiesPath);

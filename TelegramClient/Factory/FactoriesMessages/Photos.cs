@@ -29,6 +29,10 @@ namespace TelegramClient.Factory.Factories
 
             if (message.media is MessageMediaDocument { document: Document document })
             {
+                // Stickers are chat decorations, not content — skip them regardless of the Photos toggle
+                if (document.attributes?.Any(a => a is DocumentAttributeSticker) == true)
+                    return new ResultExecute(chatDto.Name);
+
                 fileName = !string.IsNullOrEmpty(document.Filename)
                     ? document.Filename
                     : $"{document.id}.{document.mime_type.Split('/').Last()}";
@@ -52,7 +56,7 @@ namespace TelegramClient.Factory.Factories
                 }
                 savedPath = PathLocationFolder(chatDto, fileName);
                 OnProgress?.Invoke(chatDto.Name, fileName, TypeMessage.ToString(), 0, 0, document.size);
-                var (progress, downloadToken) = MakeProgress(chatDto.Name, fileName, document.size);
+                var (progress, downloadToken, _) = MakeProgress(chatDto.Name, fileName, document.size);
                 try
                 {
                     await WithRetryAsync(async () =>

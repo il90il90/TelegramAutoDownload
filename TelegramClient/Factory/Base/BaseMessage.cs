@@ -50,8 +50,12 @@ namespace TelegramClient.Factory.Base
         ///
         /// The caller must still register <c>token.Register(() => stream.Dispose())</c> so
         /// that a hung DownloadFileAsync is force-interrupted when the token fires.
+        ///
+        /// The returned <c>userToken</c> is the raw user/UI cancellation token. Callers can
+        /// use it to distinguish an explicit user cancel (delete .part file) from an inactivity
+        /// timeout (keep .part file for resume on the next attempt).
         /// </summary>
-        protected (Client.ProgressCallback callback, System.Threading.CancellationToken token)
+        protected (Client.ProgressCallback callback, System.Threading.CancellationToken token, System.Threading.CancellationToken userToken)
             MakeProgress(string chatName, string fileName, long totalBytes)
         {
             var cancelKey = CancellationRegistry.MakeKey(chatName, fileName);
@@ -84,13 +88,37 @@ namespace TelegramClient.Factory.Base
                 OnProgress.Invoke(chatName, fileName, TypeMessage.ToString(), Math.Min(99, pct), transmitted, effectiveTotal);
             };
 
-            return (callback, token);
+            return (callback, token, userToken);
         }
 
         /// <summary>Silently deletes a partially downloaded file after a cancelled download.</summary>
         protected static void DeletePartialFile(string path)
         {
             try { if (File.Exists(path)) File.Delete(path); } catch { }
+        }
+
+        /// <summary>
+        /// Returns the path of the in-progress partial file for a given final destination path.
+        /// The .part file accumulates bytes during a download and is renamed to the final name
+        /// on success. If the app is closed mid-download the .part file is kept so the next
+        /// attempt can resume from where it left off.
+        /// </summary>
+        protected static string GetPartFilePath(string finalPath) => finalPath + ".part";
+
+        /// <summary>
+        /// Opens an existing .part file positioned at the end (for resume), or creates a new one.
+        /// WTelegram's DownloadFileAsync reads stream.Position to determine the byte offset to
+        /// start from, so positioning at the end instructs it to resume after existing data.
+        /// </summary>
+        protected static FileStream OpenOrResumePartFile(string partPath)
+        {
+            if (File.Exists(partPath))
+            {
+                var stream = new FileStream(partPath, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+                stream.Seek(0, SeekOrigin.End);
+                return stream;
+            }
+            return File.Create(partPath);
         }
 
         /// <summary>
@@ -135,6 +163,16 @@ namespace TelegramClient.Factory.Base
             {
                 fileName = fileName.Replace(c, ' ');
                 folderName = folderName.Replace(c, ' ');
+            }
+
+            // Custom folder template takes priority over the default {Type}/{ChatName} layout.
+            var resolvedTemplate = FolderTemplateHelper.Resolve(
+                chatDto.FolderTemplate, TypeMessage.ToString(), folderName);
+            if (resolvedTemplate != null)
+            {
+                var fullDir = Path.Combine(PathFolderToSaveFiles ?? string.Empty, resolvedTemplate);
+                Directory.CreateDirectory(fullDir);
+                return Path.Combine(fullDir, fileName);
             }
 
             return CreateFolderIfNotExist(folderName, fileName);
@@ -221,6 +259,8 @@ namespace TelegramClient.Factory.Base
                     foreach (var file in files)
                     {
                         var nameFile = file.Split("\\").LastOrDefault();
+                        // Skip in-progress or interrupted download artifacts
+                        if (nameFile != null && nameFile.EndsWith(".part", StringComparison.OrdinalIgnoreCase)) continue;
                         if (nameFile != fileName) continue;
 
                         // When size is known, verify it matches to avoid false positives

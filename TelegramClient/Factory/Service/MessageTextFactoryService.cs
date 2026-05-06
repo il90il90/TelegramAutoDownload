@@ -73,6 +73,7 @@ namespace TelegramClient.Factory.Service
                         PathSaveFile = PathFolderToSaveFiles,
                         ChatName = chatDto.Name,
                         EnabledPlugins = chatDto.EnabledPlugins,
+                        YtdlpQuality = chatDto.YtdlpQuality,
                     };
 
                     if (!pluginInstance!.CanHandle(config)) continue;

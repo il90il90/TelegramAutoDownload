@@ -6,6 +6,19 @@ namespace DownloadPlugin
 {
     public class DownladerPlugin<TMessage> : BasePlugin<TMessage>
     {
+        private readonly HttpClient _http;
+
+        public DownladerPlugin() : this(null) { }
+
+        /// <param name="httpClient">
+        /// Optional pre-configured client. Pass a mock handler in tests.
+        /// The plugin does NOT dispose the provided client.
+        /// </param>
+        public DownladerPlugin(HttpClient? httpClient)
+        {
+            _http = httpClient ?? new HttpClient();
+        }
+
         public override string PluginName => "Other";
         public override int Priority => 100;
 
@@ -26,7 +39,7 @@ namespace DownloadPlugin
                 var path = $"{config.PathSaveFile}/{PluginName}/{config.ChatName}";
                 CreateDirectoryIfNotExist(path);
 
-                using HttpClient client = new HttpClient();
+                var client = _http;
                 // Use a HEAD-like read to discover filename and size before registering the cancel key
                 using HttpResponseMessage response = await client.GetAsync(config.Text, HttpCompletionOption.ResponseHeadersRead);
                 response.EnsureSuccessStatusCode();
@@ -63,7 +76,7 @@ namespace DownloadPlugin
 
                     await WithRetryAsync(async () =>
                     {
-                        HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, config.Text);
+                        var request = new HttpRequestMessage(HttpMethod.Get, config.Text);
                         request.Headers.Range = new RangeHeaderValue(chunkOffset, end);
                         using HttpResponseMessage chunkResponse = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, token);
                         chunkResponse.EnsureSuccessStatusCode();

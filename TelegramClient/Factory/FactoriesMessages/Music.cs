@@ -28,6 +28,11 @@ namespace TelegramClient.Factory.FactoriesMessages
             {
                 var document = (Document)mediaDocument.document;
 
+                // Voice messages are transient chat artifacts — skip them regardless of the Music toggle
+                if (document.attributes?.Any(a => a is DocumentAttributeAudio audio &&
+                        audio.flags.HasFlag(DocumentAttributeAudio.Flags.voice)) == true)
+                    return new ResultExecute(chatDto.Name);
+
                 var fileName = !string.IsNullOrEmpty(document.Filename) ? document.Filename : document.ID.ToString();
                 // Primary dedup: Telegram document ID (unique content fingerprint)
                 if (FileDownloadIndex.IsAlreadyDownloaded(document.ID))
@@ -48,31 +53,34 @@ namespace TelegramClient.Factory.FactoriesMessages
                     return new ResultExecute(chatDto.Name) { IsSuccess = true, FileName = fileName, ErrorMessage = $"{fileName} is exist on {fileExist}" };
                 }
                 var pathFolderLocation = PathLocationFolder(chatDto, fileName);
+                var partPath = GetPartFilePath(pathFolderLocation);
                 OnProgress?.Invoke(chatDto.Name, fileName, TypeMessage.ToString(), 0, 0, document.size);
-                var (progress, downloadToken) = MakeProgress(chatDto.Name, fileName, document.size);
+                var (progress, downloadToken, userCancelToken) = MakeProgress(chatDto.Name, fileName, document.size);
                 try
                 {
                     await WithRetryAsync(async () =>
                     {
-                        using var stream = File.Create(pathFolderLocation);
-                        // Dispose the stream on cancel so a hung DownloadFileAsync is force-interrupted
+                        // Resume from existing .part file if present; WTelegram reads stream.Position as offset
+                        using var stream = OpenOrResumePartFile(partPath);
                         using var _ = downloadToken.Register(() => { try { stream.Dispose(); } catch { } });
                         await Client.DownloadFileAsync(document, stream, null, progress);
                         return true;
                     }, downloadToken);
+                    File.Move(partPath, pathFolderLocation, overwrite: true);
                     FileDownloadIndex.MarkDownloaded(document.ID);
                     OnComplete?.Invoke(chatDto.Name, fileName, true);
                     return new ResultExecute(chatDto.Name) { IsSuccess = true, FileName = fileName, FilePath = pathFolderLocation };
                 }
                 catch (OperationCanceledException)
                 {
-                    DeletePartialFile(pathFolderLocation);
+                    if (userCancelToken.IsCancellationRequested)
+                        DeletePartialFile(partPath);
                     CancellationRegistry.Remove(CancellationRegistry.MakeKey(chatDto.Name, fileName));
                     return new ResultExecute(chatDto.Name) { IsSuccess = false, FileName = fileName, ErrorMessage = "Cancelled by user" };
                 }
                 catch (Exception) when (downloadToken.IsCancellationRequested)
                 {
-                    DeletePartialFile(pathFolderLocation);
+                    // Inactivity timeout — keep .part file for resume
                     CancellationRegistry.Remove(CancellationRegistry.MakeKey(chatDto.Name, fileName));
                     return new ResultExecute(chatDto.Name) { IsSuccess = false, FileName = fileName, ErrorMessage = "Download cancelled (no progress)" };
                 }

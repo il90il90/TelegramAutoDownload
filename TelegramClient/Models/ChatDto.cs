@@ -51,6 +51,15 @@ namespace TelegramClient.Models
         public List<string> IgnoreFileByRegex { get; set; } = [];
         // Keys are PluginName values; missing key = enabled by default
         public Dictionary<string, bool> EnabledPlugins { get; set; } = new();
+        // yt-dlp quality label for URL-based plugins (YouTube, SocialMedia). Defaults to "best".
+        public string YtdlpQuality { get; set; } = "best";
+
+        /// <summary>
+        /// Custom folder template for this chat. Empty = use default layout ({Type}/{ChatName}/).
+        /// Supported tokens: {Type}, {ChatName}, {Year}, {Month}, {Day}
+        /// Example: "{ChatName}/{Year}-{Month}" → "MyChannel/2026-05/"
+        /// </summary>
+        public string FolderTemplate { get; set; } = string.Empty;
 
         public event PropertyChangedEventHandler? PropertyChanged;
         protected void OnPropertyChanged(string name) =>

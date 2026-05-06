@@ -36,6 +36,9 @@ namespace TelegramAutoDownload
         // Holds the pending release when an update is available (shown via blink)
         private ReleaseInfo? _pendingRelease;
 
+        // Guard against double-click while a manual update check is in progress
+        private bool _checkingForUpdate = false;
+
         // Debounce timer for search — avoids hammering LINQ on every keystroke
         private System.Windows.Threading.DispatcherTimer? _searchDebounce;
         private string _pendingSearch = string.Empty;
@@ -83,6 +86,10 @@ namespace TelegramAutoDownload
             telegram.OnSkipped = (chatName, msgId) =>
                 DownloadProgressService.Instance.SkipDownload(chatName, msgId);
 
+            // Wire retry callback so the UI can show a Retry button on failed items
+            telegram.OnRetryReady = (chatName, fileName, retryAction) =>
+                DownloadProgressService.Instance.SetRetryAction(chatName, fileName, retryAction);
+
             // Enhanced completion notification with size, duration, avg speed
             DownloadProgressService.Instance.DownloadCompleted += (chatName, fileName, bytes, duration) =>
                 _ = _notification.OnDownloadCompletedAsync(chatName, fileName, bytes, duration);
@@ -100,6 +107,9 @@ namespace TelegramAutoDownload
             };
             DownloadProgressService.Instance.StatsChanged += UpdateStatsStrip;
             DownloadProgressService.Instance.QueueChanged += UpdateDownloadBadges;
+
+            // Bootstrap StatisticsService (singleton) and refresh all-time counters whenever they change
+            StatisticsService.Instance.Changed += UpdateStatsStrip;
         }
 
         private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
@@ -168,6 +178,7 @@ namespace TelegramAutoDownload
                     DownloadFromSize = c.DownloadFromSize,
                     IgnoreFileByRegex = c.IgnoreFileByRegex,
                     EnabledPlugins = c.EnabledPlugins ?? new Dictionary<string, bool>(),
+                    YtdlpQuality = string.IsNullOrEmpty(c.YtdlpQuality) ? "best" : c.YtdlpQuality,
                     MembersCount = c.MembersCount,
                     Muted = c.Muted,
                 }).ToList();
@@ -217,6 +228,7 @@ namespace TelegramAutoDownload
                         chat.DownloadFromSize = saved.DownloadFromSize;
                         chat.IgnoreFileByRegex = saved.IgnoreFileByRegex;
                         chat.EnabledPlugins = saved.EnabledPlugins ?? new Dictionary<string, bool>();
+                        chat.YtdlpQuality = string.IsNullOrEmpty(saved.YtdlpQuality) ? "best" : saved.YtdlpQuality;
                         chat.Muted = saved.Muted;
                         // MembersCount is populated from the live Telegram API data — no need to restore from config
                     }
@@ -392,9 +404,13 @@ namespace TelegramAutoDownload
             Dispatcher.InvokeAsync(() =>
             {
                 var svc = DownloadProgressService.Instance;
-                tbStatsFiles.Text = $"{svc.TotalFilesDownloaded} file{(svc.TotalFilesDownloaded == 1 ? "" : "s")}";
-                tbStatsBytes.Text = FormatBytes(svc.TotalBytesDownloaded);
+                tbStatsFiles.Text  = $"{svc.TotalFilesDownloaded} file{(svc.TotalFilesDownloaded == 1 ? "" : "s")}";
+                tbStatsBytes.Text  = FormatBytes(svc.TotalBytesDownloaded);
                 tbStatsActive.Text = $"{svc.Downloads.Count} active";
+
+                var stats = StatisticsService.Instance;
+                tbAllTimeFiles.Text = $"{stats.TotalFilesAllTime:N0} files";
+                tbAllTimeBytes.Text = FormatBytes(stats.TotalBytesAllTime);
             });
         }
 
@@ -840,6 +856,102 @@ namespace TelegramAutoDownload
             }
         }
 
+        private void QualityComboBox_Loaded(object sender, RoutedEventArgs e)
+        {
+            if (sender is not ComboBox comboBox) return;
+            var chatDto = comboBox.DataContext as ChatDto;
+            if (chatDto == null) return;
+
+            _isLoading = true;
+            comboBox.ItemsSource = BasePlugins.YtdlpFormatHelper.QualityOptions;
+            var saved = chatDto.YtdlpQuality;
+            comboBox.SelectedItem = BasePlugins.YtdlpFormatHelper.QualityOptions.Contains(saved) ? saved : "best";
+            _isLoading = false;
+        }
+
+        private void QualityComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_isLoading) return;
+            if (sender is not ComboBox comboBox || comboBox.SelectedItem is not string quality) return;
+
+            var chatDto = comboBox.DataContext as ChatDto;
+            if (chatDto == null) return;
+
+            var config = ConfigFile.Read();
+            var foundChat = config.Chats.FirstOrDefault(a => a.Id == chatDto.Id);
+            if (foundChat == null) return;
+
+            chatDto.YtdlpQuality = quality;
+            foundChat.YtdlpQuality = quality;
+            ConfigFile.Save(config);
+            TelegramApp.UpdateConfig(config);
+        }
+
+        // ── Filter (IgnoreFileByRegex) ────────────────────────────────────────────────
+
+        private void FilterTextBox_Loaded(object sender, RoutedEventArgs e)
+        {
+            if (sender is TextBox tb && tb.DataContext is ChatDto chat)
+                tb.Text = string.Join("; ", chat.IgnoreFileByRegex);
+        }
+
+        private void FilterTextBox_LostFocus(object sender, RoutedEventArgs e)
+        {
+            if (sender is not TextBox tb || tb.DataContext is not ChatDto chat) return;
+
+            chat.IgnoreFileByRegex = tb.Text
+                .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Where(s => !string.IsNullOrWhiteSpace(s))
+                .ToList();
+
+            var config = ConfigFile.Read();
+            var found = config.Chats.FirstOrDefault(c => c.Id == chat.Id);
+            if (found != null)
+            {
+                found.IgnoreFileByRegex = chat.IgnoreFileByRegex;
+                ConfigFile.Save(config);
+                TelegramApp.UpdateConfig(config);
+            }
+        }
+
+        // ── Folder Template ───────────────────────────────────────────────────────────
+
+        private void FolderTemplateTextBox_Loaded(object sender, RoutedEventArgs e)
+        {
+            if (sender is TextBox tb && tb.DataContext is ChatDto chat)
+                tb.Text = chat.FolderTemplate;
+        }
+
+        private void FolderTemplateTextBox_LostFocus(object sender, RoutedEventArgs e)
+        {
+            if (sender is not TextBox tb || tb.DataContext is not ChatDto chat) return;
+
+            chat.FolderTemplate = tb.Text.Trim();
+
+            var config = ConfigFile.Read();
+            var found = config.Chats.FirstOrDefault(c => c.Id == chat.Id);
+            if (found != null)
+            {
+                found.FolderTemplate = chat.FolderTemplate;
+                ConfigFile.Save(config);
+                TelegramApp.UpdateConfig(config);
+            }
+        }
+
+        // ── Retry ─────────────────────────────────────────────────────────────────────
+
+        private void RetryDownload_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not Button btn || btn.Tag is not TelegramAutoDownload.Models.DownloadItem item) return;
+            var retry = item.RetryAsync;
+            if (retry == null) return;
+
+            // Clear retry state so the button disappears while re-downloading
+            item.RetryAsync = null;
+            item.Status = "⏳ Queued";
+            _ = retry.Invoke();
+        }
+
         private void DownloadSize_TextChanged(object sender, TextChangedEventArgs e)
         {
             if (sender is TextBox textbox)
@@ -866,15 +978,86 @@ namespace TelegramAutoDownload
             }
         }
 
-        private void BtnAppVersion_Click(object sender, RoutedEventArgs e)
+        private async void BtnAppVersion_Click(object sender, RoutedEventArgs e)
         {
-            if (_pendingRelease == null) return;
-            var dlg = new UpdateDialog(_pendingRelease) { Owner = this };
-            dlg.ShowDialog();
-            if (dlg.WasSkipped)
-                File.WriteAllText(AppPaths.SkippedVersionFile, _pendingRelease.Version);
-            else
-                try { File.Delete(AppPaths.SkippedVersionFile); } catch { }
+            // ── Update is already pending ─────────────────────────────────────────
+            if (_pendingRelease != null)
+            {
+                var dlg = new UpdateDialog(_pendingRelease) { Owner = this };
+                dlg.ShowDialog();
+                if (dlg.WasSkipped)
+                    File.WriteAllText(AppPaths.SkippedVersionFile, _pendingRelease.Version);
+                else
+                    try { File.Delete(AppPaths.SkippedVersionFile); } catch { }
+                return;
+            }
+
+            // ── No pending update — perform a manual check now ────────────────────
+            if (_checkingForUpdate) return; // Prevent concurrent checks
+            _checkingForUpdate = true;
+
+            object originalContent  = btnAppVersion.Content;
+            object? originalTooltip = btnAppVersion.ToolTip;
+            var    originalBrush    = btnAppVersion.Foreground;
+
+            btnAppVersion.IsEnabled = false;
+            btnAppVersion.Content   = "Checking...";
+            btnAppVersion.ToolTip   = "Checking for updates…";
+
+            try
+            {
+                var release = await AutoUpdateService.CheckAsync();
+
+                if (release == null)
+                {
+                    // Already up to date — show brief green feedback, then restore
+                    btnAppVersion.Content    = "✓ Up to date";
+                    btnAppVersion.Foreground = new System.Windows.Media.SolidColorBrush(
+                        System.Windows.Media.Color.FromRgb(76, 175, 80));
+                    btnAppVersion.ToolTip = "You are running the latest version";
+
+                    await Task.Delay(2500);
+
+                    btnAppVersion.Content    = originalContent;
+                    btnAppVersion.Foreground = originalBrush;
+                    btnAppVersion.ToolTip    = originalTooltip;
+                }
+                else
+                {
+                    // New version found — highlight button and open dialog immediately
+                    // (the user explicitly asked to check, so show it even if previously skipped)
+                    _pendingRelease = release;
+
+                    btnAppVersion.Content    = originalContent;
+                    btnAppVersion.ToolTip    = $"New version {release.Version} available — click to update!";
+                    btnAppVersion.Foreground = new System.Windows.Media.SolidColorBrush(
+                        System.Windows.Media.Color.FromRgb(76, 175, 80));
+
+                    var storyboard = (System.Windows.Media.Animation.Storyboard)FindResource("BlinkVersion");
+                    storyboard.Begin();
+
+                    var dlg = new UpdateDialog(_pendingRelease) { Owner = this };
+                    dlg.ShowDialog();
+                    if (dlg.WasSkipped)
+                        File.WriteAllText(AppPaths.SkippedVersionFile, _pendingRelease.Version);
+                    else
+                        try { File.Delete(AppPaths.SkippedVersionFile); } catch { }
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Manual update check failed");
+                btnAppVersion.Content    = originalContent;
+                btnAppVersion.Foreground = originalBrush;
+                btnAppVersion.ToolTip    = "Check failed — click to retry";
+                await Task.Delay(2000);
+                btnAppVersion.ToolTip = originalTooltip;
+            }
+            finally
+            {
+                btnAppVersion.IsEnabled    = true;
+                _checkingForUpdate         = false;
+            }
         }
 
         private async Task CheckForAppUpdateAsync()
@@ -910,11 +1093,28 @@ namespace TelegramAutoDownload
 
         protected override void OnClosing(CancelEventArgs e)
         {
-            // Minimize to tray instead of closing
+            // Always cancel the raw close event and show the choice dialog instead
             e.Cancel = true;
-            Hide();
-            App.TrayIcon?.ShowBalloonTip(2000, "Still running",
-                "Telegram Auto Download is running in the system tray.", System.Windows.Forms.ToolTipIcon.Info);
+
+            var dlg = new CloseDialog { Owner = this };
+            dlg.ShowDialog();
+
+            switch (dlg.Result)
+            {
+                case CloseAction.MinimizeToTray:
+                    Hide();
+                    App.TrayIcon?.ShowBalloonTip(2000, "Still running",
+                        "Telegram Auto Download is running in the system tray.",
+                        System.Windows.Forms.ToolTipIcon.Info);
+                    break;
+
+                case CloseAction.Exit:
+                    App.TrayIcon?.Dispose();
+                    Application.Current.Shutdown();
+                    break;
+
+                // CloseAction.Cancel — do nothing, window stays open
+            }
         }
     }
 }
