@@ -640,11 +640,23 @@ namespace TelegramClient
             var groups = new List<ChatDto>();
             var seenIds = new HashSet<long>();
 
+            // Fetch both the main dialog list (folder 0) and the archive (folder 1)
+            // so channels/groups that were archived in Telegram are also visible.
+            foreach (int folderId in new[] { 0, 1 })
+            {
+                await FetchDialogFolder(folderId, groups, seenIds);
+            }
+
+            return groups;
+        }
+
+        private async Task FetchDialogFolder(int folderId, List<ChatDto> groups, HashSet<long> seenIds)
+        {
             int offsetId = 0;
             DateTime offsetDate = default;
             InputPeer offsetPeer = null!;
             const int pageSize = 100;
-            const int maxPages = 50; // up to 5 000 dialogs
+            const int maxPages = 50; // up to 5 000 dialogs per folder
 
             for (int page = 0; page < maxPages; page++)
             {
@@ -653,7 +665,8 @@ namespace TelegramClient
                     offset_id: offsetId,
                     offset_peer: offsetPeer,
                     limit: pageSize,
-                    hash: 0);
+                    hash: 0,
+                    folder_id: folderId);
 
                 // Telegram can return Messages_Dialogs (final/only page) OR
                 // Messages_DialogsSlice (more pages exist). Extract common fields
@@ -745,8 +758,6 @@ namespace TelegramClient
                 }
                 if (!peerResolved) break;
             }
-
-            return groups;
         }
     }
 }
