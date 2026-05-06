@@ -207,6 +207,15 @@ namespace TelegramAutoDownload
             }
         }
 
+        private async void BtnRefreshChats_Click(object sender, RoutedEventArgs e)
+        {
+            BtnRefreshChats.IsEnabled = false;
+            BtnRefreshChats.Content = "⏳ Loading…";
+            await RefreshChatsFromTelegramAsync();
+            BtnRefreshChats.IsEnabled = true;
+            BtnRefreshChats.Content = "🔄 Refresh";
+        }
+
         private async void BtnSyncChat_Click(object sender, RoutedEventArgs e)
         {
             if (sender is not Button btn || btn.Tag is not ChatDto chat) return;

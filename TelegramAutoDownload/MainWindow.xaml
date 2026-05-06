@@ -33,6 +33,9 @@
             <StackPanel>
                 <DockPanel Margin="0,0,0,4">
                     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button x:Name="BtnRefreshChats" Content="🔄 Refresh" Height="28"
+                                Click="BtnRefreshChats_Click" Margin="0,0,8,0"
+                                ToolTip="Reload chat list from Telegram"/>
                         <Button x:Name="BtnSettings" Content="⚙ Settings" Height="28"
                                 Click="BtnSettings_Click" Margin="0,0,12,0"/>
                         <TextBlock Text="Chats:" VerticalAlignment="Center" Margin="0,0,6,0" Foreground="#666"/>
