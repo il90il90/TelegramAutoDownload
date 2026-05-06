@@ -32,14 +32,16 @@ namespace TelegramClient.Factory.Factories
                 fileName = !string.IsNullOrEmpty(document.Filename)
                     ? document.Filename
                     : $"{document.id}.{document.mime_type.Split('/').Last()}";
-                var fileExist = GetPathOfDuplicateFile(fileName);
+                // Primary dedup: Telegram document ID (unique content fingerprint)
+                if (FileDownloadIndex.IsAlreadyDownloaded(document.ID))
+                    return new ResultExecute(chatDto.Name) { IsSuccess = true, ErrorMessage = $"{fileName} already downloaded (id match)" };
+
+                // Secondary dedup: filename + file size match on disk
+                var fileExist = GetPathOfDuplicateFile(fileName, document.size);
                 if (fileExist != null)
                 {
-                    return new ResultExecute(chatDto.Name)
-                    {
-                        IsSuccess = true,
-                        ErrorMessage = $"{fileName} is exist on {fileExist}"
-                    };
+                    FileDownloadIndex.MarkDownloaded(document.ID);
+                    return new ResultExecute(chatDto.Name) { IsSuccess = true, ErrorMessage = $"{fileName} is exist on {fileExist}" };
                 }
                 savedPath = PathLocationFolder(chatDto, fileName);
                 OnProgress?.Invoke(chatDto.Name, fileName, TypeMessage.ToString(), 0, 0, document.size);
@@ -54,6 +56,7 @@ namespace TelegramClient.Factory.Factories
                         await Client.DownloadFileAsync(document, fileStream, null, progress);
                         return true;
                     }, downloadToken);
+                    FileDownloadIndex.MarkDownloaded(document.ID);
                     OnComplete?.Invoke(chatDto.Name, fileName, true);
                 }
                 catch (OperationCanceledException)
@@ -75,14 +78,17 @@ namespace TelegramClient.Factory.Factories
             else if (message.media is MessageMediaPhoto { photo: Photo photo })
             {
                 fileName = $"{photo.id}.{FileExtension}";
+
+                // Primary dedup: photo.id is Telegram's unique content fingerprint for native photos
+                if (FileDownloadIndex.IsAlreadyDownloaded(photo.id))
+                    return new ResultExecute(chatDto.Name) { IsSuccess = true, ErrorMessage = $"{fileName} already downloaded (id match)" };
+
+                // Secondary dedup: filename match on disk (photos have predictable names from photo.id)
                 var fileExist = GetPathOfDuplicateFile(fileName);
                 if (fileExist != null)
                 {
-                    return new ResultExecute(chatDto.Name)
-                    {
-                        IsSuccess = true,
-                        ErrorMessage = $"{fileName} is exist on {fileExist}"
-                    };
+                    FileDownloadIndex.MarkDownloaded(photo.id);
+                    return new ResultExecute(chatDto.Name) { IsSuccess = true, ErrorMessage = $"{fileName} is exist on {fileExist}" };
                 }
                 savedPath = PathLocationFolder(chatDto, fileName);
                 OnProgress?.Invoke(chatDto.Name, fileName, TypeMessage.ToString(), 0, 0, 0);
@@ -91,6 +97,7 @@ namespace TelegramClient.Factory.Factories
                 using var fileStream = File.Create(savedPath);
                 using var _ = photoCts.Token.Register(() => { try { fileStream.Dispose(); } catch { } });
                 await Client.DownloadFileAsync(photo, fileStream);
+                FileDownloadIndex.MarkDownloaded(photo.id);
                 OnComplete?.Invoke(chatDto.Name, fileName, true);
             }
             return new ResultExecute(chatDto.Name)

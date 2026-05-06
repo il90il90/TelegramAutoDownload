@@ -281,6 +281,39 @@ namespace TelegramAutoDownload.Services
             });
         }
 
+        /// <summary>
+        /// Cancels every active and queued download at once.
+        /// Queued items are removed immediately; active downloads are cancelled via
+        /// CancellationRegistry and removed after a short delay.
+        /// </summary>
+        public void CancelAllDownloads()
+        {
+            Application.Current?.Dispatcher.InvokeAsync(() =>
+            {
+                var all = Downloads.ToList();
+                foreach (var item in all)
+                {
+                    if (item.Status == "⏳ Queued")
+                    {
+                        Downloads.Remove(item);
+                        continue;
+                    }
+
+                    if (item.Status == "⬇ Downloading" || item.Status == "⏳ Queued")
+                    {
+                        var key = CancellationRegistry.MakeKey(item.ChatName, item.FileName);
+                        CancellationRegistry.Cancel(key);
+                        item.Status = "✖ Cancelled";
+                        item.Speed = "";
+                        item.Eta = "";
+                        Task.Delay(3000).ContinueWith(_ =>
+                            Application.Current?.Dispatcher.InvokeAsync(() => Downloads.Remove(item)));
+                    }
+                }
+                QueueChanged?.Invoke();
+            });
+        }
+
         private static string FormatSpeed(double bytesPerSec)
         {
             if (bytesPerSec >= 1_048_576) return $"{bytesPerSec / 1_048_576:F1} MB/s";

@@ -1,4 +1,0 @@
-{
-  "summary": "User asked to open the application. Discovered that .NET SDK is not installed (only runtime 8.0.26 is present), so dotnet build failed. Launched the existing pre-built TelegramAutoDownload.exe from bin/Debug/net8.0-windows directly using Start-Process. The running version is the pre-settings-instructions build; to see the new App ID instructions, a rebuild via Visual Studio is needed.",
-  "current_status": "App launched successfully. SettingsWindow instruction changes are in source but not yet rebuilt. .NET SDK not installed on machine - builds must be done via Visual Studio."
-}

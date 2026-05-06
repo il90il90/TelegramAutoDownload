@@ -410,6 +410,11 @@ namespace TelegramAutoDownload
                 DownloadProgressService.Instance.CancelDownload(item.ChatName, item.FileName);
         }
 
+        private void CancelAllDownloads_Click(object sender, RoutedEventArgs e)
+        {
+            DownloadProgressService.Instance.CancelAllDownloads();
+        }
+
         // Default emoji set shown before group reactions are loaded from Telegram
         private static readonly List<string> _defaultEmojiSet = new()
         {

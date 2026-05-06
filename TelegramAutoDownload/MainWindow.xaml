@@ -247,6 +247,14 @@
                                 </StackPanel>
                             </Border>
                         </StackPanel>
+                        <!-- Cancel All button — right-aligned in the header bar -->
+                        <Button x:Name="btnCancelAll" Content="✕ Cancel All"
+                                HorizontalAlignment="Right" VerticalAlignment="Center"
+                                Height="22" Padding="8,0" FontSize="11"
+                                Foreground="#F44336" Background="Transparent"
+                                BorderBrush="#F44336" BorderThickness="1"
+                                Cursor="Hand" ToolTip="Cancel all active downloads"
+                                Click="CancelAllDownloads_Click"/>
                     </DockPanel>
 
                     <DataGrid x:Name="dgDownloads" AutoGenerateColumns="False"

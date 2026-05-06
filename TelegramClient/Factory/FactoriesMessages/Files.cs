@@ -31,14 +31,16 @@ namespace TelegramClient.Factory.Factories
                 var document = (Document)mediaDocument.document;
                 var fileName = !string.IsNullOrEmpty(document.Filename) ? document.Filename : document.ID.ToString();
 
-                var fileExist = GetPathOfDuplicateFile(fileName);
+                // Primary dedup: Telegram document ID (unique content fingerprint)
+                if (FileDownloadIndex.IsAlreadyDownloaded(document.ID))
+                    return new ResultExecute(chatDto.Name) { IsSuccess = true, ErrorMessage = $"{fileName} already downloaded (id match)" };
+
+                // Secondary dedup: filename + file size match on disk
+                var fileExist = GetPathOfDuplicateFile(fileName, document.size);
                 if (fileExist != null)
                 {
-                    return new ResultExecute(chatDto.Name)
-                    {
-                        IsSuccess = true,
-                        ErrorMessage = $"{fileName} is exist on {fileExist}"
-                    };
+                    FileDownloadIndex.MarkDownloaded(document.ID);
+                    return new ResultExecute(chatDto.Name) { IsSuccess = true, ErrorMessage = $"{fileName} is exist on {fileExist}" };
                 }
 
                 var pathFolderLocation = PathLocationFolder(chatDto, fileName);
@@ -54,6 +56,7 @@ namespace TelegramClient.Factory.Factories
                         await Client.DownloadFileAsync(document, stream, null, progress);
                         return true;
                     }, downloadToken);
+                    FileDownloadIndex.MarkDownloaded(document.ID);
                     OnComplete?.Invoke(chatDto.Name, fileName, true);
                     return new ResultExecute(chatDto.Name) { IsSuccess = true, FileName = fileName, FilePath = pathFolderLocation };
                 }

@@ -1,4 +1,0 @@
-{
-  "summary": "Fixed the Cancel button bug. Root cause: MakeProgress in BaseMessage.cs registered a CancellationToken but never checked it inside the progress callback, so downloads continued despite clicking X. Fixed by: (1) calling token.ThrowIfCancellationRequested() on each chunk in MakeProgress, (2) adding catch(OperationCanceledException) in Files.cs, Videos.cs, Photos.cs, Music.cs to delete partial files and return gracefully without calling OnComplete. Also added DeletePartialFile helper in BaseMessage. Rebuilt successfully (0 errors) and relaunched app.",
-  "current_status": "Cancel button now properly aborts downloads mid-stream and cleans up partial files. App rebuilt and running."
-}

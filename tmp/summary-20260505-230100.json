@@ -1,4 +1,0 @@
-{
-  "summary": "User asked what 'Dire' means in the Providers column. Found in MainWindow.xaml that it is the CheckBox with Content='Direct' Tag='Download' - the Direct Download plugin for downloading files directly from URLs. The text is truncated due to the narrow column width.",
-  "current_status": "No code changes made. Clarification provided about 'Dire' = 'Direct Download' plugin."
-}

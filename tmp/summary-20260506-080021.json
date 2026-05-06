@@ -1,0 +1,1 @@
+{"summary": "Bumped version from 2.2.9 to 2.2.10 in AppVersion.cs, installer/setup.iss, and MainWindow.xaml. Committed only source files (excluded bin/obj/zip/exe). Pushed to origin/main successfully (commit 0d370d4).", "current_status": "v2.2.10 pushed to GitHub main branch. Changes: End Icon rename, dynamic group reactions loading, factory bug fixes."}

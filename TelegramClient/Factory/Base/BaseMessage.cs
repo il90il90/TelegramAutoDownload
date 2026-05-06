@@ -176,7 +176,12 @@ namespace TelegramClient.Factory.Base
             return Path.Combine($"{fullPath}", $"{fileName}");
         }
 
-        protected string GetPathOfDuplicateFile(string fileName)
+        /// <summary>
+        /// Scans all chat subfolders for a file with the same name and matching size.
+        /// Passing <paramref name="expectedSize"/> = 0 skips the size check (photos, etc.).
+        /// Returns the subfolder name where the duplicate was found, or null.
+        /// </summary>
+        protected string GetPathOfDuplicateFile(string fileName, long expectedSize = 0)
         {
             try
             {
@@ -190,15 +195,21 @@ namespace TelegramClient.Factory.Base
                     foreach (var file in files)
                     {
                         var nameFile = file.Split("\\").LastOrDefault();
-                        if (nameFile == fileName)
+                        if (nameFile != fileName) continue;
+
+                        // When size is known, verify it matches to avoid false positives
+                        // (two different files that happen to share the same filename)
+                        if (expectedSize > 0)
                         {
-                            return $"{nameFolder}";
+                            var info = new FileInfo(file);
+                            if (info.Length != expectedSize) continue;
                         }
+
+                        return $"{nameFolder}";
                     }
                 }
 
                 return null;
-
             }
             catch (Exception)
             {

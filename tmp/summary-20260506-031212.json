@@ -1,0 +1,4 @@
+{
+    "summary":  "Redesigned the download queue system with message-ID based deduplication. Added MessageId property to DownloadItem, updated EnqueueDownload/StartDownload signatures to use (chatName, msgId) as stable keys, added filename mismatch recovery in UpdateProgress, made CancelDownload handle queued items by immediate removal, updated OnEnqueued/OnStarted callbacks in TelegramApp to pass msgId, added queue visibility in SyncHistoryAsync by calling OnEnqueued+OnStarted inside the sync loop, and wired all new signatures in MainWindow.xaml.cs. Build passes with 0 errors.",
+    "current_status":  "All 5 target files updated. Build: 0 errors, 23 pre-existing nullable warnings."
+}

@@ -29,14 +29,16 @@ namespace TelegramClient.Factory.FactoriesMessages
                 var document = (Document)mediaDocument.document;
 
                 var fileName = !string.IsNullOrEmpty(document.Filename) ? document.Filename : document.ID.ToString();
-                var fileExist = GetPathOfDuplicateFile(fileName);
+                // Primary dedup: Telegram document ID (unique content fingerprint)
+                if (FileDownloadIndex.IsAlreadyDownloaded(document.ID))
+                    return new ResultExecute(chatDto.Name) { IsSuccess = true, ErrorMessage = $"{fileName} already downloaded (id match)" };
+
+                // Secondary dedup: filename + file size match on disk
+                var fileExist = GetPathOfDuplicateFile(fileName, document.size);
                 if (fileExist != null)
                 {
-                    return new ResultExecute(chatDto.Name)
-                    {
-                        IsSuccess = true,
-                        ErrorMessage = $"{fileName} is exist on {fileExist}"
-                    };
+                    FileDownloadIndex.MarkDownloaded(document.ID);
+                    return new ResultExecute(chatDto.Name) { IsSuccess = true, ErrorMessage = $"{fileName} is exist on {fileExist}" };
                 }
                 var pathFolderLocation = PathLocationFolder(chatDto, fileName);
                 OnProgress?.Invoke(chatDto.Name, fileName, TypeMessage.ToString(), 0, 0, document.size);
@@ -51,6 +53,7 @@ namespace TelegramClient.Factory.FactoriesMessages
                         await Client.DownloadFileAsync(document, stream, null, progress);
                         return true;
                     }, downloadToken);
+                    FileDownloadIndex.MarkDownloaded(document.ID);
                     OnComplete?.Invoke(chatDto.Name, fileName, true);
                     return new ResultExecute(chatDto.Name) { IsSuccess = true, FileName = fileName, FilePath = pathFolderLocation };
                 }
@@ -59,7 +62,7 @@ namespace TelegramClient.Factory.FactoriesMessages
                     DeletePartialFile(pathFolderLocation);
                     return new ResultExecute(chatDto.Name) { IsSuccess = false, FileName = fileName, ErrorMessage = "Cancelled by user" };
                 }
-                catch (Exception ex) when (downloadToken.IsCancellationRequested)
+                catch (Exception) when (downloadToken.IsCancellationRequested)
                 {
                     DeletePartialFile(pathFolderLocation);
                     return new ResultExecute(chatDto.Name) { IsSuccess = false, FileName = fileName, ErrorMessage = "Download cancelled (no progress)" };

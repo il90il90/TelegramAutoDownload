@@ -1,4 +1,0 @@
-{
-  "summary": "Created GitHub Release v2.1.0 at https://github.com/il90il90/TelegramAutoDownload/releases/tag/v2.1.0. Installed GitHub CLI (gh), authenticated via browser (device code flow). Built TelegramAutoDownload_v2.1.0.zip (~20MB) from bin/Debug/net8.0-windows including all plugins (SocialMedia, Youtube, Downloader), tools/yt-dlp.exe, and all required DLLs. Tagged v2.1.0 and created release with full changelog covering v2.0.0 and v2.1.0 changes.",
-  "current_status": "Release v2.1.0 is live on GitHub with ZIP asset and changelog. All code is merged to main. gh CLI installed and authenticated."
-}
