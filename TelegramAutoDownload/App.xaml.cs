@@ -15,6 +15,26 @@ namespace TelegramAutoDownload
 
         protected override void OnStartup(StartupEventArgs e)
         {
+            // --- Global exception handlers: log and show instead of crashing ---
+            DispatcherUnhandledException += (_, ex) =>
+            {
+                Log.Error(ex.Exception, "Unhandled UI exception");
+                ShowCrashDialog(ex.Exception);
+                ex.Handled = true; // Prevent silent crash
+            };
+
+            AppDomain.CurrentDomain.UnhandledException += (_, ex) =>
+            {
+                if (ex.ExceptionObject is Exception e2)
+                    Log.Fatal(e2, "Unhandled background exception (isTerminating={t})", ex.IsTerminating);
+            };
+
+            TaskScheduler.UnobservedTaskException += (_, ex) =>
+            {
+                Log.Error(ex.Exception, "Unobserved Task exception");
+                ex.SetObserved(); // Prevent process termination
+            };
+
             // Load .env from writable AppData location (fallback to app directory for dev)
             var envPath = AppPaths.EnvFile;
             if (!System.IO.File.Exists(envPath))
@@ -81,6 +101,20 @@ namespace TelegramAutoDownload
             Log.Information("Application shutting down");
             Log.CloseAndFlush();
             base.OnExit(e);
+        }
+
+        private static void ShowCrashDialog(Exception ex)
+        {
+            try
+            {
+                var logPath = System.IO.Path.Combine(AppPaths.LogsDir, "app-.log");
+                MessageBox.Show(
+                    $"An unexpected error occurred:\n\n{ex.Message}\n\nDetails have been saved to the log file:\n{logPath}",
+                    "TelegramAutoDownload — Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+            catch { /* ShowCrashDialog itself must never throw */ }
         }
     }
 }
