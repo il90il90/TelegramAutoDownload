@@ -23,27 +23,75 @@ namespace TelegramAutoDownload.Services
         public long TotalBytesDownloaded => _totalBytesDownloaded;
 
         public event Action? StatsChanged;
+        public event Action? QueueChanged;
 
         /// <summary>
         /// Fired when a download completes successfully: (chatName, fileName, totalBytes, durationSeconds)
         /// </summary>
         public event Action<string, string, long, double>? DownloadCompleted;
 
+        /// <summary>
+        /// Registers a file as queued (waiting for a download slot).
+        /// Uses chatName+msgId as the stable dedup key so the preview name mismatch
+        /// with the real filename does not create duplicate entries.
+        /// </summary>
+        public void EnqueueDownload(string chatName, int msgId, string previewName, string pluginName = "")
+        {
+            Application.Current?.Dispatcher.InvokeAsync(() =>
+            {
+                // Deduplicate by the stable message-ID key
+                if (Downloads.Any(d => d.ChatName == chatName && d.MessageId == msgId)) return;
+                Downloads.Add(new DownloadItem
+                {
+                    ChatName = chatName,
+                    MessageId = msgId,
+                    FileName = previewName,
+                    PluginName = pluginName,
+                    Status = "⏳ Queued",
+                    Progress = 0
+                });
+                QueueChanged?.Invoke();
+            });
+        }
+
+        /// <summary>
+        /// Marks a previously-queued item as actively downloading.
+        /// Looks up by chatName+msgId so it works even if the preview name differs.
+        /// </summary>
+        public void StartDownload(string chatName, int msgId)
+        {
+            Application.Current?.Dispatcher.InvokeAsync(() =>
+            {
+                var item = Downloads.FirstOrDefault(d => d.ChatName == chatName && d.MessageId == msgId);
+                if (item != null)
+                {
+                    item.Status = "⬇ Downloading";
+                    item.StartTime = DateTime.UtcNow;
+                }
+                QueueChanged?.Invoke();
+            });
+        }
+
         public void AddDownload(string chatName, string fileName, string pluginName, long totalBytes = 0)
         {
             Application.Current?.Dispatcher.InvokeAsync(() =>
+            {
+                if (Downloads.Any(d => d.ChatName == chatName && d.FileName == fileName)) return;
                 Downloads.Add(new DownloadItem
                 {
                     ChatName = chatName,
                     FileName = fileName,
                     PluginName = pluginName,
                     TotalBytes = totalBytes
-                }));
+                });
+            });
         }
 
         /// <summary>
         /// Updates download progress. Auto-registers the item if it doesn't exist yet.
-        /// Pass bytesDownloaded and totalBytes for accurate speed/ETA.
+        /// When the real filename differs from the preview placeholder name stored in the
+        /// queue item, this method detects the mismatch and renames the item in-place so
+        /// there is never a duplicate row in the downloads panel.
         /// </summary>
         public void UpdateProgress(string chatName, string fileName, double percent,
             long bytesDownloaded = 0, long totalBytes = 0, string pluginName = "")
@@ -51,6 +99,22 @@ namespace TelegramAutoDownload.Services
             Application.Current?.Dispatcher.InvokeAsync(() =>
             {
                 var item = Downloads.FirstOrDefault(d => d.ChatName == chatName && d.FileName == fileName);
+
+                // If no exact match, look for a queued/downloading item for the same chat
+                // that still carries a generated placeholder name — and rename it to the real name.
+                if (item == null)
+                {
+                    item = Downloads.FirstOrDefault(d =>
+                        d.ChatName == chatName &&
+                        d.Status == "⬇ Downloading" &&
+                        (d.FileName.StartsWith("file_") ||
+                         d.FileName.StartsWith("video_") ||
+                         d.FileName.StartsWith("audio_") ||
+                         d.FileName.StartsWith("photo_")));
+
+                    if (item != null)
+                        item.FileName = fileName;
+                }
 
                 // Auto-register on first report (e.g. when called before AddDownload)
                 if (item == null)
@@ -136,16 +200,27 @@ namespace TelegramAutoDownload.Services
 
         /// <summary>
         /// Cancels the download identified by chatName + fileName.
+        /// Queued items (never started) are removed immediately; active downloads
+        /// are cancelled via the CancellationRegistry and removed after a short delay.
         /// </summary>
         public void CancelDownload(string chatName, string fileName)
         {
-            var key = CancellationRegistry.MakeKey(chatName, fileName);
-            CancellationRegistry.Cancel(key);
-
             Application.Current?.Dispatcher.InvokeAsync(() =>
             {
                 var item = Downloads.FirstOrDefault(d => d.ChatName == chatName && d.FileName == fileName);
                 if (item == null) return;
+
+                if (item.Status == "⏳ Queued")
+                {
+                    // Queued items were never started — just remove them outright
+                    Downloads.Remove(item);
+                    QueueChanged?.Invoke();
+                    return;
+                }
+
+                var key = CancellationRegistry.MakeKey(chatName, fileName);
+                CancellationRegistry.Cancel(key);
+
                 item.Status = "✖ Cancelled";
                 item.Speed = "";
                 item.Eta = "";

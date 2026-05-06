@@ -50,6 +50,10 @@ namespace TelegramAutoDownload
             telegram.OnWarnningMessage = _notification.OnWarnningMessageAsync;
 
             // Wire download progress reporting to the UI panel and Telegram live updates
+            telegram.OnEnqueued = (chatName, msgId, previewName) =>
+                DownloadProgressService.Instance.EnqueueDownload(chatName, msgId, previewName);
+            telegram.OnStarted = (chatName, msgId) =>
+                DownloadProgressService.Instance.StartDownload(chatName, msgId);
             telegram.OnProgress = (chatName, fileName, pluginName, pct, bytes, total) =>
             {
                 DownloadProgressService.Instance.UpdateProgress(chatName, fileName, pct, bytes, total, pluginName);
@@ -66,10 +70,11 @@ namespace TelegramAutoDownload
             dgDownloads.ItemsSource = DownloadProgressService.Instance.Downloads;
             DownloadProgressService.Instance.Downloads.CollectionChanged += (_, __) =>
             {
-                tbDownloadCount.Text = DownloadProgressService.Instance.Downloads.Count.ToString();
+                UpdateDownloadBadges();
                 UpdateStatsStrip();
             };
             DownloadProgressService.Instance.StatsChanged += UpdateStatsStrip;
+            DownloadProgressService.Instance.QueueChanged += UpdateDownloadBadges;
         }
 
         private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
@@ -235,6 +240,22 @@ namespace TelegramAutoDownload
         private void ThreadsSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
             // Threads are configured in Settings window — this handler is kept to avoid XAML errors.
+        }
+
+        private void UpdateDownloadBadges()
+        {
+            Dispatcher.InvokeAsync(() =>
+            {
+                var all = DownloadProgressService.Instance.Downloads;
+                int queued = all.Count(d => d.Status == "⏳ Queued");
+                int active = all.Count(d => d.Status != "⏳ Queued");
+
+                tbDownloadCount.Text = active.ToString();
+                tbQueueCount.Text = queued.ToString();
+                queueCountBadge.Visibility = queued > 0
+                    ? System.Windows.Visibility.Visible
+                    : System.Windows.Visibility.Collapsed;
+            });
         }
 
         private void UpdateStatsStrip()

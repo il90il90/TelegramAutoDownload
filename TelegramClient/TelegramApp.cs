@@ -27,6 +27,12 @@ namespace TelegramClient
         /// Fired when a file download finishes: (chatName, fileName, success)
         /// </summary>
         public Action<string, string, bool>? OnComplete { get; set; }
+
+        /// <summary>Fired when a file is queued (waiting for a download slot): (chatName, msgId, previewName)</summary>
+        public Action<string, int, string>? OnEnqueued { get; set; }
+
+        /// <summary>Fired when a queued item starts downloading: (chatName, msgId)</summary>
+        public Action<string, int>? OnStarted { get; set; }
         public readonly Client Client;
         private FactoryMessagesService factoryService;
         private FactoryUserService factoryUserService;
@@ -124,6 +130,11 @@ namespace TelegramClient
                         if (peerId != 0)
                             _highWatermark[peerId] = Math.Max(
                                 _highWatermark.GetValueOrDefault(peerId), liveMsg.ID);
+
+                        // Register in queue immediately so the user can see it waiting
+                        var previewName = GetPreviewFileName(liveMsg);
+                        if (previewName != null)
+                            OnEnqueued?.Invoke(chat.Name, liveMsg.ID, previewName);
                     }
 
                     var task = Task.Run(async () =>
@@ -136,6 +147,9 @@ namespace TelegramClient
 
                         if (updateNewMessage.message is Message infoMessage)
                         {
+                            // Mark as actively downloading (was "Queued")
+                            OnStarted?.Invoke(chat.Name, infoMessage.ID);
+
                             try
                             {
 
@@ -269,11 +283,19 @@ namespace TelegramClient
 
                     if (messages.Count == 0) break;
 
+                    // Enqueue all messages for this page in the UI before starting downloads
+                    foreach (var msg in messages)
+                    {
+                        var previewName = GetPreviewFileName(msg) ?? $"file_{msg.ID}";
+                        OnEnqueued?.Invoke(chatDto.Name, msg.ID, previewName);
+                    }
+
                     var tasks = messages.Select(msg => Task.Run(async () =>
                     {
                         await _semaphore.WaitAsync();
                         try
                         {
+                            OnStarted?.Invoke(chatDto.Name, msg.ID);
                             var result = await factoryService.ExecuteDirectAsync(msg, chatDto);
                             if (result.IsSuccess && OnSaved != null)
                                 await OnSaved.Invoke(new ResultMessageEvent
@@ -302,6 +324,30 @@ namespace TelegramClient
                 onStatus?.Invoke($"Sync failed: {ex.Message}");
                 System.Diagnostics.Debug.WriteLine($"SyncHistoryAsync failed: {ex.Message}");
             }
+        }
+
+        /// <summary>
+        /// Extracts a display filename from a message for queue preview.
+        /// Returns null if the message has no downloadable media.
+        /// </summary>
+        private static string? GetPreviewFileName(Message msg)
+        {
+            if (msg.media is MessageMediaDocument { document: Document doc })
+            {
+                foreach (var attr in doc.attributes)
+                {
+                    if (attr is DocumentAttributeFilename fn && !string.IsNullOrEmpty(fn.file_name))
+                        return fn.file_name;
+                    if (attr is DocumentAttributeVideo)
+                        return $"video_{msg.ID}.mp4";
+                    if (attr is DocumentAttributeAudio audio)
+                        return string.IsNullOrEmpty(audio.title) ? $"audio_{msg.ID}.mp3" : audio.title;
+                }
+                return $"file_{msg.ID}";
+            }
+            if (msg.media is MessageMediaPhoto)
+                return $"photo_{msg.ID}.jpg";
+            return null;
         }
 
         /// <summary>Returns the monitored ChatDto for a given peer ID, or null if not monitored.</summary>

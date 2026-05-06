@@ -18,11 +18,14 @@ namespace TelegramAutoDownload.Models
         public string ChatName { get; set; } = string.Empty;
         public string PluginName { get; set; } = string.Empty;
 
+        // Stable identity key: Telegram message ID used for deduplication and lookup
+        public int MessageId { get; set; }
+
         // Key used to cancel this download via CancellationRegistry
         public string CancellationKey { get; set; } = string.Empty;
 
         // Timestamp when this download started (used for speed/ETA calculation)
-        public DateTime StartTime { get; } = DateTime.UtcNow;
+        public DateTime StartTime { get; set; } = DateTime.UtcNow;
 
         public double Progress
         {
