@@ -13,81 +13,7 @@ using Xunit;
 namespace TelegramAutoDownload.Tests
 {
     // ===========================================================================
-    // 1. Quiet Hours
-    // ===========================================================================
-
-    public class QuietHoursTests
-    {
-        private static ConfigParams Cfg(bool enabled, int start, int end) =>
-            new() { QuietHoursEnabled = enabled, QuietHoursStart = start, QuietHoursEnd = end };
-
-        [Fact]
-        public void QuietHours_Disabled_AlwaysReturnsFalse()
-        {
-            var cfg = Cfg(enabled: false, start: 0, end: 23);
-            foreach (int h in Enumerable.Range(0, 24))
-                QuietHoursHelper.IsInQuietHours(cfg, h).Should().BeFalse(
-                    because: $"quiet hours are disabled so hour {h} must never be quiet");
-        }
-
-        [Theory]
-        [InlineData(9)]   // inside window 09:00-17:00
-        [InlineData(12)]
-        [InlineData(16)]
-        public void QuietHours_SameDay_HourInsideWindow_ReturnsTrue(int hour)
-        {
-            var cfg = Cfg(enabled: true, start: 9, end: 17);
-            QuietHoursHelper.IsInQuietHours(cfg, hour).Should().BeTrue(
-                because: $"hour {hour} is inside the same-day window 09:00-17:00");
-        }
-
-        [Theory]
-        [InlineData(8)]   // just before window
-        [InlineData(17)]  // end is exclusive
-        [InlineData(20)]
-        public void QuietHours_SameDay_HourOutsideWindow_ReturnsFalse(int hour)
-        {
-            var cfg = Cfg(enabled: true, start: 9, end: 17);
-            QuietHoursHelper.IsInQuietHours(cfg, hour).Should().BeFalse(
-                because: $"hour {hour} is outside the same-day window 09:00-17:00");
-        }
-
-        [Theory]
-        [InlineData(23)]  // exactly at start
-        [InlineData(0)]   // midnight — inside overnight
-        [InlineData(3)]   // inside overnight
-        [InlineData(6)]   // last hour inside (end=7 is exclusive)
-        public void QuietHours_Overnight_HourInsideWindow_ReturnsTrue(int hour)
-        {
-            var cfg = Cfg(enabled: true, start: 23, end: 7);
-            QuietHoursHelper.IsInQuietHours(cfg, hour).Should().BeTrue(
-                because: $"hour {hour} is inside the overnight window 23:00-07:00");
-        }
-
-        [Theory]
-        [InlineData(7)]   // exactly at end (exclusive)
-        [InlineData(10)]
-        [InlineData(22)]  // just before start
-        public void QuietHours_Overnight_HourOutsideWindow_ReturnsFalse(int hour)
-        {
-            var cfg = Cfg(enabled: true, start: 23, end: 7);
-            QuietHoursHelper.IsInQuietHours(cfg, hour).Should().BeFalse(
-                because: $"hour {hour} is outside the overnight window 23:00-07:00");
-        }
-
-        [Fact]
-        public void QuietHours_FullDayWindow_AllHoursAreQuiet()
-        {
-            // Start=0, End=0 with start >= end → overnight rule → always quiet
-            var cfg = Cfg(enabled: true, start: 0, end: 0);
-            foreach (int h in Enumerable.Range(0, 24))
-                QuietHoursHelper.IsInQuietHours(cfg, h).Should().BeTrue(
-                    because: "start==end with overnight rule covers the full 24-hour day");
-        }
-    }
-
-    // ===========================================================================
-    // 2. DownloadItem.CanRetry / RetryAsync property
+    // 1. DownloadItem.CanRetry / RetryAsync property
     // ===========================================================================
 
     public class DownloadItemRetryTests
@@ -406,29 +332,7 @@ namespace TelegramAutoDownload.Tests
     }
 
     // ===========================================================================
-    // 7. ConfigParams — Quiet Hours defaults
-    // ===========================================================================
-
-    public class ConfigParamsQuietHoursTests
-    {
-        [Fact]
-        public void ConfigParams_QuietHoursEnabled_DefaultsFalse()
-        {
-            new ConfigParams().QuietHoursEnabled.Should().BeFalse(
-                because: "quiet hours must be opt-in");
-        }
-
-        [Fact]
-        public void ConfigParams_QuietHoursDefaults_AreReasonable()
-        {
-            var cfg = new ConfigParams();
-            cfg.QuietHoursStart.Should().BeInRange(0, 23);
-            cfg.QuietHoursEnd.Should().BeInRange(0, 23);
-        }
-    }
-
-    // ===========================================================================
-    // 8. ChatDto — new fields
+    // 7. ChatDto — new fields
     // ===========================================================================
 
     public class ChatDtoNewFieldsTests

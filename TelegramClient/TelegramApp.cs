@@ -76,10 +76,6 @@ namespace TelegramClient
         // Cached result of Messages_GetAvailableReactions (global list), shared across all chats that allow all reactions
         private List<string>? _cachedAllReactions;
 
-        // Delegates to the extracted helper so the logic is unit-testable
-        private static bool IsInQuietHours(ConfigParams config) =>
-            QuietHoursHelper.IsInQuietHours(config);
-
         public TelegramApp(int appId, string apiHash)
         {
             // Store session in writable AppData folder so it survives installs/updates
@@ -206,14 +202,6 @@ namespace TelegramClient
                         var previewName = GetPreviewFileName(liveMsg);
                         if (previewName != null)
                             OnEnqueued?.Invoke(chat.Name, liveMsg.ID, previewName);
-                    }
-
-                    // Skip new downloads during quiet hours — Sync can catch up afterwards
-                    if (_configParams != null && IsInQuietHours(_configParams))
-                    {
-                        if (updateNewMessage.message is Message quietMsg)
-                            OnSkipped?.Invoke(chat.Name, quietMsg.ID);
-                        continue;
                     }
 
                     // Capture the current semaphore instance so a concurrent UpdateConfig

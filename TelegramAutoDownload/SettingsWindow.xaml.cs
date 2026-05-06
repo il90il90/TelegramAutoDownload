@@ -48,25 +48,6 @@ namespace TelegramAutoDownload
             chkNotifyComplete.IsChecked = _config.NotifyOnComplete;
             chkNotifyError.IsChecked    = _config.NotifyOnError;
 
-            // Quiet Hours
-            PopulateHourComboBoxes();
-            toggleQuietHours.IsChecked = _config.QuietHoursEnabled;
-            cmbQuietStart.SelectedIndex = Math.Max(0, Math.Min(23, _config.QuietHoursStart));
-            cmbQuietEnd.SelectedIndex   = Math.Max(0, Math.Min(23, _config.QuietHoursEnd));
-        }
-
-        private void PopulateHourComboBoxes()
-        {
-            for (int h = 0; h < 24; h++)
-            {
-                cmbQuietStart.Items.Add($"{h:D2}:00");
-                cmbQuietEnd.Items.Add($"{h:D2}:00");
-            }
-        }
-
-        private void ToggleQuietHours_Changed(object sender, RoutedEventArgs e)
-        {
-            // No live preview needed; value is saved on Save click
         }
 
         private void ToggleNotifications_Changed(object sender, RoutedEventArgs e)
@@ -145,11 +126,6 @@ namespace TelegramAutoDownload
             _config.NotifyOnComplete = chkNotifyComplete.IsChecked == true;
             _config.NotifyOnError    = chkNotifyError.IsChecked    == true;
 
-            // Quiet Hours
-            _config.QuietHoursEnabled = toggleQuietHours.IsChecked == true;
-            _config.QuietHoursStart   = cmbQuietStart.SelectedIndex >= 0 ? cmbQuietStart.SelectedIndex : 23;
-            _config.QuietHoursEnd     = cmbQuietEnd.SelectedIndex   >= 0 ? cmbQuietEnd.SelectedIndex   : 7;
-
             _configFile.Save(_config);
 
             if (apiChanged)
@@ -193,9 +169,6 @@ namespace TelegramAutoDownload
                 NotifyOnProgress = _config.NotifyOnProgress,
                 NotifyOnComplete = _config.NotifyOnComplete,
                 NotifyOnError = _config.NotifyOnError,
-                QuietHoursEnabled = _config.QuietHoursEnabled,
-                QuietHoursStart   = _config.QuietHoursStart,
-                QuietHoursEnd     = _config.QuietHoursEnd,
                 Chats = _config.Chats
             };
             File.WriteAllText(dialog.FileName, JsonConvert.SerializeObject(export, Formatting.Indented));
@@ -228,9 +201,6 @@ namespace TelegramAutoDownload
                 _config.NotifyOnProgress = imported.NotifyOnProgress;
                 _config.NotifyOnComplete = imported.NotifyOnComplete;
                 _config.NotifyOnError = imported.NotifyOnError;
-                _config.QuietHoursEnabled = imported.QuietHoursEnabled;
-                _config.QuietHoursStart   = imported.QuietHoursStart;
-                _config.QuietHoursEnd     = imported.QuietHoursEnd;
                 if (imported.Chats?.Count > 0) _config.Chats = imported.Chats;
 
                 LoadValues();

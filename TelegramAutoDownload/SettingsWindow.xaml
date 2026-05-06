@@ -200,33 +200,6 @@ Enable this only if you want to receive a Telegram message when a download finis
                     </StackPanel>
                 </Border>
 
-                <!-- Quiet Hours section -->
-                <DockPanel Margin="0,8,0,8">
-                    <TextBlock Text="Quiet Hours" FontSize="15" FontWeight="SemiBold"
-                               Foreground="#2196F3" DockPanel.Dock="Left" VerticalAlignment="Center"/>
-                    <ToggleButton x:Name="toggleQuietHours" HorizontalAlignment="Right"
-                                  Style="{DynamicResource MahApps.Styles.ToggleButton.Switch}"
-                                  Checked="ToggleQuietHours_Changed" Unchecked="ToggleQuietHours_Changed"/>
-                </DockPanel>
-                <Border Background="#F5F5F5" CornerRadius="6" Padding="16,12" Margin="0,0,0,20"
-                        x:Name="pnlQuietHours">
-                    <StackPanel>
-                        <TextBlock TextWrapping="Wrap" Foreground="#888" FontSize="11" Margin="0,0,0,12">
-                            No new downloads will start during quiet hours. Use Sync afterwards to catch up on missed messages.
-                        </TextBlock>
-                        <DockPanel>
-                            <TextBlock Text="From" FontWeight="SemiBold" VerticalAlignment="Center" Width="40"/>
-                            <ComboBox x:Name="cmbQuietStart" Width="70" Margin="0,0,16,0"
-                                      ToolTip="Hour when quiet hours begin (0-23)"/>
-                            <TextBlock Text="To" FontWeight="SemiBold" VerticalAlignment="Center" Width="24"/>
-                            <ComboBox x:Name="cmbQuietEnd" Width="70"
-                                      ToolTip="Hour when quiet hours end (0-23, exclusive)"/>
-                            <TextBlock Text="(24-hour clock)" Foreground="#888" FontSize="11"
-                                       VerticalAlignment="Center" Margin="12,0,0,0"/>
-                        </DockPanel>
-                    </StackPanel>
-                </Border>
-
             </StackPanel>
         </ScrollViewer>
 

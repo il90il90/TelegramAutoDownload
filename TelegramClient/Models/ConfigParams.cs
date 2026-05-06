@@ -17,13 +17,6 @@ namespace TelegramAutoDownload.Models
         public int DownloadThreads { get; set; } = 3;
         public bool DarkMode { get; set; } = false;
 
-        // Quiet Hours — suppress new downloads during the specified time window
-        public bool QuietHoursEnabled { get; set; } = false;
-        /// <summary>Hour (0-23) when quiet hours begin.</summary>
-        public int QuietHoursStart { get; set; } = 23;
-        /// <summary>Hour (0-23) when quiet hours end (exclusive). Supports overnight: Start=23, End=7.</summary>
-        public int QuietHoursEnd { get; set; } = 7;
-
         // Notification preferences — which events should trigger a Telegram bot message
         public bool NotifyOnStartup { get; set; } = true;
         public bool NotifyOnProgress { get; set; } = true;
