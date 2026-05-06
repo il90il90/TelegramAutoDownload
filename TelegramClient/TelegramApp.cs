@@ -640,13 +640,11 @@ namespace TelegramClient
             var groups = new List<ChatDto>();
             var seenIds = new HashSet<long>();
 
-            // Paginate through all dialogs. Telegram returns Messages_DialogsSlice
-            // when there are more pages; Messages_Dialogs signals the last page.
             int offsetId = 0;
             DateTime offsetDate = default;
-            InputPeer offsetPeer = null!; // null = start from beginning (same as original call)
+            InputPeer offsetPeer = null!;
             const int pageSize = 100;
-            const int maxPages = 50; // Safety cap: up to 5 000 dialogs
+            const int maxPages = 50; // up to 5 000 dialogs
 
             for (int page = 0; page < maxPages; page++)
             {
@@ -657,14 +655,41 @@ namespace TelegramClient
                     limit: pageSize,
                     hash: 0);
 
-                if (result is not TL.Messages_Dialogs dlg || dlg.dialogs.Length == 0)
-                    break;
+                // Telegram can return Messages_Dialogs (final/only page) OR
+                // Messages_DialogsSlice (more pages exist). Extract common fields
+                // from whichever type we received so pagination works correctly.
+                Dialog[] pageDialogs;
+                MessageBase[] pageMessages;
+                Dictionary<long, ChatBase> pageChats;
+                Dictionary<long, User> pageUsers;
+                bool isLastPage;
 
-                foreach (var kv in dlg.chats)
+                if (result is TL.Messages_DialogsSlice slice)
                 {
-                    if (!kv.Value.IsActive || !seenIds.Add(kv.Value.ID)) continue;
+                    pageDialogs  = slice.dialogs.OfType<Dialog>().ToArray();
+                    pageMessages = slice.messages;
+                    pageChats    = slice.chats;
+                    pageUsers    = slice.users;
+                    isLastPage   = pageDialogs.Length < pageSize;
+                }
+                else if (result is TL.Messages_Dialogs full)
+                {
+                    pageDialogs  = full.dialogs.OfType<Dialog>().ToArray();
+                    pageMessages = full.messages;
+                    pageChats    = full.chats;
+                    pageUsers    = full.users;
+                    isLastPage   = true; // non-slice = everything returned at once
+                }
+                else break; // Messages_DialogsNotModified or unknown
 
-                    // Cache access hashes so GetChatAvailableReactionsAsync can build InputPeer later
+                if (pageDialogs.Length == 0) break;
+
+                foreach (var kv in pageChats)
+                {
+                    // Skip groups the user has explicitly left; include all channels
+                    if (kv.Value is TL.Chat grpChat && !grpChat.IsActive) continue;
+                    if (!seenIds.Add(kv.Value.ID)) continue;
+
                     if (kv.Value is TL.Channel tlChannel)
                         _accessHashes[tlChannel.ID] = tlChannel.access_hash;
                     else if (kv.Value is TL.Chat tlChat)
@@ -672,53 +697,48 @@ namespace TelegramClient
 
                     groups.Add(new ChatDto
                     {
-                        Id = kv.Value.ID,
-                        Name = kv.Value.Title,
+                        Id       = kv.Value.ID,
+                        Name     = kv.Value.Title,
                         Username = kv.Value.MainUsername,
-                        Type = kv.Value.IsGroup ? "Group" : "Channel"
+                        Type     = kv.Value.IsGroup ? "Group" : "Channel"
                     });
                 }
 
-                foreach (var kv in dlg.users)
+                foreach (var kv in pageUsers)
                 {
                     if (kv.Value is not TL.User user || !seenIds.Add(user.ID)) continue;
                     groups.Add(new ChatDto
                     {
-                        Id = user.ID,
-                        Name = $"{user.first_name} {user.last_name}",
+                        Id       = user.ID,
+                        Name     = $"{user.first_name} {user.last_name}".Trim(),
                         Username = user.MainUsername,
-                        Type = "User"
+                        Type     = "User"
                     });
                 }
 
-                // Messages_Dialogs (not a slice) means this is the last page
-                if (result is not TL.Messages_DialogsSlice || dlg.dialogs.Length < pageSize)
-                    break;
+                if (isLastPage) break;
 
-                // Build the offset for the next page from the last dialog in this one
-                var lastDialog = dlg.dialogs.LastOrDefault() as Dialog;
+                // Build the offset for the next page
+                var lastDialog = pageDialogs.LastOrDefault();
                 if (lastDialog == null) break;
 
                 offsetId = lastDialog.top_message;
 
-                // The top message date is required by the API for correct pagination
-                var topMsg = dlg.messages.OfType<Message>()
+                var topMsg = pageMessages.OfType<Message>()
                     .FirstOrDefault(m => m.ID == lastDialog.top_message);
                 if (topMsg == null) break;
                 offsetDate = topMsg.Date;
 
-                // dialog.peer is the raw peer ID (long); resolve to an InputPeer by looking up
-                // the peer in the chats/users dictionaries returned by this page.
                 var peerId = lastDialog.peer; // long in WTelegram 4.x
                 bool peerResolved = false;
-                if (dlg.chats.TryGetValue(peerId, out var peerChatBase))
+                if (pageChats.TryGetValue(peerId, out var peerChatBase))
                 {
                     offsetPeer = peerChatBase is Channel peerChannel
                         ? new InputPeerChannel(peerId, peerChannel.access_hash)
                         : (InputPeer)new InputPeerChat(peerId);
                     peerResolved = true;
                 }
-                else if (dlg.users.TryGetValue(peerId, out var peerUserBase) && peerUserBase is User peerUser)
+                else if (pageUsers.TryGetValue(peerId, out var peerUserBase) && peerUserBase is User peerUser)
                 {
                     offsetPeer = new InputPeerUser(peerId, peerUser.access_hash);
                     peerResolved = true;
