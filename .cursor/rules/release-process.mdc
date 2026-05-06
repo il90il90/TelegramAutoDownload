@@ -1,0 +1,36 @@
+---
+description: Release process rules — every GitHub release must include both Setup.exe and Portable.zip
+alwaysApply: true
+---
+
+# Release Process — TelegramAutoDownload
+
+## MANDATORY: Every release MUST include both files
+
+Every `gh release create` or `gh release upload` command **must** include:
+
+1. `TelegramAutoDownload_vX.X.X_Setup.exe` — Inno Setup installer (for installed users + new installs)
+2. `TelegramAutoDownload_vX.X.X_Portable.zip` — ZIP archive (for portable users)
+
+## Steps for each release
+
+```powershell
+# 1. Bump version in AppVersion.cs and setup.iss
+# 2. Publish
+dotnet publish TelegramAutoDownload/TelegramAutoDownload.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o publish/
+
+# 3. Create ZIP
+Compress-Archive -Path publish/* -DestinationPath "TelegramAutoDownload_vX.X.X_Portable.zip" -Force
+
+# 4. Compile installer (REQUIRED — never skip)
+& "C:\InnoSetup\ISCC.exe" installer/setup.iss
+
+# 5. Release with BOTH files (never release with only one)
+gh release create vX.X.X "TelegramAutoDownload_vX.X.X_Portable.zip" "TelegramAutoDownload_vX.X.X_Setup.exe" --title "vX.X.X" --notes "..."
+```
+
+## Never do
+
+- ❌ Release with only ZIP and no Setup.exe
+- ❌ Delete Setup.exe from a release to "fix" update issues — fix the code instead
+- ❌ Skip the Inno Setup compile step
