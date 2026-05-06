@@ -40,6 +40,21 @@ namespace TelegramAutoDownload
         private System.Windows.Threading.DispatcherTimer? _searchDebounce;
         private string _pendingSearch = string.Empty;
 
+        // Column sort state for the chat ListView
+        private GridViewColumnHeader? _lastSortHeader;
+        private string? _lastSortProperty;
+        private ListSortDirection _lastSortDirection = ListSortDirection.Ascending;
+
+        // Maps column header display text → ChatDto property name for sorting
+        private static readonly Dictionary<string, string> _headerToSortProperty = new()
+        {
+            { "ID",       nameof(ChatDto.Id) },
+            { "Name",     nameof(ChatDto.Name) },
+            { "Username", nameof(ChatDto.Username) },
+            { "Type",     nameof(ChatDto.Type) },
+            { "Members",  nameof(ChatDto.MembersCount) },
+        };
+
         public MainWindow(TelegramApp telegram, ConfigFile config)
         {
             InitializeComponent();
@@ -159,7 +174,8 @@ namespace TelegramAutoDownload
 
                 _isLoading = true;
                 _chats = chats;
-                ItemsListView.ItemsSource = _chats.OrderByDescending(a => a.Selected);
+                ItemsListView.ItemsSource = _chats.OrderByDescending(a => a.Selected).ToList();
+                ReapplyColumnSort();
                 _isLoading = false;
                 tbCountChats.Text = _chats.Count.ToString();
             }
@@ -209,7 +225,8 @@ namespace TelegramAutoDownload
 
                 _isLoading = true;
                 _chats = freshChats;
-                ItemsListView.ItemsSource = _chats.OrderByDescending(a => a.Selected);
+                ItemsListView.ItemsSource = _chats.OrderByDescending(a => a.Selected).ToList();
+                ReapplyColumnSort();
                 _isLoading = false;
                 tbCountChats.Text = _chats.Count.ToString();
             }
@@ -431,7 +448,66 @@ namespace TelegramAutoDownload
                         .ToList());
 
             ItemsListView.ItemsSource = results;
+            ReapplyColumnSort();
             tbCountChats.Text = results.Count.ToString();
+        }
+
+        /// <summary>
+        /// Handles a click on a GridViewColumnHeader. Looks up the sort property from the header text,
+        /// toggles direction when the same column is clicked twice, updates the ▲/▼ indicator,
+        /// and applies SortDescriptions to the current ItemsSource view.
+        /// </summary>
+        private void ColumnHeader_Click(object sender, RoutedEventArgs e)
+        {
+            if (e.OriginalSource is not GridViewColumnHeader header) return;
+
+            // Strip any existing arrow suffix to get the base header text for the lookup
+            var baseText = (header.Column?.Header as string ?? string.Empty).Trim();
+            if (!_headerToSortProperty.TryGetValue(baseText, out var sortProperty)) return;
+
+            var direction = (header == _lastSortHeader && _lastSortDirection == ListSortDirection.Ascending)
+                ? ListSortDirection.Descending
+                : ListSortDirection.Ascending;
+
+            ApplyColumnSort(sortProperty, direction, header, baseText);
+        }
+
+        /// <summary>
+        /// Applies a SortDescription to the chat list view and updates the column header arrow indicator.
+        /// Selected chats are always kept first as a primary sort; the user-chosen column is secondary.
+        /// </summary>
+        private void ApplyColumnSort(string property, ListSortDirection direction,
+                                     GridViewColumnHeader header, string baseHeaderText)
+        {
+            // Reset arrow on the previously sorted header
+            if (_lastSortHeader != null && _lastSortHeader != header)
+                _lastSortHeader.Content = _lastSortHeader.Column?.Header;
+
+            // Show arrow on the newly sorted header
+            header.Content = $"{baseHeaderText} {(direction == ListSortDirection.Ascending ? "▲" : "▼")}";
+
+            _lastSortHeader = header;
+            _lastSortProperty = property;
+            _lastSortDirection = direction;
+
+            ReapplyColumnSort();
+        }
+
+        /// <summary>
+        /// Re-applies the active column sort after the ItemsSource is replaced (refresh, search).
+        /// Safe to call even when no sort is active.
+        /// </summary>
+        private void ReapplyColumnSort()
+        {
+            if (string.IsNullOrEmpty(_lastSortProperty)) return;
+            var view = CollectionViewSource.GetDefaultView(ItemsListView.ItemsSource);
+            if (view == null) return;
+
+            view.SortDescriptions.Clear();
+            // Primary: selected/monitored chats always float to the top
+            view.SortDescriptions.Add(new SortDescription(nameof(ChatDto.Selected), ListSortDirection.Descending));
+            // Secondary: user-chosen column sort
+            view.SortDescriptions.Add(new SortDescription(_lastSortProperty, _lastSortDirection));
         }
 
         private void SelectChatId_Checked(object sender, RoutedEventArgs e)

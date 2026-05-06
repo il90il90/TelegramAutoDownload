@@ -78,10 +78,13 @@
                       VirtualizingPanel.IsVirtualizing="True"
                       VirtualizingPanel.VirtualizationMode="Recycling"
                       ScrollViewer.CanContentScroll="True"
-                      ScrollViewer.IsDeferredScrollingEnabled="True">
+                      ScrollViewer.IsDeferredScrollingEnabled="True"
+                      GridViewColumnHeader.Click="ColumnHeader_Click">
                 <ListView.Resources>
                     <Style TargetType="GridViewColumnHeader">
                         <Setter Property="HorizontalContentAlignment" Value="Left"/>
+                        <Setter Property="Cursor" Value="Hand"/>
+                        <Setter Property="ToolTip" Value="Click to sort"/>
                     </Style>
                     <!-- Alternating row colors -->
                     <Style TargetType="ListViewItem">
