@@ -133,6 +133,23 @@ namespace TelegramAutoDownload.Services
             });
         }
 
+        /// <summary>
+        /// Silently removes a queued or downloading item that was skipped (dedup, type disabled, etc.).
+        /// Uses msgId as the stable key. No status change, no delay — the item simply disappears.
+        /// </summary>
+        public void SkipDownload(string chatName, int msgId)
+        {
+            Application.Current?.Dispatcher.InvokeAsync(() =>
+            {
+                var item = Downloads.FirstOrDefault(d => d.ChatName == chatName && d.MessageId == msgId);
+                if (item != null)
+                {
+                    Downloads.Remove(item);
+                    QueueChanged?.Invoke();
+                }
+            });
+        }
+
         public void AddDownload(string chatName, string fileName, string pluginName, long totalBytes = 0)
         {
             Application.Current?.Dispatcher.InvokeAsync(() =>

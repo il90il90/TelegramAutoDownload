@@ -34,6 +34,12 @@ namespace TelegramClient
 
         /// <summary>Fired when a queued item starts downloading: (chatName, msgId)</summary>
         public Action<string, int>? OnStarted { get; set; }
+
+        /// <summary>
+        /// Fired when a file is silently skipped (already downloaded / dedup match): (chatName, msgId).
+        /// The UI should remove the queued/downloading entry without showing an error.
+        /// </summary>
+        public Action<string, int>? OnSkipped { get; set; }
         public readonly Client Client;
         private FactoryMessagesService factoryService;
         private FactoryUserService factoryUserService;
@@ -198,7 +204,12 @@ namespace TelegramClient
                                 }
                                 else
                                 {
-                                    if (!string.IsNullOrEmpty(resultExecute.ErrorMessage))
+                                    if (resultExecute.IsSuccess && !string.IsNullOrEmpty(resultExecute.ErrorMessage))
+                                    {
+                                        // Dedup skip — remove the UI entry silently, no warning needed
+                                        OnSkipped?.Invoke(chat.Name, infoMessage.ID);
+                                    }
+                                    else if (!string.IsNullOrEmpty(resultExecute.ErrorMessage))
                                     {
                                         if (OnWarnningMessage != null)
                                             await OnWarnningMessage.Invoke(resultMessageEvent);
@@ -308,8 +319,14 @@ namespace TelegramClient
                         {
                             OnStarted?.Invoke(chatDto.Name, msg.ID);
                             var result = await factoryService.ExecuteDirectAsync(msg, chatDto);
-                            // Only notify on genuine new downloads — not dedup skips (which have ErrorMessage set)
-                            if (result.IsSuccess && string.IsNullOrEmpty(result.ErrorMessage) && OnSaved != null)
+
+                            if (result.IsSuccess && !string.IsNullOrEmpty(result.ErrorMessage))
+                            {
+                                // Dedup skip — remove the UI entry silently
+                                OnSkipped?.Invoke(chatDto.Name, msg.ID);
+                            }
+                            else if (result.IsSuccess && string.IsNullOrEmpty(result.ErrorMessage) && OnSaved != null)
+                            {
                                 await OnSaved.Invoke(new ResultMessageEvent
                                 {
                                     Chat = chatDto,
@@ -317,6 +334,7 @@ namespace TelegramClient
                                     PostAuthor = msg.post_author,
                                     ResultExecute = result,
                                 });
+                            }
                         }
                         finally { sem.Release(); }
                     }));

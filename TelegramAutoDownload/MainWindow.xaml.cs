@@ -61,6 +61,8 @@ namespace TelegramAutoDownload
             };
             telegram.OnComplete = (chatName, fileName, success) =>
                 DownloadProgressService.Instance.CompleteDownload(chatName, fileName, success);
+            telegram.OnSkipped = (chatName, msgId) =>
+                DownloadProgressService.Instance.SkipDownload(chatName, msgId);
 
             // Enhanced completion notification with size, duration, avg speed
             DownloadProgressService.Instance.DownloadCompleted += (chatName, fileName, bytes, duration) =>
