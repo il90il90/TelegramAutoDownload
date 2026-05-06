@@ -24,8 +24,28 @@ namespace TelegramAutoDownload.Services
             $"https://api.github.com/repos/{AppVersion.GitHubOwner}/{AppVersion.GitHubRepo}/releases/latest";
 
         /// <summary>
+        /// Returns true when the running executable is NOT inside the standard installer paths
+        /// (Program Files / LocalAppData). Portable users run from a custom folder such as Downloads.
+        /// In portable mode we update via ZIP (in-place copy) instead of running the Setup.exe,
+        /// which would install to Program Files and leave the original exe unchanged.
+        /// </summary>
+        private static bool IsPortableInstall()
+        {
+            var exePath = Process.GetCurrentProcess().MainModule?.FileName ?? string.Empty;
+            var pf     = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
+            var pfx86  = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
+            var local  = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            return !exePath.StartsWith(pf,    StringComparison.OrdinalIgnoreCase)
+                && !exePath.StartsWith(pfx86, StringComparison.OrdinalIgnoreCase)
+                && !exePath.StartsWith(local, StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
         /// Checks GitHub for a newer release.
         /// Returns the release info if a newer version is available, or null if already up to date.
+        /// Asset selection is install-type aware:
+        ///   • Installed (Program Files) → Setup.exe so the installer handles UAC + registry
+        ///   • Portable (any other folder) → ZIP so the in-place batch copy replaces the running exe
         /// </summary>
         public static async Task<ReleaseInfo?> CheckAsync()
         {
@@ -45,37 +65,39 @@ namespace TelegramAutoDownload.Services
                 if (!IsNewer(version, AppVersion.Current))
                     return null;
 
-                // Prefer the Setup EXE so the installer handles admin elevation + file replacement.
-                // Fall back to the portable ZIP only if no EXE is present.
-                string assetUrl = string.Empty;
-                string assetName = string.Empty;
+                bool portable = IsPortableInstall();
+                string assetUrl = string.Empty, assetName = string.Empty;
+                string setupUrl = string.Empty, setupName = string.Empty;
+                string zipUrl   = string.Empty, zipName   = string.Empty;
+
                 var assets = obj["assets"] as JArray;
                 if (assets != null)
                 {
-                    string zipUrl = string.Empty, zipName = string.Empty;
                     foreach (var asset in assets)
                     {
                         var name = asset["name"]?.ToString() ?? string.Empty;
                         var url  = asset["browser_download_url"]?.ToString() ?? string.Empty;
-                        if (name.EndsWith("_Setup.exe", StringComparison.OrdinalIgnoreCase))
-                        {
-                            assetUrl  = url;
-                            assetName = name;
-                            break;
-                        }
-                        if (name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) && zipUrl == string.Empty)
-                        {
-                            zipUrl  = url;
-                            zipName = name;
-                        }
-                    }
-                    // Fall back to ZIP if no Setup EXE found
-                    if (assetUrl == string.Empty && zipUrl != string.Empty)
-                    {
-                        assetUrl  = zipUrl;
-                        assetName = zipName;
+                        if (name.EndsWith("_Setup.exe", StringComparison.OrdinalIgnoreCase) && setupUrl == string.Empty)
+                        { setupUrl = url; setupName = name; }
+                        else if (name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) && zipUrl == string.Empty)
+                        { zipUrl = url; zipName = name; }
                     }
                 }
+
+                if (portable)
+                {
+                    // Portable: prefer ZIP so the batch script copies files into the current folder
+                    assetUrl  = zipUrl   != string.Empty ? zipUrl   : setupUrl;
+                    assetName = zipUrl   != string.Empty ? zipName  : setupName;
+                }
+                else
+                {
+                    // Installed: prefer Setup.exe for proper UAC elevation and registry updates
+                    assetUrl  = setupUrl != string.Empty ? setupUrl : zipUrl;
+                    assetName = setupUrl != string.Empty ? setupName : zipName;
+                }
+
+                Log.Information("Update available: {Version} (portable={P}, asset={A})", version, portable, assetName);
 
                 return new ReleaseInfo
                 {
