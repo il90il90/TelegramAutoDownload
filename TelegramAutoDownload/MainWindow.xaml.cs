@@ -1,4 +1,4 @@
-﻿using MahApps.Metro.Controls;
+using MahApps.Metro.Controls;
 using Microsoft.Win32;
 using Serilog;
 using System;
@@ -80,23 +80,37 @@ namespace TelegramAutoDownload
         private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
             btnAppVersion.Content = $"v{AppVersion.Current}";
-            mainLoadingRing.IsActive = true;
-            tbLoadingStatus.Text = "Connecting to Telegram...";
 
-            // Ensure yt-dlp is available and up to date silently in background
+            // Step 1: Show saved chats from last session immediately — no network call needed
+            LoadChatsFromConfig();
+
+            // Step 2: Show a lightweight refresh indicator instead of a full blocking overlay
+            mainLoadingRing.IsActive = true;
+            tbLoadingStatus.Text = "Refreshing chats...";
+
+            // Step 3: Ensure yt-dlp silently in background
             _ = YtdlpService.EnsureAsync();
 
-            // Wait for the Telegram session to be established BEFORE loading chats,
-            // so GetAllChats doesn't block WTelegram's internal mutex
+            // Step 4: Connect to Telegram and fetch fresh chats in background
             await Task.Run(() => TelegramApp.WaitForLoginAsync(15000));
+            await RefreshChatsFromTelegramAsync();
 
-            tbLoadingStatus.Text = "Loading chats...";
-            await InitAsync();
             mainLoadingRing.IsActive = false;
             tbLoadingStatus.Text = string.Empty;
 
-            // Check for updates AFTER the window is fully loaded and rendered,
-            // with a short delay so the dialog opens cleanly
+            // Step 5: Apply saved config (UpdateConfig, path, notifications)
+            ConfigParams configParams = ConfigFile.Read();
+            TelegramApp.UpdateConfig(configParams);
+            UpdatePathOnUI(configParams.PathSaveFile);
+
+            var monitoredCount = configParams.Chats?.Count(c => c.Selected) ?? 0;
+            _ = Task.Run(async () =>
+            {
+                await TelegramApp.WaitForLoginAsync();
+                await _notification.SendStartupNotificationAsync(monitoredCount, TelegramApp.Client.UserId != 0);
+            });
+
+            // Step 6: Check for updates after window is ready
             _ = Task.Run(async () =>
             {
                 await Task.Delay(2000);
@@ -104,34 +118,53 @@ namespace TelegramAutoDownload
             });
         }
 
-        private async Task InitAsync()
+        /// <summary>
+        /// Loads the chat list instantly from the last saved config (no network calls).
+        /// Shows the chats the user expects to see right away on startup.
+        /// </summary>
+        private void LoadChatsFromConfig()
         {
-            await LoadDataAsync();
-            ConfigParams configParams = ConfigFile.Read();
-            if (configParams?.Chats == null) return;
-            tbCountChats.Text = _chats.Count.ToString();
-
-            TelegramApp.UpdateConfig(configParams);
-            UpdatePathOnUI(configParams.PathSaveFile);
-
-            // Wait for login and send startup notification entirely on a background thread
-            // so the UI stays responsive while the Telegram session connects
-            var monitoredCount = configParams.Chats?.Count(c => c.Selected) ?? 0;
-            _ = Task.Run(async () =>
+            try
             {
-                await TelegramApp.WaitForLoginAsync();
-                await _notification.SendStartupNotificationAsync(monitoredCount, TelegramApp.Client.UserId != 0);
-            });
+                ConfigParams configParams = ConfigFile.Read();
+                if (configParams?.Chats == null || configParams.Chats.Count == 0) return;
+
+                var chats = configParams.Chats.Select(c => new ChatDto
+                {
+                    Id = c.Id,
+                    Name = c.Name,
+                    Username = c.Username,
+                    NameLower = c.Name?.ToLowerInvariant() ?? string.Empty,
+                    UsernameLower = c.Username?.ToLowerInvariant() ?? string.Empty,
+                    Selected = c.Selected,
+                    ReactionIcon = c.ReactionIcon,
+                    DownloadStartIcon = c.DownloadStartIcon,
+                    Download = c.Download ?? new Download(),
+                    DownloadFromSize = c.DownloadFromSize,
+                    IgnoreFileByRegex = c.IgnoreFileByRegex,
+                    EnabledPlugins = c.EnabledPlugins ?? new Dictionary<string, bool>(),
+                }).ToList();
+
+                _isLoading = true;
+                _chats = chats;
+                ItemsListView.ItemsSource = _chats.OrderByDescending(a => a.Selected);
+                _isLoading = false;
+                tbCountChats.Text = _chats.Count.ToString();
+            }
+            catch { /* if config is missing or corrupt, just show an empty list */ }
         }
 
-        private async Task LoadDataAsync()
+        /// <summary>
+        /// Fetches fresh chat data from Telegram in the background and merges saved settings into the result.
+        /// Updates the UI once the refresh is complete.
+        /// </summary>
+        private async Task RefreshChatsFromTelegramAsync()
         {
             try
             {
                 ConfigParams configParams = ConfigFile.Read();
 
-                // Fetch chats AND merge config settings entirely on background thread
-                _chats = await Task.Run(async () =>
+                var freshChats = await Task.Run(async () =>
                 {
                     var chats = await TelegramApp.GetAllChats();
                     foreach (var chat in chats)
@@ -140,34 +173,35 @@ namespace TelegramAutoDownload
                         chat.NameLower = chat.Name?.ToLowerInvariant() ?? string.Empty;
                         chat.UsernameLower = chat.Username?.ToLowerInvariant() ?? string.Empty;
 
-                        var fromConfigFile = configParams.Chats?.FirstOrDefault(a => a.Id == chat.Id);
-                        if (fromConfigFile == null) continue;
+                        var saved = configParams.Chats?.FirstOrDefault(a => a.Id == chat.Id);
+                        if (saved == null) continue;
 
-                        chat.Selected = fromConfigFile.Selected;
-                        chat.ReactionIcon = fromConfigFile.ReactionIcon;
-                        chat.DownloadStartIcon = fromConfigFile.DownloadStartIcon;
-                        if (fromConfigFile.Download != null)
+                        chat.Selected = saved.Selected;
+                        chat.ReactionIcon = saved.ReactionIcon;
+                        chat.DownloadStartIcon = saved.DownloadStartIcon;
+                        if (saved.Download != null)
                         {
-                            chat.Download.Videos = fromConfigFile.Download.Videos;
-                            chat.Download.Photos = fromConfigFile.Download.Photos;
-                            chat.Download.Music = fromConfigFile.Download.Music;
-                            chat.Download.Files = fromConfigFile.Download.Files;
+                            chat.Download.Videos = saved.Download.Videos;
+                            chat.Download.Photos = saved.Download.Photos;
+                            chat.Download.Music = saved.Download.Music;
+                            chat.Download.Files = saved.Download.Files;
                         }
-                        chat.DownloadFromSize = fromConfigFile.DownloadFromSize;
-                        chat.IgnoreFileByRegex = fromConfigFile.IgnoreFileByRegex;
-                        chat.EnabledPlugins = fromConfigFile.EnabledPlugins ?? new Dictionary<string, bool>();
+                        chat.DownloadFromSize = saved.DownloadFromSize;
+                        chat.IgnoreFileByRegex = saved.IgnoreFileByRegex;
+                        chat.EnabledPlugins = saved.EnabledPlugins ?? new Dictionary<string, bool>();
                     }
                     return chats;
                 });
 
-                // Only the final UI binding happens on the UI thread
                 _isLoading = true;
+                _chats = freshChats;
                 ItemsListView.ItemsSource = _chats.OrderByDescending(a => a.Selected);
                 _isLoading = false;
+                tbCountChats.Text = _chats.Count.ToString();
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message, "error", MessageBoxButton.OK, MessageBoxImage.Error);
+                System.Diagnostics.Debug.WriteLine($"RefreshChatsFromTelegramAsync error: {ex.Message}");
             }
         }
 
@@ -376,57 +410,105 @@ namespace TelegramAutoDownload
                 DownloadProgressService.Instance.CancelDownload(item.ChatName, item.FileName);
         }
 
-        private void ComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        // Default emoji set shown before group reactions are loaded from Telegram
+        private static readonly List<string> _defaultEmojiSet = new()
         {
-            if (_isLoading) return;
-            var comboBox = sender as ComboBox;
-            if (comboBox != null && comboBox.SelectedItem != null)
-            {
-                var item = (ComboBoxItem)comboBox.SelectedValue;
-                var reactionIcon = (string)item.Content;
-                var dataContext = comboBox.DataContext as ChatDto;
-                if (dataContext != null)
-                {
-                    var config = ConfigFile.Read();
-                    var foundChat = config.Chats.FirstOrDefault(a => a.Id == dataContext.Id);
-                    if (foundChat == null)
-                    {
-                        MessageBox.Show($"Please select a {dataContext?.Type} before choosing a Reaction.", "", MessageBoxButton.OK, MessageBoxImage.Information);
-                        return;
-                    }
+            string.Empty, "👍", "❤️", "🔥", "👌", "💯", "😂", "😮", "🎉"
+        };
 
-                    dataContext.ReactionIcon = reactionIcon;
-                    foundChat.ReactionIcon = reactionIcon;
-
-                    ConfigFile.Save(config);
-                    TelegramApp.UpdateConfig(config);
-                }
-            }
-        }
-
-        private void ReactionIcon_Loaded(object sender, RoutedEventArgs e)
+        /// <summary>
+        /// Walks up the visual tree from a ComboBox to find its parent ListViewItem
+        /// and returns the ChatDto bound to that row.
+        /// </summary>
+        private static ChatDto? GetChatDtoFromComboBox(ComboBox comboBox)
         {
-            if (sender is not ComboBox comboBox) return;
-            _isLoading = true;
             DependencyObject parent = VisualTreeHelper.GetParent(comboBox);
             while (parent is not ListViewItem && parent != null)
                 parent = VisualTreeHelper.GetParent(parent);
-
-            if (parent is ListViewItem listViewItem)
-            {
-                var chatDto = listViewItem.DataContext as ChatDto;
-                if (chatDto != null)
-                    comboBox.Text = chatDto.ReactionIcon;
-            }
-            _isLoading = false;
+            return (parent as ListViewItem)?.DataContext as ChatDto;
         }
 
-        private void DownloadStartIcon_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        /// <summary>
+        /// Populates a ComboBox with the reactions available for its chat.
+        /// Uses cached reactions when available; falls back to the default set.
+        /// The current saved value is always included in the list even if the group removed it.
+        /// </summary>
+        private void SetupEmojiComboBox(ComboBox comboBox, ChatDto chatDto, string currentValue)
+        {
+            _isLoading = true;
+            try
+            {
+                var baseItems = chatDto.AvailableReactions ?? _defaultEmojiSet;
+                var items = new List<string>(baseItems);
+
+                // Ensure the empty "no reaction" option is always first
+                if (!items.Contains(string.Empty))
+                    items.Insert(0, string.Empty);
+
+                // Keep the previously saved value visible even if not in the group's reaction set
+                if (!string.IsNullOrEmpty(currentValue) && !items.Contains(currentValue))
+                    items.Insert(1, currentValue);
+
+                comboBox.ItemsSource = items;
+                comboBox.SelectedItem = currentValue;
+            }
+            finally
+            {
+                _isLoading = false;
+            }
+        }
+
+        private void DownloadStartIcon_Loaded(object sender, RoutedEventArgs e)
+        {
+            if (sender is not ComboBox comboBox) return;
+            var chatDto = GetChatDtoFromComboBox(comboBox);
+            if (chatDto == null) return;
+            SetupEmojiComboBox(comboBox, chatDto, chatDto.DownloadStartIcon);
+        }
+
+        private void EndIconComboBox_Loaded(object sender, RoutedEventArgs e)
+        {
+            if (sender is not ComboBox comboBox) return;
+            var chatDto = GetChatDtoFromComboBox(comboBox);
+            if (chatDto == null) return;
+            SetupEmojiComboBox(comboBox, chatDto, chatDto.ReactionIcon);
+        }
+
+        /// <summary>
+        /// Fetches available reactions from Telegram when the user opens a ComboBox dropdown.
+        /// The ComboBox Tag ("start" or "end") identifies which icon field to restore after loading.
+        /// Updates happen live in the open dropdown.
+        /// </summary>
+        private async void EmojiComboBox_DropDownOpened(object sender, EventArgs e)
+        {
+            if (sender is not ComboBox comboBox) return;
+            var chatDto = GetChatDtoFromComboBox(comboBox);
+            if (chatDto == null) return;
+
+            // Already loaded for this chat — nothing to do
+            if (chatDto.AvailableReactions != null) return;
+
+            try
+            {
+                var reactions = await TelegramApp.GetChatAvailableReactionsAsync(chatDto);
+                chatDto.AvailableReactions = reactions;
+
+                if (!comboBox.IsLoaded) return;
+
+                var isStart = comboBox.Tag as string == "start";
+                var currentValue = isStart ? chatDto.DownloadStartIcon : chatDto.ReactionIcon;
+
+                SetupEmojiComboBox(comboBox, chatDto, currentValue);
+            }
+            catch { /* non-critical */ }
+        }
+
+        private void ComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (_isLoading) return;
             if (sender is not ComboBox comboBox || comboBox.SelectedItem == null) return;
 
-            var icon = (string)((ComboBoxItem)comboBox.SelectedValue).Content;
+            var reactionIcon = comboBox.SelectedItem as string ?? string.Empty;
             var dataContext = comboBox.DataContext as ChatDto;
             if (dataContext == null) return;
 
@@ -434,7 +516,32 @@ namespace TelegramAutoDownload
             var foundChat = config.Chats.FirstOrDefault(a => a.Id == dataContext.Id);
             if (foundChat == null)
             {
-                MessageBox.Show($"Please select the chat first.", "", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show($"Please select a {dataContext.Type} before choosing an End Icon.", "",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            dataContext.ReactionIcon = reactionIcon;
+            foundChat.ReactionIcon = reactionIcon;
+
+            ConfigFile.Save(config);
+            TelegramApp.UpdateConfig(config);
+        }
+
+        private void DownloadStartIcon_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_isLoading) return;
+            if (sender is not ComboBox comboBox || comboBox.SelectedItem == null) return;
+
+            var icon = comboBox.SelectedItem as string ?? string.Empty;
+            var dataContext = comboBox.DataContext as ChatDto;
+            if (dataContext == null) return;
+
+            var config = ConfigFile.Read();
+            var foundChat = config.Chats.FirstOrDefault(a => a.Id == dataContext.Id);
+            if (foundChat == null)
+            {
+                MessageBox.Show("Please select the chat first.", "", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
@@ -442,23 +549,6 @@ namespace TelegramAutoDownload
             foundChat.DownloadStartIcon = icon;
             ConfigFile.Save(config);
             TelegramApp.UpdateConfig(config);
-        }
-
-        private void DownloadStartIcon_Loaded(object sender, RoutedEventArgs e)
-        {
-            if (sender is not ComboBox comboBox) return;
-            _isLoading = true;
-            DependencyObject parent = VisualTreeHelper.GetParent(comboBox);
-            while (parent is not ListViewItem && parent != null)
-                parent = VisualTreeHelper.GetParent(parent);
-
-            if (parent is ListViewItem listViewItem)
-            {
-                var chatDto = listViewItem.DataContext as ChatDto;
-                if (chatDto != null)
-                    comboBox.Text = chatDto.DownloadStartIcon;
-            }
-            _isLoading = false;
         }
 
         private void Download_Checked(object sender, RoutedEventArgs e)

@@ -50,6 +50,9 @@ namespace TelegramClient
         // Prevents re-downloading when we re-fetch history.
         private readonly Dictionary<long, int> _highWatermark = new();
 
+        // Cached result of Messages_GetAvailableReactions (global list), shared across all chats that allow all reactions
+        private List<string>? _cachedAllReactions;
+
         public TelegramApp(int appId, string apiHash)
         {
             // Store session in writable AppData folder so it survives installs/updates
@@ -472,6 +475,82 @@ namespace TelegramClient
             return "Unknown";
         }
 
+        /// <summary>
+        /// Returns the list of emoji reactions available in the given chat.
+        /// For channels/groups this reads the chat's configured reactions; for users all reactions are available.
+        /// Falls back to a sensible default set on any error.
+        /// </summary>
+        public async Task<List<string>> GetChatAvailableReactionsAsync(ChatDto chatDto)
+        {
+            var fallback = new List<string> { "👍", "❤️", "🔥", "👌", "💯", "😂", "😮", "🎉" };
+            try
+            {
+                // DMs support all available reactions
+                if (chatDto.Type == "User")
+                    return await GetAllAvailableReactionsAsync();
+
+                if (!_accessHashes.TryGetValue(chatDto.Id, out var hash))
+                    return fallback;
+
+                TL.ChatReactions? available = null;
+
+                if (hash != 0)
+                {
+                    // TL.Channel — channel or supergroup
+                    var fullInfo = await Client.Channels_GetFullChannel(new TL.InputChannel(chatDto.Id, hash));
+                    available = (fullInfo?.full_chat as TL.ChannelFull)?.available_reactions;
+                }
+                else
+                {
+                    // TL.Chat — regular group
+                    var fullInfo = await Client.Messages_GetFullChat(chatDto.Id);
+                    available = (fullInfo?.full_chat as TL.ChatFull)?.available_reactions;
+                }
+
+                if (available is TL.ChatReactionsSome some)
+                {
+                    var emojis = some.reactions
+                        .OfType<TL.ReactionEmoji>()
+                        .Select(r => r.emoticon)
+                        .ToList();
+                    return emojis.Count > 0 ? emojis : fallback;
+                }
+
+                if (available is TL.ChatReactionsAll)
+                    return await GetAllAvailableReactionsAsync();
+
+                // Unknown type (e.g. reactions disabled) — return empty
+                return available != null ? new List<string>() : fallback;
+            }
+            catch
+            {
+                return fallback;
+            }
+        }
+
+        /// <summary>
+        /// Returns the global list of standard emoji reactions, cached after the first call.
+        /// </summary>
+        private async Task<List<string>> GetAllAvailableReactionsAsync()
+        {
+            if (_cachedAllReactions != null) return _cachedAllReactions;
+            try
+            {
+                var result = await Client.Messages_GetAvailableReactions(0);
+                if (result is TL.Messages_AvailableReactions avail)
+                {
+                    // AvailableReaction.reaction is the emoji string directly in WTelegramClient 4.1.1
+                    _cachedAllReactions = avail.reactions
+                        .Select(r => r.reaction)
+                        .Where(e => !string.IsNullOrEmpty(e))
+                        .ToList();
+                    return _cachedAllReactions;
+                }
+            }
+            catch { }
+            return new List<string> { "👍", "❤️", "🔥", "👌", "💯", "😂", "😮", "🎉" };
+        }
+
         public async Task<IList<ChatDto>> GetAllChats()
         {
             var groups = new List<ChatDto>();
@@ -491,6 +570,13 @@ namespace TelegramClient
             foreach (var kv in dlg.chats)
             {
                 if (!kv.Value.IsActive) continue;
+
+                // Cache access hashes so GetChatAvailableReactionsAsync can build InputPeer later
+                if (kv.Value is TL.Channel tlChannel)
+                    _accessHashes[tlChannel.ID] = tlChannel.access_hash;
+                else if (kv.Value is TL.Chat tlChat)
+                    _accessHashes[tlChat.ID] = 0;
+
                 groups.Add(new ChatDto()
                 {
                     Id = kv.Value.ID,

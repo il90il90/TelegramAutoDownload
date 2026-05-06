@@ -38,11 +38,13 @@ namespace TelegramClient.Factory.FactoriesUsers
                     Name = $"{tlUser.first_name} {tlUser.last_name}",
                     Username = username,
                     ReactionIcon = chatParams.ReactionIcon,
+                    DownloadStartIcon = chatParams.DownloadStartIcon,
                     Download = chatParams.Download,
                     Type = chatParams.Type,
                     DownloadFromSize = chatParams.DownloadFromSize,
                     IgnoreFileByRegex = chatParams.IgnoreFileByRegex,
                     Selected = chatParams.Selected,
+                    EnabledPlugins = chatParams.EnabledPlugins ?? new Dictionary<string, bool>(),
                 };
             }
             catch (Exception)

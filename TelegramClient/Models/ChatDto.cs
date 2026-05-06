@@ -14,8 +14,11 @@ namespace TelegramClient.Models
         public string NameLower { get; set; } = string.Empty;
         public string UsernameLower { get; set; } = string.Empty;
         public string ReactionIcon { get; set; } = string.Empty;
-        // Reaction sent when download STARTS (default: ⏳)
+        // Reaction sent when download STARTS
         public string DownloadStartIcon { get; set; } = string.Empty;
+
+        // Reactions available in this chat, fetched on demand from Telegram. Null means not yet loaded.
+        public List<string>? AvailableReactions { get; set; } = null;
         public Download Download { get; set; } = new Download();
         public int DownloadFromSize { get; set; }
         public List<string> IgnoreFileByRegex { get; set; } = [];
