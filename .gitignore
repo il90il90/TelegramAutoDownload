@@ -10,8 +10,10 @@ tools/*.exe
 publish/
 publish_out/
 publish_v*/
+publish_test/
 release_pkg/
 tmp/
+tools/
 
 # Release artifacts (uploaded to GitHub Releases directly, not via git)
 TelegramAutoDownload_v*_Portable.zip
