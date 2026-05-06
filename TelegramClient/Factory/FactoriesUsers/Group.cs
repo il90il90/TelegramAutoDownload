@@ -36,6 +36,9 @@ namespace TelegramClient.Factory.FactoriesUsers
                     IgnoreFileByRegex = chatParams.IgnoreFileByRegex,
                     Selected = chatParams.Selected,
                     EnabledPlugins = chatParams.EnabledPlugins ?? new Dictionary<string, bool>(),
+                    YtdlpQuality = chatParams.YtdlpQuality,
+                    FolderTemplate = chatParams.FolderTemplate,
+                    SaveHistory = chatParams.SaveHistory,
                 };
             }
             return null;

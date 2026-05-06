@@ -218,7 +218,9 @@ namespace TelegramClient
 
                         if (updateNewMessage.message is Message infoMessage)
                         {
-                            // Append to JSONL history file if the chat has SaveHistory enabled
+                            // Append to JSONL history file if the chat has SaveHistory enabled.
+                            // Runs for every message type (text, media, stickers, etc.) — the
+                            // history captures the full conversation, not just downloadable media.
                             if (chat.SaveHistory && OnHistoryEntry != null)
                             {
                                 try
@@ -229,8 +231,14 @@ namespace TelegramClient
                                 catch { /* history write must never break downloads */ }
                             }
 
-                            // Mark as actively downloading (was "Queued")
-                            OnStarted?.Invoke(chat.Name, infoMessage.ID);
+                            // Only signal "downloading" when something was actually enqueued.
+                            // Text-only messages that have no downloadable content are never added
+                            // to the queue (GetPreviewFileName returns null), so there is no UI
+                            // item to transition to "⬇ Downloading" — calling OnStarted for them
+                            // would generate a spurious QueueChanged badge update.
+                            var hasQueuedItem = GetPreviewFileName(infoMessage) != null;
+                            if (hasQueuedItem)
+                                OnStarted?.Invoke(chat.Name, infoMessage.ID);
 
                             try
                             {
