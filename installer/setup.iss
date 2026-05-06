@@ -47,17 +47,20 @@ Name: "desktopicon";    Description: "{cm:CreateDesktopIcon}";      GroupDescrip
 Name: "startupicon";    Description: "Start automatically with Windows"; GroupDescription: "Startup:"; Flags: unchecked
 
 [Files]
-; Main application files
-Source: "{#SourceDir}\{#AppExeName}";           DestDir: "{app}"; Flags: ignoreversion
-Source: "{#SourceDir}\*.dll";                   DestDir: "{app}"; Flags: ignoreversion
-Source: "{#SourceDir}\*.json";                  DestDir: "{app}"; Flags: ignoreversion
-Source: "{#SourceDir}\*.pdb";                   DestDir: "{app}"; Flags: ignoreversion
+; Main executable (self-contained — .NET runtime is bundled inside)
+Source: "{#SourceDir}\{#AppExeName}";                   DestDir: "{app}"; Flags: ignoreversion
 
-; Localization resources
-Source: "{#SourceDir}\de\*";                    DestDir: "{app}\de";                    Flags: ignoreversion recursesubdirs createallsubdirs
+; WPF native runtime DLLs (cannot be bundled inside the single-file exe)
+Source: "{#SourceDir}\*.dll";                           DestDir: "{app}"; Flags: ignoreversion
 
-; Plugin DLLs are in the root alongside the main exe (loaded dynamically at runtime)
-; yt-dlp is downloaded automatically on first run to %APPDATA%\TelegramAutoDownload\tools\
+; Debug symbols (optional)
+Source: "{#SourceDir}\*.pdb";                           DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
+
+; Plugins subfolder
+Source: "{#SourceDir}\Plugins\*";                      DestDir: "{app}\Plugins"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
+
+; Localisation resources (MahApps etc.)
+Source: "{#SourceDir}\de\*";                           DestDir: "{app}\de"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
 
 [Icons]
 Name: "{group}\{#AppName}";                     Filename: "{app}\{#AppExeName}"
@@ -80,38 +83,9 @@ Filename: "{app}\{#AppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(
 Filename: "taskkill.exe"; Parameters: "/f /im {#AppExeName}"; Flags: runhidden; RunOnceId: "KillApp"
 
 [Code]
-// Check for .NET 8 Desktop Runtime
-function IsDotNet8Installed(): Boolean;
-var
-  Key: string;
-begin
-  Key := 'SOFTWARE\dotnet\Setup\InstalledVersions\x64\sharedfx\Microsoft.WindowsDesktop.App';
-  Result := RegKeyExists(HKLM, Key) or RegKeyExists(HKCU, Key);
-  if not Result then
-  begin
-    // Fallback: check if exe can be found
-    Result := FileExists(ExpandConstant('{pf64}\dotnet\dotnet.exe')) or
-              FileExists(ExpandConstant('{pf}\dotnet\dotnet.exe'));
-  end;
-end;
-
+// The app is published as a self-contained single-file executable.
+// No external .NET runtime is required — everything is bundled inside TelegramAutoDownload.exe.
 function InitializeSetup(): Boolean;
-var
-  ResultCode: Integer;
 begin
   Result := True;
-  if not IsDotNet8Installed() then
-  begin
-    if MsgBox('.NET 8 Desktop Runtime is required but was not found.' + #13#10 +
-              'The installer will open the .NET download page.' + #13#10 + #13#10 +
-              'After installing .NET 8, run this installer again.' + #13#10 + #13#10 +
-              'Open download page now?',
-              mbConfirmation, MB_YESNO) = IDYES then
-    begin
-      ShellExec('open',
-        'https://dotnet.microsoft.com/en-us/download/dotnet/thank-you/runtime-desktop-8.0.0-windows-x64-installer',
-        '', '', SW_SHOWNORMAL, ewNoWait, ResultCode);
-    end;
-    Result := False;
-  end;
 end;
