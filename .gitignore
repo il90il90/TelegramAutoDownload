@@ -6,6 +6,17 @@ config.txt
 # External tools (download separately; see README)
 tools/*.exe
 
+# Build / publish output — never commit compiled binaries to git
+publish/
+publish_out/
+publish_v*/
+tmp/
+
+# Release artifacts (uploaded to GitHub Releases directly, not via git)
+TelegramAutoDownload_v*_Portable.zip
+TelegramAutoDownload_v*_Setup.exe
+TelegramAutoDownload_v*.zip
+
 TelegramAutoDownload/bin/Debug/net8.0-windows/config.txt
 *.bin
 *.vsidx

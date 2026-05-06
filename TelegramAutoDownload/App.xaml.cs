@@ -15,6 +15,14 @@ namespace TelegramAutoDownload
 
         protected override void OnStartup(StartupEventArgs e)
         {
+            // Initialize the logger FIRST so exception handlers can write to it immediately.
+            Log.Logger = new LoggerConfiguration()
+                .WriteTo.File(System.IO.Path.Combine(AppPaths.LogsDir, "app-.log"),
+                    rollingInterval: RollingInterval.Day,
+                    retainedFileCountLimit: 7,
+                    outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
+                .CreateLogger();
+
             // --- Global exception handlers: log and show instead of crashing ---
             DispatcherUnhandledException += (_, ex) =>
             {
@@ -43,14 +51,6 @@ namespace TelegramAutoDownload
                 DotEnv.Load(options: new dotenv.net.DotEnvOptions(envFilePaths: new[] { envPath }));
 
             base.OnStartup(e);
-
-            // Initialize file-based logger in writable AppData folder (rolling daily, keep 7 days)
-            Log.Logger = new LoggerConfiguration()
-                .WriteTo.File(System.IO.Path.Combine(AppPaths.LogsDir, "app-.log"),
-                    rollingInterval: RollingInterval.Day,
-                    retainedFileCountLimit: 7,
-                    outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
-                .CreateLogger();
 
             Log.Information("Application starting up");
 

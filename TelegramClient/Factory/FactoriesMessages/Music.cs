@@ -60,11 +60,13 @@ namespace TelegramClient.Factory.FactoriesMessages
                 catch (OperationCanceledException)
                 {
                     DeletePartialFile(pathFolderLocation);
+                    CancellationRegistry.Remove(CancellationRegistry.MakeKey(chatDto.Name, fileName));
                     return new ResultExecute(chatDto.Name) { IsSuccess = false, FileName = fileName, ErrorMessage = "Cancelled by user" };
                 }
                 catch (Exception) when (downloadToken.IsCancellationRequested)
                 {
                     DeletePartialFile(pathFolderLocation);
+                    CancellationRegistry.Remove(CancellationRegistry.MakeKey(chatDto.Name, fileName));
                     return new ResultExecute(chatDto.Name) { IsSuccess = false, FileName = fileName, ErrorMessage = "Download cancelled (no progress)" };
                 }
                 catch (Exception ex)

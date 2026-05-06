@@ -11,12 +11,19 @@ namespace BasePlugins
     {
         private static readonly ConcurrentDictionary<string, CancellationTokenSource> _tokens = new();
 
-        /// <summary>Creates and stores a new CTS for the given key. Returns the associated token.</summary>
+        /// <summary>Creates and stores a new CTS for the given key. Returns the associated token.
+        /// If a CTS already exists for the key it is disposed before being replaced.</summary>
         public static CancellationToken Register(string key)
         {
-            var cts = new CancellationTokenSource();
-            _tokens[key] = cts;
-            return cts.Token;
+            var newCts = new CancellationTokenSource();
+            // AddOrUpdate: if a stale CTS exists (e.g. from a previous retry), dispose it atomically
+            CancellationTokenSource? stale = null;
+            _tokens.AddOrUpdate(key,
+                _ => newCts,
+                (_, existing) => { stale = existing; return newCts; });
+            // Dispose outside the factory delegate so we never hold internal locks while disposing
+            try { stale?.Dispose(); } catch { }
+            return newCts.Token;
         }
 
         /// <summary>Cancels the CTS for the given key (no-op if not found).</summary>

@@ -1,5 +1,6 @@
 ﻿using BasePlugins;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -43,12 +44,14 @@ namespace TelegramClient
         private ConfigParams? _configParams;
 
         // Cache of channel/chat access hashes populated from incoming updates
-        // so we can construct InputPeer when processing missed history
-        private readonly Dictionary<long, long> _accessHashes = new();
+        // so we can construct InputPeer when processing missed history.
+        // ConcurrentDictionary because it is written from the update handler thread
+        // AND read from background Task.Run threads concurrently.
+        private readonly ConcurrentDictionary<long, long> _accessHashes = new();
 
         // Per-chat watermark: highest message ID we have already queued for download.
-        // Prevents re-downloading when we re-fetch history.
-        private readonly Dictionary<long, int> _highWatermark = new();
+        // ConcurrentDictionary for the same reason — read/written from multiple threads.
+        private readonly ConcurrentDictionary<long, int> _highWatermark = new();
 
         // Cached result of Messages_GetAvailableReactions (global list), shared across all chats that allow all reactions
         private List<string>? _cachedAllReactions;
@@ -131,8 +134,8 @@ namespace TelegramClient
                                    : liveMsg.peer_id is PeerChat pg ? pg.chat_id
                                    : liveMsg.peer_id is PeerUser pu ? pu.user_id : 0;
                         if (peerId != 0)
-                            _highWatermark[peerId] = Math.Max(
-                                _highWatermark.GetValueOrDefault(peerId), liveMsg.ID);
+                            // AddOrUpdate is atomic: prevents lost-update race between concurrent threads
+                            _highWatermark.AddOrUpdate(peerId, liveMsg.ID, (_, prev) => Math.Max(prev, liveMsg.ID));
 
                         // Register in queue immediately so the user can see it waiting
                         var previewName = GetPreviewFileName(liveMsg);
@@ -140,9 +143,13 @@ namespace TelegramClient
                             OnEnqueued?.Invoke(chat.Name, liveMsg.ID, previewName);
                     }
 
+                    // Capture the current semaphore instance so a concurrent UpdateConfig
+                    // call that replaces _semaphore does not cause a SemaphoreFullException
+                    // when the finally block calls Release() on the wrong instance.
+                    var sem = _semaphore;
                     var task = Task.Run(async () =>
                     {
-                        await _semaphore.WaitAsync();
+                        await sem.WaitAsync();
                         try
                         {
 
@@ -214,7 +221,7 @@ namespace TelegramClient
                         }
                         finally
                         {
-                            _semaphore.Release();
+                            sem.Release();
                         }
                     });
                     tasks.Add(task);
@@ -293,9 +300,10 @@ namespace TelegramClient
                         OnEnqueued?.Invoke(chatDto.Name, msg.ID, previewName);
                     }
 
+                    var sem = _semaphore; // Capture before lambda — see Client_OnUpdates for explanation
                     var tasks = messages.Select(msg => Task.Run(async () =>
                     {
-                        await _semaphore.WaitAsync();
+                        await sem.WaitAsync();
                         try
                         {
                             OnStarted?.Invoke(chatDto.Name, msg.ID);
@@ -310,7 +318,7 @@ namespace TelegramClient
                                     ResultExecute = result,
                                 });
                         }
-                        finally { _semaphore.Release(); }
+                        finally { sem.Release(); }
                     }));
 
                     await Task.WhenAll(tasks);
@@ -391,15 +399,15 @@ namespace TelegramClient
 
                     if (messages.Count == 0) break;
 
+                    var sem = _semaphore; // Capture before lambda — see Client_OnUpdates for explanation
                     // Process each missed message through the download pipeline
                     var tasks = messages.Select(msg => Task.Run(async () =>
                     {
-                        await _semaphore.WaitAsync();
+                        await sem.WaitAsync();
                         try
                         {
-                            // Mark as seen so live updates don't re-download it
-                            _highWatermark[channelId] = Math.Max(
-                                _highWatermark.GetValueOrDefault(channelId), msg.ID);
+                            // Mark as seen so live updates don't re-download it (atomic max-update)
+                            _highWatermark.AddOrUpdate(channelId, msg.ID, (_, prev) => Math.Max(prev, msg.ID));
 
                             var result = await factoryService.ExecuteDirectAsync(msg, chatDto);
                             // Only notify on genuine new downloads — not dedup skips (which have ErrorMessage set)
@@ -412,7 +420,7 @@ namespace TelegramClient
                                     ResultExecute = result,
                                 });
                         }
-                        finally { _semaphore.Release(); }
+                        finally { sem.Release(); }
                     }));
 
                     await Task.WhenAll(tasks);

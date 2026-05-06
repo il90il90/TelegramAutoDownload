@@ -1,10 +1,14 @@
 {
   "version": 2,
-  "dgSpecHash": "pJSZpmFEHbw=",
+  "dgSpecHash": "g9qcVHf6DFU=",
   "success": true,
   "projectFilePath": "C:\\Users\\il90i\\Documenten\\GitHub\\TelegramAutoDownload\\TelegramClient\\TelegramClient.csproj",
   "expectedPackageFiles": [
-    "C:\\Users\\il90i\\.nuget\\packages\\wtelegramclient\\4.1.1\\wtelegramclient.4.1.1.nupkg.sha512"
+    "C:\\Users\\il90i\\.nuget\\packages\\microsoft.net.illink.tasks\\8.0.26\\microsoft.net.illink.tasks.8.0.26.nupkg.sha512",
+    "C:\\Users\\il90i\\.nuget\\packages\\wtelegramclient\\4.1.1\\wtelegramclient.4.1.1.nupkg.sha512",
+    "C:\\Users\\il90i\\.nuget\\packages\\microsoft.netcore.app.runtime.win-x64\\8.0.26\\microsoft.netcore.app.runtime.win-x64.8.0.26.nupkg.sha512",
+    "C:\\Users\\il90i\\.nuget\\packages\\microsoft.windowsdesktop.app.runtime.win-x64\\8.0.26\\microsoft.windowsdesktop.app.runtime.win-x64.8.0.26.nupkg.sha512",
+    "C:\\Users\\il90i\\.nuget\\packages\\microsoft.aspnetcore.app.runtime.win-x64\\8.0.26\\microsoft.aspnetcore.app.runtime.win-x64.8.0.26.nupkg.sha512"
   ],
   "logs": []
 }

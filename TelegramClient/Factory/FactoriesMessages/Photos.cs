@@ -62,11 +62,13 @@ namespace TelegramClient.Factory.Factories
                 catch (OperationCanceledException)
                 {
                     DeletePartialFile(savedPath);
+                    CancellationRegistry.Remove(CancellationRegistry.MakeKey(chatDto.Name, fileName));
                     return new ResultExecute(chatDto.Name) { IsSuccess = false, FileName = fileName, ErrorMessage = "Cancelled by user" };
                 }
                 catch (Exception) when (downloadToken.IsCancellationRequested)
                 {
                     DeletePartialFile(savedPath);
+                    CancellationRegistry.Remove(CancellationRegistry.MakeKey(chatDto.Name, fileName));
                     return new ResultExecute(chatDto.Name) { IsSuccess = false, FileName = fileName, ErrorMessage = "Download cancelled (no progress)" };
                 }
                 catch (Exception ex)
@@ -92,13 +94,29 @@ namespace TelegramClient.Factory.Factories
                 }
                 savedPath = PathLocationFolder(chatDto, fileName);
                 OnProgress?.Invoke(chatDto.Name, fileName, TypeMessage.ToString(), 0, 0, 0);
-                // Photos are small but apply a 5-minute timeout to guard against hung connections
-                using var photoCts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
-                using var fileStream = File.Create(savedPath);
-                using var _ = photoCts.Token.Register(() => { try { fileStream.Dispose(); } catch { } });
-                await Client.DownloadFileAsync(photo, fileStream);
-                FileDownloadIndex.MarkDownloaded(photo.id);
-                OnComplete?.Invoke(chatDto.Name, fileName, true);
+                try
+                {
+                    // Photos are small but apply a 5-minute timeout to guard against hung connections.
+                    // DownloadFileAsync for Photo does not accept a CancellationToken, so we guard
+                    // by disposing the stream — this forces an IOException that breaks the await.
+                    using var photoCts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
+                    using var fileStream = File.Create(savedPath);
+                    using var _ = photoCts.Token.Register(() => { try { fileStream.Dispose(); } catch { } });
+                    await Client.DownloadFileAsync(photo, fileStream);
+                    FileDownloadIndex.MarkDownloaded(photo.id);
+                    OnComplete?.Invoke(chatDto.Name, fileName, true);
+                }
+                catch (Exception ex)
+                {
+                    DeletePartialFile(savedPath);
+                    OnComplete?.Invoke(chatDto.Name, fileName, false);
+                    return new ResultExecute(chatDto.Name)
+                    {
+                        IsSuccess = false,
+                        FileName = fileName,
+                        ErrorMessage = $"Photo download failed: {ex.Message}"
+                    };
+                }
             }
             return new ResultExecute(chatDto.Name)
             {

@@ -77,7 +77,10 @@ namespace TelegramAutoDownload.Services
                     item.Speed = "";
                     item.Eta = "";
                     Task.Delay(4000).ContinueWith(_ =>
-                        Application.Current?.Dispatcher.InvokeAsync(() => Downloads.Remove(item)));
+                    {
+                        CancellationRegistry.Remove(key);
+                        Application.Current?.Dispatcher.InvokeAsync(() => Downloads.Remove(item));
+                    });
                 }
             });
         }
@@ -253,8 +256,12 @@ namespace TelegramAutoDownload.Services
                     DownloadCompleted?.Invoke(chatName, fileName, bytes, durationSec);
                 }
 
-                // Release the cancellation token
-                CancellationRegistry.Remove(item.CancellationKey);
+                // Release the cancellation token — fall back to computing the key from
+                // chatName+fileName in case CancellationKey was never set (e.g. very fast download)
+                var cleanupKey = !string.IsNullOrEmpty(item.CancellationKey)
+                    ? item.CancellationKey
+                    : CancellationRegistry.MakeKey(chatName, fileName);
+                CancellationRegistry.Remove(cleanupKey);
 
                 // Auto-remove after 4 seconds
                 Task.Delay(4000).ContinueWith(_ =>
@@ -288,8 +295,13 @@ namespace TelegramAutoDownload.Services
                 item.Status = "✖ Cancelled";
                 item.Speed = "";
                 item.Eta = "";
+                // Remove the CTS after a delay so the download task has time to observe
+                // the cancellation and exit cleanly before we dispose the token source.
                 Task.Delay(3000).ContinueWith(_ =>
-                    Application.Current?.Dispatcher.InvokeAsync(() => Downloads.Remove(item)));
+                {
+                    CancellationRegistry.Remove(key);
+                    Application.Current?.Dispatcher.InvokeAsync(() => Downloads.Remove(item));
+                });
             });
         }
 
@@ -311,15 +323,21 @@ namespace TelegramAutoDownload.Services
                         continue;
                     }
 
-                    if (item.Status == "⬇ Downloading" || item.Status == "⏳ Queued")
+                    if (item.Status == "⬇ Downloading")
                     {
-                        var key = CancellationRegistry.MakeKey(item.ChatName, item.FileName);
+                        var key = !string.IsNullOrEmpty(item.CancellationKey)
+                            ? item.CancellationKey
+                            : CancellationRegistry.MakeKey(item.ChatName, item.FileName);
                         CancellationRegistry.Cancel(key);
                         item.Status = "✖ Cancelled";
                         item.Speed = "";
                         item.Eta = "";
+                        // Remove the CTS after a delay so the download task can exit cleanly first
                         Task.Delay(3000).ContinueWith(_ =>
-                            Application.Current?.Dispatcher.InvokeAsync(() => Downloads.Remove(item)));
+                        {
+                            CancellationRegistry.Remove(key);
+                            Application.Current?.Dispatcher.InvokeAsync(() => Downloads.Remove(item));
+                        });
                     }
                 }
                 QueueChanged?.Invoke();
