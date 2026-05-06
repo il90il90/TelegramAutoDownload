@@ -162,11 +162,15 @@ namespace TelegramAutoDownload.Services
                     var pid = Process.GetCurrentProcess().Id;
                     var batchPath = Path.Combine(Path.GetTempPath(), "tad_updater.bat");
 
+                    // NOTE: robocopy exit codes 0-7 are success/info; 8+ are errors.
+                    // xcopy is kept as a fallback in case robocopy is unavailable.
                     File.WriteAllText(batchPath, $@"@echo off
 :wait
 tasklist /fi ""pid eq {pid}"" | findstr /i ""{pid}"" >nul 2>&1
 if not errorlevel 1 ( timeout /t 1 /nobreak >nul & goto wait )
-xcopy /e /y /i ""{srcDir}\*"" ""{appDir.TrimEnd('\\', '/')}\ ""
+robocopy ""{srcDir}"" ""{appDir.TrimEnd('\\', '/')}"" /e /is /it /np /nfl /ndl >nul 2>&1
+if errorlevel 8 xcopy /e /y /q ""{srcDir}\*"" ""{appDir.TrimEnd('\\', '/')}\""  >nul 2>&1
+timeout /t 1 /nobreak >nul
 start """" ""{Path.Combine(appDir, exeName)}""
 del ""%~f0""
 ");
