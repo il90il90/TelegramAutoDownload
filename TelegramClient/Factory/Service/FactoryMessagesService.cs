@@ -30,6 +30,13 @@ namespace TelegramClient.Factory.Service
         /// </summary>
         public Action<string, string, bool>? OnComplete { get; set; }
 
+        /// <summary>
+        /// Called when FILE_REFERENCE_EXPIRED is encountered.
+        /// Should return a fresh copy of the message, or null if unavailable.
+        /// (chatDto, messageId) → fresh Message
+        /// </summary>
+        public Func<ChatDto, int, Task<Message?>>? RefreshMessage { get; set; }
+
         public FactoryMessagesService(Client client, string pathFolderToSaveFiles)
         {
             _messageTextFactory = new MessageTextFactoryService(client, pathFolderToSaveFiles);
@@ -75,8 +82,26 @@ namespace TelegramClient.Factory.Service
         /// <summary>
         /// Processes a Message directly — used for historical/catch-up messages
         /// that don't arrive as UpdateNewMessage.
+        /// Automatically retries once with a fresh message when FILE_REFERENCE_EXPIRED is detected.
         /// </summary>
         public async Task<ResultExecute> ExecuteDirectAsync(Message message, ChatDto chatDto)
+        {
+            var result = await RunHandlerAsync(message, chatDto);
+
+            // Telegram file references expire after some time.
+            // Re-fetch the message to get a new reference and retry once.
+            if (result.ErrorMessage?.Contains("FILE_REFERENCE_EXPIRED") == true && RefreshMessage != null)
+            {
+                System.Diagnostics.Debug.WriteLine($"FILE_REFERENCE_EXPIRED for msg {message.ID} in {chatDto.Name} — refreshing reference and retrying");
+                var freshMessage = await RefreshMessage(chatDto, message.ID);
+                if (freshMessage != null)
+                    result = await RunHandlerAsync(freshMessage, chatDto);
+            }
+
+            return result;
+        }
+
+        private async Task<ResultExecute> RunHandlerAsync(Message message, ChatDto chatDto)
         {
             var type = GetTypeOfMessage(message);
             var handleMessage = messageTypes.FirstOrDefault(a => a.TypeMessage.Equals(type));

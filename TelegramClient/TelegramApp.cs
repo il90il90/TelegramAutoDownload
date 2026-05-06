@@ -98,9 +98,45 @@ namespace TelegramClient
             factoryService = new FactoryMessagesService(Client, configParams.PathSaveFile);
             factoryService.OnProgress = OnProgress;
             factoryService.OnComplete = OnComplete;
+            factoryService.RefreshMessage = RefreshMessageAsync;
             factoryService.WireProgressCallbacks();
             factoryUserService = new FactoryUserService(chatIds, configParams);
             _semaphore = new SemaphoreSlim(Math.Max(1, configParams.DownloadThreads));
+        }
+
+        /// <summary>
+        /// Re-fetches a single message from Telegram to obtain a fresh file reference.
+        /// Called automatically when FILE_REFERENCE_EXPIRED is encountered during download.
+        /// </summary>
+        private async Task<Message?> RefreshMessageAsync(ChatDto chatDto, int msgId)
+        {
+            try
+            {
+                _accessHashes.TryGetValue(chatDto.Id, out var accessHash);
+                MessageBase[]? messages;
+
+                if (accessHash != 0)
+                {
+                    // Channel or supergroup — must use Channels_GetMessages for fresh references
+                    var result = await Client.Channels_GetMessages(
+                        new InputChannel(chatDto.Id, accessHash),
+                        new InputMessageID { id = msgId });
+                    messages = result?.Messages;
+                }
+                else
+                {
+                    // Basic group or user conversation
+                    var result = await Client.Messages_GetMessages(new InputMessageID { id = msgId });
+                    messages = result?.Messages;
+                }
+
+                return messages?.OfType<Message>().FirstOrDefault();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"RefreshMessageAsync failed for msg {msgId} in {chatDto.Name}: {ex.Message}");
+                return null;
+            }
         }
         private async Task Client_OnUpdates(UpdatesBase updates)
         {
