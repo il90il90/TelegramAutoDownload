@@ -40,6 +40,23 @@ namespace BasePlugins
                 cts.Dispose();
         }
 
+        /// <summary>
+        /// Cancels every currently registered token.
+        /// Used by "Cancel All" so that downloads are stopped regardless of whether the
+        /// per-item CancellationKey has been assigned to the UI item yet.
+        /// Tokens remain in the registry until each download task calls Remove() on exit.
+        /// </summary>
+        public static void CancelAll()
+        {
+            foreach (var kvp in _tokens)
+            {
+                try { kvp.Value.Cancel(); } catch { }
+            }
+        }
+
+        /// <summary>Returns the number of currently registered cancellation tokens.</summary>
+        public static int Count => _tokens.Count;
+
         public static string MakeKey(string chatName, string fileName) => $"{chatName}|{fileName}";
     }
 }

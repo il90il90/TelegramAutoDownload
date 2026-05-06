@@ -337,38 +337,56 @@ namespace TelegramAutoDownload.Services
         }
 
         /// <summary>
-        /// Cancels every active and queued download at once.
-        /// Queued items are removed immediately; active downloads are cancelled via
-        /// CancellationRegistry and removed after a short delay.
+        /// Cancels every active and queued download at once, and clears all finished items.
+        ///
+        /// Strategy:
+        ///   1. Call CancellationRegistry.CancelAll() BEFORE touching the UI list so that
+        ///      tokens are signalled even for downloads whose CancellationKey has not yet been
+        ///      written to the UI item (the narrow window between StartDownload and first
+        ///      OnProgress call where the key is still empty).
+        ///   2. Items in "⏳ Queued", "✔ Done", "✖ Error", "✖ Timeout", "✖ Cancelled"
+        ///      are removed immediately — they are either not started or already finished.
+        ///   3. Items in "⬇ Downloading" are marked "✖ Cancelled" and removed after a
+        ///      short delay to give the download task time to observe the cancellation token
+        ///      and release its semaphore slot before the UI entry disappears.
         /// </summary>
         public void CancelAllDownloads()
         {
+            // Cancel all tokens first — before the Dispatcher runs — so even tasks that are
+            // between StartDownload and their first OnProgress call are cancelled correctly.
+            CancellationRegistry.CancelAll();
+
             Application.Current?.Dispatcher.InvokeAsync(() =>
             {
                 var all = Downloads.ToList();
                 foreach (var item in all)
                 {
-                    if (item.Status == "⏳ Queued")
+                    switch (item.Status)
                     {
-                        Downloads.Remove(item);
-                        continue;
-                    }
+                        // Queued and finished items: remove immediately — no active token to clean up.
+                        case "⏳ Queued":
+                        case "✔ Done":
+                        case "✖ Error":
+                        case "✖ Timeout":
+                        case "✖ Cancelled":
+                            Downloads.Remove(item);
+                            break;
 
-                    if (item.Status == "⬇ Downloading")
-                    {
-                        var key = !string.IsNullOrEmpty(item.CancellationKey)
-                            ? item.CancellationKey
-                            : CancellationRegistry.MakeKey(item.ChatName, item.FileName);
-                        CancellationRegistry.Cancel(key);
-                        item.Status = "✖ Cancelled";
-                        item.Speed = "";
-                        item.Eta = "";
-                        // Remove the CTS after a delay so the download task can exit cleanly first
-                        Task.Delay(3000).ContinueWith(_ =>
-                        {
-                            CancellationRegistry.Remove(key);
-                            Application.Current?.Dispatcher.InvokeAsync(() => Downloads.Remove(item));
-                        });
+                        // Active downloads: mark as cancelled; clean up the registry key after a delay
+                        // so the download task has time to handle the OperationCanceledException first.
+                        case "⬇ Downloading":
+                            item.Status = "✖ Cancelled";
+                            item.Speed = "";
+                            item.Eta = "";
+                            var key = !string.IsNullOrEmpty(item.CancellationKey)
+                                ? item.CancellationKey
+                                : CancellationRegistry.MakeKey(item.ChatName, item.FileName);
+                            Task.Delay(3000).ContinueWith(_ =>
+                            {
+                                CancellationRegistry.Remove(key);
+                                Application.Current?.Dispatcher.InvokeAsync(() => Downloads.Remove(item));
+                            });
+                            break;
                     }
                 }
                 QueueChanged?.Invoke();
