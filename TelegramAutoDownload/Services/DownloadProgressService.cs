@@ -23,10 +23,13 @@ namespace TelegramAutoDownload.Services
         public int TotalFilesDownloaded => _totalFilesDownloaded;
         public long TotalBytesDownloaded => _totalBytesDownloaded;
 
-        // How long a download can go without any progress before it is force-cancelled
-        public static readonly TimeSpan StuckTimeout = TimeSpan.FromMinutes(5);
+        // How long a download can go without any progress before the UI watchdog fires.
+        // The primary guard is the inactivity CTS inside MakeProgress (3 min).
+        // This watchdog is a secondary safety net for downloads whose CancellationKey
+        // could not be matched (e.g. stuck during semaphore wait, before any callback).
+        public static readonly TimeSpan StuckTimeout = TimeSpan.FromMinutes(3);
 
-        // Watchdog timer — checks for stuck downloads every 60 seconds
+        // Watchdog timer — checks for stuck downloads every 30 seconds
         private readonly System.Threading.Timer _watchdogTimer;
 
         public event Action? StatsChanged;
@@ -35,18 +38,20 @@ namespace TelegramAutoDownload.Services
         private DownloadProgressService()
         {
             _watchdogTimer = new System.Threading.Timer(_ => CheckForStuckDownloads(), null,
-                TimeSpan.FromSeconds(60), TimeSpan.FromSeconds(60));
+                TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
         }
 
         /// <summary>
-        /// Scans all active downloads. Any download that has not reported progress
-        /// for longer than <see cref="StuckTimeout"/> is force-cancelled so the
-        /// semaphore slot is freed and new downloads can proceed.
+        /// Secondary safety-net watchdog: scans all active downloads and cancels any that
+        /// have not reported progress for longer than <see cref="StuckTimeout"/>.
+        /// The primary guard is the per-download inactivity CancellationTokenSource created
+        /// in BaseMessage.MakeProgress — this watchdog handles edge cases where that token
+        /// could not fire (e.g. a download that never started reporting progress and therefore
+        /// never registered a real CancellationKey).
         /// </summary>
         private void CheckForStuckDownloads()
         {
             var now = DateTime.UtcNow;
-            // Snapshot on UI thread to avoid cross-thread enumeration issues
             Application.Current?.Dispatcher.InvokeAsync(() =>
             {
                 var stuck = Downloads
@@ -61,9 +66,11 @@ namespace TelegramAutoDownload.Services
                         item.FileName, item.ChatName,
                         (int)(now - item.LastProgressTime).TotalMinutes);
 
-                    // Cancel via registry — triggers ThrowIfCancellationRequested in the
-                    // progress callback, and also disposes the stream (see BaseMessage.MakeProgress)
-                    var key = CancellationRegistry.MakeKey(item.ChatName, item.FileName);
+                    // Prefer the stored CancellationKey (set when the real filename is known).
+                    // Fall back to recomputing from the current FileName as a last resort.
+                    var key = !string.IsNullOrEmpty(item.CancellationKey)
+                        ? item.CancellationKey
+                        : CancellationRegistry.MakeKey(item.ChatName, item.FileName);
                     CancellationRegistry.Cancel(key);
 
                     item.Status = "✖ Timeout";
@@ -164,7 +171,12 @@ namespace TelegramAutoDownload.Services
                          d.FileName.StartsWith("photo_")));
 
                     if (item != null)
+                    {
                         item.FileName = fileName;
+                        // Update the CancellationKey now that the real filename is known,
+                        // so the watchdog can cancel this download using the correct key.
+                        item.CancellationKey = CancellationRegistry.MakeKey(chatName, fileName);
+                    }
                 }
 
                 // Auto-register on first report (e.g. when called before AddDownload)

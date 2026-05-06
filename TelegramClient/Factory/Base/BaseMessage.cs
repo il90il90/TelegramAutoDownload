@@ -38,25 +38,51 @@ namespace TelegramClient.Factory.Base
 
         /// <summary>
         /// Creates a WTelegram ProgressCallback and a CancellationToken for this download.
-        /// The token is registered in CancellationRegistry so the UI cancel button and the
-        /// stuck-download watchdog can both abort the transfer.
-        /// The caller should register <c>token.Register(() => stream.Dispose())</c> so that
-        /// a hung DownloadFileAsync (no callbacks) is also force-interrupted when cancelled.
+        ///
+        /// Two cancellation sources are combined into the returned token:
+        ///   1. <b>User/watchdog cancel</b> — registered in CancellationRegistry so the UI
+        ///      cancel button and the UI watchdog can both abort the transfer.
+        ///   2. <b>Inactivity timeout</b> — a 3-minute self-resetting timer that fires when
+        ///      WTelegram stops calling the progress callback (hung TCP connection, Telegram
+        ///      server stall, etc.).  Every received byte resets the timer.  This is the
+        ///      primary guard against stuck downloads and works even when DownloadFileAsync
+        ///      never returns and never calls the callback again.
+        ///
+        /// The caller must still register <c>token.Register(() => stream.Dispose())</c> so
+        /// that a hung DownloadFileAsync is force-interrupted when the token fires.
         /// </summary>
-        protected (Client.ProgressCallback? callback, System.Threading.CancellationToken token)
+        protected (Client.ProgressCallback callback, System.Threading.CancellationToken token)
             MakeProgress(string chatName, string fileName, long totalBytes)
         {
             var cancelKey = CancellationRegistry.MakeKey(chatName, fileName);
-            var token = CancellationRegistry.Register(cancelKey);
+            var userToken = CancellationRegistry.Register(cancelKey);
 
-            Client.ProgressCallback? callback = OnProgress == null ? null :
-                (transmitted, total) =>
-                {
-                    token.ThrowIfCancellationRequested();
-                    long effectiveTotal = total > 0 ? total : totalBytes;
-                    double pct = effectiveTotal > 0 ? transmitted * 100.0 / effectiveTotal : 0;
-                    OnProgress.Invoke(chatName, fileName, TypeMessage.ToString(), Math.Min(99, pct), transmitted, effectiveTotal);
-                };
+            // Fires after 3 minutes of no progress; reset on every callback invocation
+            var inactivityCts = new System.Threading.CancellationTokenSource(TimeSpan.FromMinutes(3));
+            var linkedCts = System.Threading.CancellationTokenSource.CreateLinkedTokenSource(userToken, inactivityCts.Token);
+            var token = linkedCts.Token;
+
+            // Clean up helper CTSes when the combined token fires (either source)
+            token.Register(() =>
+            {
+                try { inactivityCts.Dispose(); } catch { }
+                try { linkedCts.Dispose(); } catch { }
+            });
+
+            // Always create a callback so that:
+            //   a) inactivity timer is reset on every received chunk, and
+            //   b) ThrowIfCancellationRequested is polled during the transfer.
+            Client.ProgressCallback callback = (transmitted, total) =>
+            {
+                token.ThrowIfCancellationRequested();
+                // Reset the inactivity watchdog — download is still alive
+                inactivityCts.CancelAfter(TimeSpan.FromMinutes(3));
+
+                if (OnProgress == null) return;
+                long effectiveTotal = total > 0 ? total : totalBytes;
+                double pct = effectiveTotal > 0 ? transmitted * 100.0 / effectiveTotal : 0;
+                OnProgress.Invoke(chatName, fileName, TypeMessage.ToString(), Math.Min(99, pct), transmitted, effectiveTotal);
+            };
 
             return (callback, token);
         }
