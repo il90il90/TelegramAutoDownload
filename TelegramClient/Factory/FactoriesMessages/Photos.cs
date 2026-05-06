@@ -2,6 +2,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using TelegramClient.Factory.Base;
 using TelegramClient.Factory.FactoriesMessages.Enum;
@@ -42,20 +43,28 @@ namespace TelegramClient.Factory.Factories
                 }
                 savedPath = PathLocationFolder(chatDto, fileName);
                 OnProgress?.Invoke(chatDto.Name, fileName, TypeMessage.ToString(), 0, 0, document.size);
+                var (progress, downloadToken) = MakeProgress(chatDto.Name, fileName, document.size);
                 try
                 {
                     await WithRetryAsync(async () =>
                     {
                         using var fileStream = File.Create(savedPath);
-                        await Client.DownloadFileAsync(document, fileStream, null, MakeProgress(chatDto.Name, fileName, document.size));
+                        // Dispose the stream on cancel so a hung DownloadFileAsync is force-interrupted
+                        using var _ = downloadToken.Register(() => { try { fileStream.Dispose(); } catch { } });
+                        await Client.DownloadFileAsync(document, fileStream, null, progress);
                         return true;
-                    });
+                    }, downloadToken);
                     OnComplete?.Invoke(chatDto.Name, fileName, true);
                 }
                 catch (OperationCanceledException)
                 {
                     DeletePartialFile(savedPath);
                     return new ResultExecute(chatDto.Name) { IsSuccess = false, FileName = fileName, ErrorMessage = "Cancelled by user" };
+                }
+                catch (Exception) when (downloadToken.IsCancellationRequested)
+                {
+                    DeletePartialFile(savedPath);
+                    return new ResultExecute(chatDto.Name) { IsSuccess = false, FileName = fileName, ErrorMessage = "Download cancelled (no progress)" };
                 }
                 catch (Exception ex)
                 {
@@ -77,7 +86,10 @@ namespace TelegramClient.Factory.Factories
                 }
                 savedPath = PathLocationFolder(chatDto, fileName);
                 OnProgress?.Invoke(chatDto.Name, fileName, TypeMessage.ToString(), 0, 0, 0);
+                // Photos are small but apply a 5-minute timeout to guard against hung connections
+                using var photoCts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
                 using var fileStream = File.Create(savedPath);
+                using var _ = photoCts.Token.Register(() => { try { fileStream.Dispose(); } catch { } });
                 await Client.DownloadFileAsync(photo, fileStream);
                 OnComplete?.Invoke(chatDto.Name, fileName, true);
             }

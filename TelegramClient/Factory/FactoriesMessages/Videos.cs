@@ -46,14 +46,17 @@ namespace TelegramClient.Factory.Factories
 
             var pathFolderLocation = PathLocationFolder(chatDto, fileName);
             OnProgress?.Invoke(chatDto.Name, fileName, PluginName, 0, 0, document.size);
+            var (progress, downloadToken) = MakeProgress(chatDto.Name, fileName, document.size);
             try
             {
                 await WithRetryAsync(async () =>
                 {
                     using var stream = File.Create(pathFolderLocation);
-                    await Client.DownloadFileAsync(document, stream, null, MakeProgress(chatDto.Name, fileName, document.size));
+                    // Dispose the stream on cancel so a hung DownloadFileAsync is force-interrupted
+                    using var _ = downloadToken.Register(() => { try { stream.Dispose(); } catch { } });
+                    await Client.DownloadFileAsync(document, stream, null, progress);
                     return true;
-                });
+                }, downloadToken);
                 OnComplete?.Invoke(chatDto.Name, fileName, true);
                 return new ResultExecute(chatDto.Name) { IsSuccess = true, FileName = fileName, FilePath = pathFolderLocation };
             }
@@ -61,6 +64,11 @@ namespace TelegramClient.Factory.Factories
             {
                 DeletePartialFile(pathFolderLocation);
                 return new ResultExecute(chatDto.Name) { IsSuccess = false, FileName = fileName, ErrorMessage = "Cancelled by user" };
+            }
+            catch (Exception e) when (downloadToken.IsCancellationRequested)
+            {
+                DeletePartialFile(pathFolderLocation);
+                return new ResultExecute(chatDto.Name) { IsSuccess = false, FileName = fileName, ErrorMessage = "Download cancelled (no progress)" };
             }
             catch (Exception e)
             {

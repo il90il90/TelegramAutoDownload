@@ -27,6 +27,9 @@ namespace TelegramAutoDownload.Models
         // Timestamp when this download started (used for speed/ETA calculation)
         public DateTime StartTime { get; set; } = DateTime.UtcNow;
 
+        // Last time a progress update was received — used by the stuck-download watchdog
+        public DateTime LastProgressTime { get; set; } = DateTime.UtcNow;
+
         public double Progress
         {
             get => _progress;

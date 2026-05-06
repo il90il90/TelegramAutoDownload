@@ -2,6 +2,7 @@ using BasePlugins;
 using System;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using TelegramAutoDownload.Models;
@@ -22,8 +23,57 @@ namespace TelegramAutoDownload.Services
         public int TotalFilesDownloaded => _totalFilesDownloaded;
         public long TotalBytesDownloaded => _totalBytesDownloaded;
 
+        // How long a download can go without any progress before it is force-cancelled
+        public static readonly TimeSpan StuckTimeout = TimeSpan.FromMinutes(5);
+
+        // Watchdog timer — checks for stuck downloads every 60 seconds
+        private readonly System.Threading.Timer _watchdogTimer;
+
         public event Action? StatsChanged;
         public event Action? QueueChanged;
+
+        private DownloadProgressService()
+        {
+            _watchdogTimer = new System.Threading.Timer(_ => CheckForStuckDownloads(), null,
+                TimeSpan.FromSeconds(60), TimeSpan.FromSeconds(60));
+        }
+
+        /// <summary>
+        /// Scans all active downloads. Any download that has not reported progress
+        /// for longer than <see cref="StuckTimeout"/> is force-cancelled so the
+        /// semaphore slot is freed and new downloads can proceed.
+        /// </summary>
+        private void CheckForStuckDownloads()
+        {
+            var now = DateTime.UtcNow;
+            // Snapshot on UI thread to avoid cross-thread enumeration issues
+            Application.Current?.Dispatcher.InvokeAsync(() =>
+            {
+                var stuck = Downloads
+                    .Where(d => d.Status == "⬇ Downloading" &&
+                                now - d.LastProgressTime > StuckTimeout)
+                    .ToList();
+
+                foreach (var item in stuck)
+                {
+                    Serilog.Log.Warning(
+                        "Watchdog: cancelling stuck download {File} in {Chat} (no progress for {Min} min)",
+                        item.FileName, item.ChatName,
+                        (int)(now - item.LastProgressTime).TotalMinutes);
+
+                    // Cancel via registry — triggers ThrowIfCancellationRequested in the
+                    // progress callback, and also disposes the stream (see BaseMessage.MakeProgress)
+                    var key = CancellationRegistry.MakeKey(item.ChatName, item.FileName);
+                    CancellationRegistry.Cancel(key);
+
+                    item.Status = "✖ Timeout";
+                    item.Speed = "";
+                    item.Eta = "";
+                    Task.Delay(4000).ContinueWith(_ =>
+                        Application.Current?.Dispatcher.InvokeAsync(() => Downloads.Remove(item)));
+                }
+            });
+        }
 
         /// <summary>
         /// Fired when a download completes successfully: (chatName, fileName, totalBytes, durationSeconds)
@@ -67,6 +117,7 @@ namespace TelegramAutoDownload.Services
                 {
                     item.Status = "⬇ Downloading";
                     item.StartTime = DateTime.UtcNow;
+                    item.LastProgressTime = DateTime.UtcNow;
                 }
                 QueueChanged?.Invoke();
             });
@@ -132,6 +183,7 @@ namespace TelegramAutoDownload.Services
                 }
 
                 item.Progress = Math.Min(100, Math.Max(0, percent));
+                item.LastProgressTime = DateTime.UtcNow;
 
                 if (bytesDownloaded > 0) item.BytesDownloaded = bytesDownloaded;
                 if (totalBytes > 0) item.TotalBytes = totalBytes;

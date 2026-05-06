@@ -37,22 +37,28 @@ namespace TelegramClient.Factory.Base
         public abstract Task<ResultExecute> ExecuteAsync(Message message, ChatDto chatDto);
 
         /// <summary>
-        /// Creates a WTelegram ProgressCallback that reports download bytes to OnProgress.
-        /// Registers a CancellationToken in the registry so the UI cancel button can abort mid-stream.
-        /// Throws OperationCanceledException inside the callback to stop the download immediately.
+        /// Creates a WTelegram ProgressCallback and a CancellationToken for this download.
+        /// The token is registered in CancellationRegistry so the UI cancel button and the
+        /// stuck-download watchdog can both abort the transfer.
+        /// The caller should register <c>token.Register(() => stream.Dispose())</c> so that
+        /// a hung DownloadFileAsync (no callbacks) is also force-interrupted when cancelled.
         /// </summary>
-        protected Client.ProgressCallback? MakeProgress(string chatName, string fileName, long totalBytes)
+        protected (Client.ProgressCallback? callback, System.Threading.CancellationToken token)
+            MakeProgress(string chatName, string fileName, long totalBytes)
         {
-            if (OnProgress == null) return null;
             var cancelKey = CancellationRegistry.MakeKey(chatName, fileName);
             var token = CancellationRegistry.Register(cancelKey);
-            return (transmitted, total) =>
-            {
-                token.ThrowIfCancellationRequested();
-                long effectiveTotal = total > 0 ? total : totalBytes;
-                double pct = effectiveTotal > 0 ? transmitted * 100.0 / effectiveTotal : 0;
-                OnProgress.Invoke(chatName, fileName, TypeMessage.ToString(), Math.Min(99, pct), transmitted, effectiveTotal);
-            };
+
+            Client.ProgressCallback? callback = OnProgress == null ? null :
+                (transmitted, total) =>
+                {
+                    token.ThrowIfCancellationRequested();
+                    long effectiveTotal = total > 0 ? total : totalBytes;
+                    double pct = effectiveTotal > 0 ? transmitted * 100.0 / effectiveTotal : 0;
+                    OnProgress.Invoke(chatName, fileName, TypeMessage.ToString(), Math.Min(99, pct), transmitted, effectiveTotal);
+                };
+
+            return (callback, token);
         }
 
         /// <summary>Silently deletes a partially downloaded file after a cancelled download.</summary>
@@ -63,9 +69,13 @@ namespace TelegramClient.Factory.Base
 
         /// <summary>
         /// Executes a download action with automatic retry (exponential backoff).
-        /// Does NOT retry on OperationCanceledException.
+        /// Does NOT retry on OperationCanceledException or when <paramref name="ct"/> is cancelled
+        /// (covers IOException / ObjectDisposedException caused by forced stream closure).
         /// </summary>
-        protected static async Task<T> WithRetryAsync<T>(Func<Task<T>> action, int maxAttempts = 3)
+        protected static async Task<T> WithRetryAsync<T>(
+            Func<Task<T>> action,
+            System.Threading.CancellationToken ct = default,
+            int maxAttempts = 3)
         {
             int attempt = 0;
             while (true)
@@ -78,10 +88,15 @@ namespace TelegramClient.Factory.Base
                 {
                     throw;
                 }
+                catch when (ct.IsCancellationRequested)
+                {
+                    // Stream was disposed by watchdog or user cancel — do not retry
+                    throw;
+                }
                 catch when (++attempt < maxAttempts)
                 {
                     int delayMs = attempt == 1 ? 2000 : 5000;
-                    await Task.Delay(delayMs);
+                    await Task.Delay(delayMs, ct).ConfigureAwait(false);
                 }
             }
         }
