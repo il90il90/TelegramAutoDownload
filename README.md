@@ -147,7 +147,7 @@ Or open `RunnerApp.sln` in Visual Studio 2022 and press **F5**.
 | Filter | Semicolon-separated **regex** patterns — files whose name matches any pattern are **skipped**. Example: `\.jpg$; thumb_`. See [Filter guide](#filter--ignorefilerbyregex) below. |
 | Folder | Custom download-path template with date/chat tokens. Empty = default layout. See [Folder guide](#folder-template) below. |
 | Sync | One-time retroactive sweep — downloads everything in the chat history that matches current settings and hasn't been downloaded yet. |
-| History | ☑ checkbox — when enabled, every incoming message is appended to a JSONL log file (`History/{Type}/{ChatName}.jsonl`). 📤 exports the full chat history now. |
+| History | ☑ checkbox — when enabled, every incoming message is appended to a JSONL log file (`History/{ChatName}.jsonl`). 📤 exports the full chat history now. |
 | History Icon | Emoji reaction sent to Telegram **only** when a message is recorded in the history log (requires History to be enabled). |
 | Mute | 🔔 / 🔕 — toggles Telegram's own notification setting for this chat via the API. |
 

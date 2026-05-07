@@ -280,7 +280,7 @@
                         <!-- History: save every message to a JSONL log file -->
                         <GridViewColumn Width="175">
                             <GridViewColumn.Header>
-                                <TextBlock Text="History" ToolTip="Save all messages to a JSONL file in History/{Type}/{Chat}.jsonl"/>
+                                <TextBlock Text="History" ToolTip="Save all messages to a JSONL file in History/{Chat}.jsonl"/>
                             </GridViewColumn.Header>
                             <GridViewColumn.CellTemplate>
                                 <DataTemplate>

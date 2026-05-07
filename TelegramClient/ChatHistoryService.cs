@@ -12,7 +12,7 @@ namespace TelegramClient
 {
     /// <summary>
     /// Writes per-chat message histories to JSONL files (one JSON object per line).
-    /// File location: {basePath}/History/{ChatType}/{SanitizedChatName}.jsonl
+    /// File location: {basePath}/History/{SanitizedChatName}.jsonl
     ///
     /// Appending is O(1) — no existing data is loaded.
     /// A full export overwrites the file from the beginning (oldest → newest).
@@ -30,9 +30,8 @@ namespace TelegramClient
         /// <summary>Returns the JSONL file path for a chat's history.</summary>
         public static string GetHistoryFilePath(string chatType, string chatName, string basePath)
         {
-            var type = Sanitize(chatType.Trim(), isFileName: true);
             var name = Sanitize(chatName.Trim(), isFileName: true);
-            var dir  = Path.Combine(basePath, "History", type);
+            var dir  = Path.Combine(basePath, "History");
             Directory.CreateDirectory(dir);
             return Path.Combine(dir, name + ".jsonl");
         }

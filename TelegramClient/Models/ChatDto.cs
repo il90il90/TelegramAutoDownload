@@ -64,7 +64,7 @@ namespace TelegramClient.Models
         /// <summary>
         /// When true, every incoming message is appended to a JSONL history file and
         /// the full history can be exported on demand.
-        /// File: {DownloadPath}/History/{Type}/{ChatName}.jsonl
+        /// File: {DownloadPath}/History/{ChatName}.jsonl
         /// </summary>
         public bool SaveHistory { get; set; } = false;
 
