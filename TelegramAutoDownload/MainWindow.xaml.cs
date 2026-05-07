@@ -1056,6 +1056,22 @@ namespace TelegramAutoDownload
             ItemsListView.Items.Refresh();
         }
 
+        // ── Members export ───────────────────────────────────────────────────────────
+
+        private void MembersExport_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not Button btn || btn.Tag is not ChatDto chat) return;
+            if (TelegramApp == null)
+            {
+                MessageBox.Show("Telegram is not connected yet.", "Not connected",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            var dlg = new MembersExportDialog(TelegramApp, chat) { Owner = this };
+            dlg.Show();
+        }
+
         // ── History (SaveHistory toggle + Export) ────────────────────────────────────
 
         private void HistoryCheckBox_Loaded(object sender, RoutedEventArgs e)

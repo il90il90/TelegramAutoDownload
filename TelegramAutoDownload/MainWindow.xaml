@@ -48,6 +48,27 @@
             </Style.Triggers>
         </Style>
 
+        <!-- Members export button: teal icon button -->
+        <Style x:Key="MembersBtnStyle" TargetType="Button">
+            <Setter Property="Width"             Value="26"/>
+            <Setter Property="Height"            Value="22"/>
+            <Setter Property="FontSize"          Value="13"/>
+            <Setter Property="Padding"           Value="0"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Background"        Value="Transparent"/>
+            <Setter Property="Foreground"        Value="{DynamicResource MahApps.Brushes.Gray3}"/>
+            <Setter Property="BorderThickness"   Value="1"/>
+            <Setter Property="BorderBrush"       Value="{DynamicResource MahApps.Brushes.Gray7}"/>
+            <Setter Property="ToolTip"           Value="Export members / contacts"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background"  Value="#00796B"/>
+                    <Setter Property="Foreground"  Value="White"/>
+                    <Setter Property="BorderBrush" Value="#004D40"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
         <!-- Compact pill / toggle-button for the Providers column -->
         <Style x:Key="ProviderPillStyle" TargetType="ToggleButton">
             <Setter Property="Padding"          Value="5,2"/>
@@ -348,6 +369,18 @@
                                             Tag="{Binding}"
                                             Click="FolderTemplateDialog_Click"
                                             ToolTip="Open folder template editor"/>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+
+                        <!-- Members: export group/channel members to CSV or vCard -->
+                        <GridViewColumn Header="👥" Width="38">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Button Content="👥"
+                                            Style="{StaticResource MembersBtnStyle}"
+                                            Tag="{Binding}"
+                                            Click="MembersExport_Click"/>
                                 </DataTemplate>
                             </GridViewColumn.CellTemplate>
                         </GridViewColumn>

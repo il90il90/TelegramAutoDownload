@@ -664,6 +664,124 @@ namespace TelegramClient
         }
 
         /// <summary>
+        /// Fetches all members of a group, supergroup, or channel.
+        /// Reports progress via <paramref name="onProgress"/> (fetched, total).
+        /// Returns an empty list when the peer cannot be resolved or access is denied.
+        /// </summary>
+        public async Task<List<MemberEntry>> GetChannelMembersAsync(
+            ChatDto chatDto,
+            Action<int, int>? onProgress = null,
+            CancellationToken cancellationToken = default)
+        {
+            var result = new List<MemberEntry>();
+            try
+            {
+                // Resolve the peer — reuse cached access hash when available
+                if (!_accessHashes.TryGetValue(chatDto.Id, out var hash))
+                {
+                    var dlgResult = await Client.Messages_GetDialogs(
+                        offset_date: default, offset_id: 0, offset_peer: null!, limit: 500, hash: 0);
+                    if (dlgResult is TL.Messages_Dialogs dlg)
+                    {
+                        if (dlg.chats.TryGetValue(chatDto.Id, out var cb) && cb is TL.Channel tgCh)
+                        {
+                            _accessHashes[chatDto.Id] = tgCh.access_hash;
+                            hash = tgCh.access_hash;
+                        }
+                        else if (dlg.chats.TryGetValue(chatDto.Id, out var grp) && grp is TL.Chat)
+                        {
+                            _accessHashes[chatDto.Id] = 0;
+                            hash = 0;
+                        }
+                    }
+                }
+
+                if (hash != 0)
+                {
+                    // Channel or supergroup — use Channels_GetParticipants (paginated)
+                    var inputChannel = new TL.InputChannel(chatDto.Id, hash);
+                    const int batchSize = 200;
+                    int offset = 0;
+                    int total  = 0;
+
+                    while (!cancellationToken.IsCancellationRequested)
+                    {
+                        var batch = await Client.Channels_GetParticipants(
+                            inputChannel,
+                            new TL.ChannelParticipantsSearch { q = "" },
+                            offset, batchSize, hash: 0);
+
+                        if (total == 0)
+                            total = batch.count;
+
+                        if (batch.participants.Length == 0)
+                            break;
+
+                        foreach (var p in batch.participants)
+                        {
+                            cancellationToken.ThrowIfCancellationRequested();
+                            var userId = p switch
+                            {
+                                TL.ChannelParticipant          cp  => cp.user_id,
+                                TL.ChannelParticipantSelf      cps => cps.user_id,
+                                TL.ChannelParticipantAdmin     cpa => cpa.user_id,
+                                TL.ChannelParticipantCreator   cpc => cpc.user_id,
+                                TL.ChannelParticipantBanned    cpb => cpb.peer is TL.PeerUser pu ? pu.user_id : 0,
+                                _                                  => 0L
+                            };
+                            if (userId == 0) continue;
+
+                            bool isAdmin = p is TL.ChannelParticipantAdmin or TL.ChannelParticipantCreator;
+                            batch.users.TryGetValue(userId, out var user);
+                            result.Add(BuildEntry(userId, user, isAdmin));
+                        }
+
+                        offset += batch.participants.Length;
+                        onProgress?.Invoke(result.Count, total > 0 ? total : result.Count);
+
+                        if (offset >= batch.count || batch.participants.Length < batchSize)
+                            break;
+
+                        // Respect Telegram rate limits
+                        await Task.Delay(500, cancellationToken);
+                    }
+                }
+                else
+                {
+                    // Regular group — members are in Messages_GetFullChat
+                    var full = await Client.Messages_GetFullChat(chatDto.Id);
+                    if (full?.users is { } usersDict)
+                    {
+                        foreach (var (uid, u) in usersDict)
+                        {
+                            if (u is not TL.User user) continue;
+                            result.Add(BuildEntry(uid, user, isAdmin: false));
+                        }
+                        onProgress?.Invoke(result.Count, result.Count);
+                    }
+                }
+            }
+            catch (OperationCanceledException) { /* caller cancelled */ }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"GetChannelMembersAsync failed: {ex.Message}");
+            }
+            return result;
+        }
+
+        private static MemberEntry BuildEntry(long userId, TL.User? user, bool isAdmin) =>
+            new()
+            {
+                UserId    = userId,
+                FirstName = user?.first_name ?? string.Empty,
+                LastName  = user?.last_name  ?? string.Empty,
+                Username  = user?.MainUsername ?? string.Empty,
+                Phone     = user?.phone       ?? string.Empty,
+                IsBot     = user?.flags.HasFlag(TL.User.Flags.bot) ?? false,
+                IsAdmin   = isAdmin,
+            };
+
+        /// <summary>
         /// Exports the full message history of a chat to a JSONL file.
         /// Fetches all messages (newest → oldest) and writes them oldest-first.
         /// File: {basePath}/History/{ChatType}/{ChatName}.jsonl
