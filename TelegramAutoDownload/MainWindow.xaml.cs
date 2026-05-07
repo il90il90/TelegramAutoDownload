@@ -184,21 +184,25 @@ namespace TelegramAutoDownload
 
                 var chats = configParams.Chats.Select(c => new ChatDto
                 {
-                    Id = c.Id,
-                    Name = c.Name,
-                    Username = c.Username,
-                    NameLower = c.Name?.ToLowerInvariant() ?? string.Empty,
-                    UsernameLower = c.Username?.ToLowerInvariant() ?? string.Empty,
-                    Selected = c.Selected,
-                    ReactionIcon = c.ReactionIcon,
+                    Id              = c.Id,
+                    Name            = c.Name,
+                    Username        = c.Username,
+                    Type            = c.Type ?? string.Empty,
+                    NameLower       = c.Name?.ToLowerInvariant() ?? string.Empty,
+                    UsernameLower   = c.Username?.ToLowerInvariant() ?? string.Empty,
+                    Selected        = c.Selected,
+                    ReactionIcon    = c.ReactionIcon,
                     DownloadStartIcon = c.DownloadStartIcon,
-                    Download = c.Download ?? new Download(),
+                    Download        = c.Download ?? new Download(),
                     DownloadFromSize = c.DownloadFromSize,
                     IgnoreFileByRegex = c.IgnoreFileByRegex,
-                    EnabledPlugins = c.EnabledPlugins ?? new Dictionary<string, bool>(),
-                    YtdlpQuality = string.IsNullOrEmpty(c.YtdlpQuality) ? "best" : c.YtdlpQuality,
-                    MembersCount = c.MembersCount,
-                    Muted = c.Muted,
+                    EnabledPlugins  = c.EnabledPlugins ?? new Dictionary<string, bool>(),
+                    YtdlpQuality    = string.IsNullOrEmpty(c.YtdlpQuality) ? "best" : c.YtdlpQuality,
+                    FolderTemplate  = c.FolderTemplate ?? string.Empty,
+                    SaveHistory     = c.SaveHistory,
+                    HistoryIcon     = c.HistoryIcon ?? string.Empty,
+                    MembersCount    = c.MembersCount,
+                    Muted           = c.Muted,
                 }).ToList();
 
                 _isLoading = true;
@@ -243,11 +247,14 @@ namespace TelegramAutoDownload
                             chat.Download.Music = saved.Download.Music;
                             chat.Download.Files = saved.Download.Files;
                         }
-                        chat.DownloadFromSize = saved.DownloadFromSize;
-                        chat.IgnoreFileByRegex = saved.IgnoreFileByRegex;
-                        chat.EnabledPlugins = saved.EnabledPlugins ?? new Dictionary<string, bool>();
-                        chat.YtdlpQuality = string.IsNullOrEmpty(saved.YtdlpQuality) ? "best" : saved.YtdlpQuality;
-                        chat.Muted = saved.Muted;
+                        chat.DownloadFromSize   = saved.DownloadFromSize;
+                        chat.IgnoreFileByRegex  = saved.IgnoreFileByRegex;
+                        chat.EnabledPlugins     = saved.EnabledPlugins ?? new Dictionary<string, bool>();
+                        chat.YtdlpQuality       = string.IsNullOrEmpty(saved.YtdlpQuality) ? "best" : saved.YtdlpQuality;
+                        chat.FolderTemplate     = saved.FolderTemplate ?? string.Empty;
+                        chat.SaveHistory        = saved.SaveHistory;
+                        chat.HistoryIcon        = saved.HistoryIcon ?? string.Empty;
+                        chat.Muted              = saved.Muted;
                         // MembersCount is populated from the live Telegram API data — no need to restore from config
                     }
                     return chats;
@@ -488,7 +495,7 @@ namespace TelegramAutoDownload
                             c.NameLower.Contains(lower) ||
                             c.Id.ToString().Contains(lower) ||
                             c.UsernameLower.Contains(lower) ||
-                            c.Type.Contains(lower, StringComparison.OrdinalIgnoreCase))
+                            (c.Type?.Contains(lower, StringComparison.OrdinalIgnoreCase) ?? false))
                         .OrderByDescending(c => c.Selected)
                         .ToList());
 
@@ -571,8 +578,17 @@ namespace TelegramAutoDownload
                     if (existingChat != null)
                     {
                         existingChat.Selected = true;
-                        chat.Download = existingChat.Download;
-                        chat.ReactionIcon = existingChat.ReactionIcon;
+                        // Sync all user-configurable fields back to the UI row so nothing goes stale
+                        chat.Download           = existingChat.Download ?? chat.Download;
+                        chat.ReactionIcon       = existingChat.ReactionIcon;
+                        chat.DownloadStartIcon  = existingChat.DownloadStartIcon;
+                        chat.DownloadFromSize   = existingChat.DownloadFromSize;
+                        chat.IgnoreFileByRegex  = existingChat.IgnoreFileByRegex ?? chat.IgnoreFileByRegex;
+                        chat.EnabledPlugins     = existingChat.EnabledPlugins ?? chat.EnabledPlugins;
+                        chat.YtdlpQuality       = string.IsNullOrEmpty(existingChat.YtdlpQuality) ? "best" : existingChat.YtdlpQuality;
+                        chat.FolderTemplate     = existingChat.FolderTemplate ?? string.Empty;
+                        chat.SaveHistory        = existingChat.SaveHistory;
+                        chat.HistoryIcon        = existingChat.HistoryIcon ?? string.Empty;
                     }
                     else
                     {
@@ -1122,6 +1138,7 @@ namespace TelegramAutoDownload
 
         private void DownloadSize_TextChanged(object sender, TextChangedEventArgs e)
         {
+            if (_isLoading) return;
             if (sender is TextBox textbox)
             {
                 var configParams = ConfigFile.Read();

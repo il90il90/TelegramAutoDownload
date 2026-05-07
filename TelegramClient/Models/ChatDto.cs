@@ -49,7 +49,7 @@ namespace TelegramClient.Models
         public Download Download { get; set; } = new Download();
         public int DownloadFromSize { get; set; }
         public List<string> IgnoreFileByRegex { get; set; } = [];
-        // Keys are PluginName values; missing key = enabled by default
+        // Keys are PluginName values; missing key = disabled (user must explicitly enable per chat)
         public Dictionary<string, bool> EnabledPlugins { get; set; } = new();
         // yt-dlp quality label for URL-based plugins (YouTube, SocialMedia). Defaults to "best".
         public string YtdlpQuality { get; set; } = "best";
