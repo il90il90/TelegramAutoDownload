@@ -144,9 +144,11 @@ Or open `RunnerApp.sln` in Visual Studio 2022 and press **F5**.
 | Min Size (MB) | Files below this size are ignored. `0` = no minimum. |
 | Providers | Which plugins are active: YouTube, Social, Torrent, Direct. |
 | Quality | yt-dlp quality for URL-based downloads: `best`, `4K`, `1080p`, `720p`, `480p`, `audio`. |
-| Filter | Semicolon-separated regex patterns — files whose name matches are skipped. Example: `\.jpg$; thumb_` |
-| Folder | Custom folder template. Tokens: `{Type}`, `{ChatName}`, `{Year}`, `{Month}`, `{Day}`. Empty = default (`Type/ChatName/`). |
+| Filter | Semicolon-separated **regex** patterns — files whose name matches any pattern are **skipped**. Example: `\.jpg$; thumb_`. See [Filter guide](#filter--ignorefilerbyregex) below. |
+| Folder | Custom download-path template with date/chat tokens. Empty = default layout. See [Folder guide](#folder-template) below. |
 | Sync | One-time retroactive sweep — downloads everything in the chat history that matches current settings and hasn't been downloaded yet. |
+| History | ☑ checkbox — when enabled, every incoming message is appended to a JSONL log file (`History/{Type}/{ChatName}.jsonl`). 📤 exports the full chat history now. |
+| History Icon | Emoji reaction sent to Telegram **only** when a message is recorded in the history log (requires History to be enabled). |
 | Mute | 🔔 / 🔕 — toggles Telegram's own notification setting for this chat via the API. |
 
 ### Downloads panel
@@ -182,6 +184,64 @@ Active downloads are pinned to the top. Completed/error rows auto-remove after 4
 | Version button | Shows current version. Click to check for updates. If already up to date shows "✓ Up to date". If an update is available, shows the update dialog. |
 | Connection dot | 🟢 connected / 🔴 disconnected. |
 | Open folder | Opens the current download folder in Explorer. |
+
+---
+
+## Feature guides
+
+### Filter — IgnoreFileByRegex
+
+The **Filter** column accepts one or more **regular expressions** separated by semicolons (`;`). A file is skipped if its name matches **any** of the patterns (case-insensitive).
+
+**Syntax**
+
+```
+pattern1; pattern2; pattern3
+```
+
+**Examples**
+
+| Pattern | What it skips |
+|---|---|
+| `\.jpg$` | Any file ending with `.jpg` |
+| `\.jpg$; \.png$` | JPEG and PNG files |
+| `thumb_` | Any filename containing `thumb_` (thumbnails) |
+| `^small` | Filenames that begin with `small` |
+| `s\d+e\d+` | Episode files like `S01E05`, `s2e12`, … |
+| `720p` | Files that contain `720p` in the name |
+| `\.(jpg\|png\|gif)$` | Multiple extensions in one pattern |
+
+> **Tip:** Leave the field blank to download everything that matches the Download Types and Min Size settings.
+
+---
+
+### Folder Template
+
+The **Folder** column lets you set a custom subdirectory path inside your download folder. When left empty, files are saved to `{Type}/{ChatName}/` (e.g. `Channel/MyChannel/`).
+
+**Available tokens**
+
+| Token | Replaced with |
+|---|---|
+| `{Type}` | Chat type: `Channel`, `Group`, or `User` |
+| `{ChatName}` | Display name of the chat (special characters are sanitised) |
+| `{Year}` | 4-digit year of the message (`2026`) |
+| `{Month}` | 2-digit month (`01`–`12`) |
+| `{Day}` | 2-digit day of the month (`01`–`31`) |
+
+**Examples**
+
+| Template | Resulting path (example) |
+|---|---|
+| *(empty)* | `Channel/MyChannel/` ← default |
+| `{ChatName}` | `MyChannel/` |
+| `{ChatName}/{Year}-{Month}` | `MyChannel/2026-05/` |
+| `{Year}/{Month}/{ChatName}` | `2026/05/MyChannel/` |
+| `{Type}/{ChatName}/{Year}` | `Channel/MyChannel/2026/` |
+| `Archive/{ChatName}/{Year}/{Month}/{Day}` | `Archive/MyChannel/2026/05/07/` |
+| `{ChatName}/{Year}-{Month}-{Day}` | `MyChannel/2026-05-07/` |
+
+> **Tip:** You can combine a static prefix with tokens, e.g. `Archive/{ChatName}` saves all chats under a common `Archive/` root.
 
 ---
 
