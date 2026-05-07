@@ -889,15 +889,8 @@ namespace TelegramAutoDownload
             if (chatDto == null) return;
 
             _isLoading = true;
-            // If the chat has never had any explicit plugin settings (empty dict),
-            // treat all plugins as enabled for backward compatibility with existing chats.
-            // Only apply "missing key = disabled" for chats where the user has touched at least one pill.
-            bool isChecked;
-            if (chatDto.EnabledPlugins.Count == 0)
-                isChecked = true;
-            else
-                isChecked = chatDto.EnabledPlugins.TryGetValue(pluginName, out var val) && val;
-            pill.IsChecked = isChecked;
+            // Missing key = disabled. User must explicitly enable each plugin per chat.
+            pill.IsChecked = chatDto.EnabledPlugins.TryGetValue(pluginName, out var val) && val;
             _isLoading = false;
         }
 

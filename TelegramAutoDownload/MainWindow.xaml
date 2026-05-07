@@ -289,27 +289,26 @@
                             </GridViewColumn.CellTemplate>
                         </GridViewColumn>
 
-                        <!-- Providers: compact toggle-pill buttons (click to enable/disable per plugin) -->
-                        <GridViewColumn Header="Providers" Width="160">
+                        <!-- Providers: SO covers YouTube/social. TR=Torrent. DL=direct URL ("Other" plugin). -->
+                        <GridViewColumn Header="Providers" Width="120">
                             <GridViewColumn.CellTemplate>
                                 <DataTemplate>
+                                    <!-- SO covers YouTube/TikTok/Facebook/X/etc via yt-dlp (Priority 2).
+                                         YT pill removed — SO handles YouTube already.
+                                         DL tag fixed to "Other" (DownladerPlugin.PluginName). -->
                                     <StackPanel Orientation="Horizontal">
-                                        <ToggleButton Content="YT"  Tag="YouTube"
-                                                      Style="{StaticResource ProviderPillStyle}"
-                                                      Loaded="ProviderPill_Loaded" Click="ProviderPill_Click"
-                                                      ToolTip="YouTube"/>
                                         <ToggleButton Content="SO"  Tag="SocialMedia"
                                                       Style="{StaticResource ProviderPillStyle}"
                                                       Loaded="ProviderPill_Loaded" Click="ProviderPill_Click"
-                                                      ToolTip="Social Media"/>
+                                                      ToolTip="Social Media (YouTube, TikTok, Facebook, X, …)"/>
                                         <ToggleButton Content="TR"  Tag="Torrent"
                                                       Style="{StaticResource ProviderPillStyle}"
                                                       Loaded="ProviderPill_Loaded" Click="ProviderPill_Click"
                                                       ToolTip="Torrent"/>
-                                        <ToggleButton Content="DL"  Tag="Download"
+                                        <ToggleButton Content="DL"  Tag="Other"
                                                       Style="{StaticResource ProviderPillStyle}"
                                                       Loaded="ProviderPill_Loaded" Click="ProviderPill_Click"
-                                                      ToolTip="Direct Download"/>
+                                                      ToolTip="Direct URL Download"/>
                                     </StackPanel>
                                 </DataTemplate>
                             </GridViewColumn.CellTemplate>
