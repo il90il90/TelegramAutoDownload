@@ -122,11 +122,11 @@ namespace YoutubePlugin
                 CancellationRegistry.Remove(cancelKey);
                 return new ResultExecute(config.ChatName) { IsSuccess = false, ErrorMessage = "Cancelled" };
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 OnComplete?.Invoke(config.ChatName, tempName, false);
                 CancellationRegistry.Remove(cancelKey);
-                return new ResultExecute(config.ChatName) { IsSuccess = false };
+                return new ResultExecute(config.ChatName) { IsSuccess = false, ErrorMessage = ex.Message, NotificationKey = tempName };
             }
 
             if (!string.IsNullOrEmpty(downloadedFile))
@@ -147,7 +147,7 @@ namespace YoutubePlugin
             {
                 OnComplete?.Invoke(config.ChatName, tempName, false);
                 CancellationRegistry.Remove(cancelKey);
-                return new ResultExecute(config.ChatName) { IsSuccess = false, NotificationKey = tempName };
+                return new ResultExecute(config.ChatName) { IsSuccess = false, ErrorMessage = errorMessage, NotificationKey = tempName };
             }
 
             OnComplete?.Invoke(config.ChatName, tempName, true);

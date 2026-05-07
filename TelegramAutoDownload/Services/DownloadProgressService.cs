@@ -251,7 +251,7 @@ namespace TelegramAutoDownload.Services
             });
         }
 
-        public void CompleteDownload(string chatName, string fileName, bool success)
+        public void CompleteDownload(string chatName, string fileName, bool success, string? errorMessage = null)
         {
             Application.Current?.Dispatcher.InvokeAsync(() =>
             {
@@ -259,6 +259,8 @@ namespace TelegramAutoDownload.Services
                 if (item == null) return;
 
                 item.Status = success ? "✔ Done" : "✖ Error";
+                if (!success && !string.IsNullOrWhiteSpace(errorMessage))
+                    item.ErrorMessage = errorMessage;
                 item.Progress = success ? 100 : item.Progress;
                 item.Speed = "";
                 item.Eta = "";
@@ -283,6 +285,22 @@ namespace TelegramAutoDownload.Services
                 // Auto-remove after 4 seconds
                 Task.Delay(4000).ContinueWith(_ =>
                     Application.Current?.Dispatcher.InvokeAsync(() => Downloads.Remove(item)));
+            });
+        }
+
+        /// <summary>
+        /// Sets the error message on a failed download item so the UI can show it as a tooltip.
+        /// Called after a download ends with IsSuccess == false and an ErrorMessage is available.
+        /// Matches by chatName + fileName (which may be the plugin's tempName / NotificationKey).
+        /// </summary>
+        public void SetDownloadError(string chatName, string fileName, string errorMessage)
+        {
+            if (string.IsNullOrWhiteSpace(errorMessage)) return;
+            Application.Current?.Dispatcher.InvokeAsync(() =>
+            {
+                var item = Downloads.FirstOrDefault(d => d.ChatName == chatName && d.FileName == fileName);
+                if (item != null)
+                    item.ErrorMessage = errorMessage;
             });
         }
 

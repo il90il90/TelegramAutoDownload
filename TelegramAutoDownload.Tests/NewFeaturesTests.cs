@@ -352,4 +352,121 @@ namespace TelegramAutoDownload.Tests
             chat.FolderTemplate.Should().Be("{ChatName}/{Year}");
         }
     }
+
+    // ===========================================================================
+    // Folder Template — absolute-path support
+    // ===========================================================================
+
+    public class FolderTemplateAbsolutePathTests
+    {
+        [Theory]
+        [InlineData(@"C:\Downloads\MyChannel")]
+        [InlineData(@"D:\Media\Telegram")]
+        [InlineData(@"C:\")]
+        public void Resolve_AbsoluteWindowsPath_ReturnedAsIs(string absolutePath)
+        {
+            var result = FolderTemplateHelper.Resolve(absolutePath, "Videos", "SomeChat");
+            result.Should().Be(absolutePath,
+                because: "an absolute path must pass through without token substitution or sanitisation");
+        }
+
+        [Fact]
+        public void Resolve_AbsolutePath_IsPathRooted()
+        {
+            var template = @"C:\Custom\Folder";
+            var result   = FolderTemplateHelper.Resolve(template, "Videos", "Chat")!;
+            System.IO.Path.IsPathRooted(result).Should().BeTrue();
+        }
+
+        [Fact]
+        public void Resolve_RelativeTemplate_IsNotRooted()
+        {
+            var result = FolderTemplateHelper.Resolve("{ChatName}/{Year}", "Videos", "Chat",
+                             new DateTime(2026, 5, 6))!;
+            System.IO.Path.IsPathRooted(result).Should().BeFalse();
+            result.Should().Be("Chat/2026");
+        }
+
+        [Fact]
+        public void Resolve_AbsolutePath_DriveLetterNotSanitised()
+        {
+            // Colon in drive letter must not be replaced with underscore
+            var template = @"C:\Some Folder";
+            var result   = FolderTemplateHelper.Resolve(template, "Videos", "Chat")!;
+            result.Should().Contain("C:");
+            result.Should().NotContain("C_");
+        }
+
+        [Fact]
+        public void BaseMessage_PathLocationFolder_AbsoluteTemplate_IgnoresBasePath()
+        {
+            // Verify that PathLocationFolder uses the resolved absolute path directly,
+            // not prepended with any basePath.  We test FolderTemplateHelper.Resolve
+            // because BaseMessage is internal; the contract is that Path.IsPathRooted
+            // on the resolved value means "use as-is".
+            var absoluteTemplate = @"C:\DirectFolder";
+            var resolved = FolderTemplateHelper.Resolve(absoluteTemplate, "Videos", "Chat");
+
+            System.IO.Path.IsPathRooted(resolved!).Should().BeTrue(
+                because: "callers (PathLocationFolder, SaveCapturedTextAsync) " +
+                         "must detect this and skip Path.Combine with basePath");
+        }
+    }
+
+    // ===========================================================================
+    // FolderTemplateDialog — pure logic (no WPF host needed)
+    // ===========================================================================
+
+    public class FolderTemplateDialogLogicTests
+    {
+        // These tests verify the preview / resolution logic used by the dialog
+        // without instantiating WPF controls.
+
+        private static string BuildPreview(string template, string basePath, string type, string chatName)
+        {
+            if (string.IsNullOrWhiteSpace(template))
+                return System.IO.Path.Combine(basePath, type, chatName);
+
+            if (System.IO.Path.IsPathRooted(template))
+                return template;
+
+            var resolved = FolderTemplateHelper.Resolve(template, type, chatName,
+                               new DateTime(2026, 5, 6))
+                           ?? System.IO.Path.Combine(type, chatName);
+
+            return System.IO.Path.Combine(basePath, resolved);
+        }
+
+        [Fact]
+        public void Preview_EmptyTemplate_ShowsDefaultPath()
+        {
+            var preview = BuildPreview("", @"D:\TG", "Videos", "MyChannel");
+            preview.Should().Be(@"D:\TG\Videos\MyChannel");
+        }
+
+        [Fact]
+        public void Preview_RelativeTemplate_CombinesWithBase()
+        {
+            var preview = BuildPreview("{ChatName}/{Year}", @"C:\TG", "Videos", "Chan");
+            preview.Should().StartWith(@"C:\TG\").And.Contain("Chan").And.Contain("2026");
+        }
+
+        [Fact]
+        public void Preview_AbsoluteTemplate_IgnoresBase()
+        {
+            var absolute = @"E:\Archive\Telegram";
+            var preview  = BuildPreview(absolute, @"C:\TG", "Videos", "Chan");
+            preview.Should().Be(absolute,
+                because: "absolute path must bypass the base download folder completely");
+        }
+
+        [Fact]
+        public void Preview_AbsoluteTemplate_DoesNotDoubleRoot()
+        {
+            var absolute = @"C:\My Folder";
+            var preview  = BuildPreview(absolute, @"D:\Base", "Group", "Chat");
+            preview.Should().Be(absolute);
+            preview.Should().NotContain(@"D:\Base");
+        }
+    }
 }

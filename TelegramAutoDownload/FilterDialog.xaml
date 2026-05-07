@@ -1,0 +1,308 @@
+<mah:MetroWindow x:Class="TelegramAutoDownload.FilterDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
+        Title="Filter Editor"
+        Height="660" Width="940"
+        MinHeight="500" MinWidth="720"
+        ResizeMode="CanResizeWithGrip"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False">
+
+    <mah:MetroWindow.Resources>
+        <!-- Valid / invalid indicator colour on each pattern row -->
+        <Style x:Key="PatternValidDot" TargetType="Ellipse">
+            <Setter Property="Width"  Value="8"/>
+            <Setter Property="Height" Value="8"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="0,0,5,0"/>
+            <Setter Property="Fill"   Value="#4CAF50"/>
+        </Style>
+
+        <Style x:Key="ChipBtn" TargetType="Button">
+            <Setter Property="Padding"        Value="7,3"/>
+            <Setter Property="Margin"         Value="3,3,0,0"/>
+            <Setter Property="FontSize"       Value="11"/>
+            <Setter Property="Background"     Value="#F0F4FF"/>
+            <Setter Property="BorderBrush"    Value="#90CAF9"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Foreground"     Value="#1565C0"/>
+            <Setter Property="Cursor"         Value="Hand"/>
+        </Style>
+
+        <Style x:Key="MsgBtn" TargetType="Button">
+            <Setter Property="Padding"        Value="5,2"/>
+            <Setter Property="FontSize"       Value="11"/>
+            <Setter Property="Background"     Value="#F5F5F5"/>
+            <Setter Property="BorderBrush"    Value="#CCC"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Foreground"     Value="#333"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="Cursor"         Value="Hand"/>
+        </Style>
+    </mah:MetroWindow.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>  <!-- banner -->
+            <RowDefinition Height="*"/>     <!-- main content -->
+            <RowDefinition Height="Auto"/>  <!-- footer buttons -->
+        </Grid.RowDefinitions>
+
+        <!-- ── Banner ─────────────────────────────────────────────────────── -->
+        <Border Grid.Row="0" Background="#EEF6FF" Padding="14,10" BorderBrush="#BBDEFB"
+                BorderThickness="0,0,0,1">
+            <StackPanel>
+                <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="#0D47A1"
+                           Text="Filter Editor"/>
+                <TextBlock FontSize="11" Foreground="#555" Margin="0,3,0,0" TextWrapping="Wrap">
+                    <Run FontWeight="Bold">File / media:</Run>
+                    <Run> a matching filename is SKIPPED (not downloaded).   </Run>
+                    <Run FontWeight="Bold">Text message:</Run>
+                    <Run> matching message text is CAPTURED and saved as a .txt file.</Run>
+                    <LineBreak/>
+                    <Run>Each pattern is a regular expression. Multiple patterns are ORed together.</Run>
+                </TextBlock>
+            </StackPanel>
+        </Border>
+
+        <!-- ── Main content ────────────────────────────────────────────────── -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="290"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- ── LEFT: Pattern list + quick patterns + cheat sheet ──────── -->
+            <Grid Grid.Column="0" Margin="12,10,0,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- Patterns header + Add button -->
+                <DockPanel Grid.Row="0" Margin="0,0,0,6">
+                    <TextBlock DockPanel.Dock="Left" Text="Patterns"
+                               FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    <Button DockPanel.Dock="Right" Content="+ Add"
+                            Width="54" Height="22" FontSize="11"
+                            Background="#4CAF50" Foreground="White" BorderThickness="0"
+                            Click="BtnAddPattern_Click"/>
+                </DockPanel>
+
+                <!-- Pattern rows -->
+                <Border Grid.Row="1" BorderBrush="#DDD" BorderThickness="1" CornerRadius="4"
+                        Background="White">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="4">
+                        <ItemsControl x:Name="PatternList" Margin="0,2">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Margin="0,2" Padding="4,2" CornerRadius="3"
+                                            Background="White" BorderThickness="1">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="BorderBrush" Value="#CCCCCC"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsValid}" Value="True">
+                                                        <Setter Property="BorderBrush" Value="#81C784"/>
+                                                    </DataTrigger>
+                                                    <!-- empty stays neutral -->
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="14"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="24"/>
+                                            </Grid.ColumnDefinitions>
+                                            <!-- validity dot -->
+                                            <Ellipse Grid.Column="0" Width="8" Height="8"
+                                                     VerticalAlignment="Center"
+                                                     ToolTip="{Binding ValidationTooltip}">
+                                                <Ellipse.Style>
+                                                    <Style TargetType="Ellipse">
+                                                        <Setter Property="Fill" Value="#BBBBBB"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsValid}" Value="True">
+                                                                <Setter Property="Fill" Value="#4CAF50"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Ellipse.Style>
+                                            </Ellipse>
+                                            <!-- pattern text — explicit colours to override MahApps theme -->
+                                            <TextBox Grid.Column="1"
+                                                     Text="{Binding Pattern, UpdateSourceTrigger=PropertyChanged}"
+                                                     FontFamily="Consolas" FontSize="12"
+                                                     Foreground="#111111" Background="Transparent"
+                                                     BorderThickness="0"
+                                                     VerticalContentAlignment="Center"
+                                                     Padding="4,0"
+                                                     CaretBrush="#111111"
+                                                     SelectionBrush="#2196F3"/>
+                                            <!-- delete -->
+                                            <Button Grid.Column="2" Content="×"
+                                                    Width="20" Height="20" FontSize="13"
+                                                    Background="Transparent" BorderThickness="0"
+                                                    Foreground="#E53935"
+                                                    Tag="{Binding}"
+                                                    Click="BtnDeletePattern_Click"
+                                                    ToolTip="Remove this pattern"/>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Border>
+
+                <!-- Quick patterns header -->
+                <TextBlock Grid.Row="2" Text="Quick patterns" FontWeight="SemiBold"
+                           Margin="0,10,0,5"/>
+
+                <!-- Quick pattern chips (generated in code-behind) -->
+                <Border Grid.Row="3" BorderBrush="#E0E0E0" BorderThickness="1" CornerRadius="4"
+                        Padding="4,4,4,1" Background="#FAFAFA">
+                    <WrapPanel x:Name="QuickPatternPanel"/>
+                </Border>
+
+                <!-- Regex cheat sheet -->
+                <TextBlock Grid.Row="4" Text="Regex cheat sheet" FontWeight="SemiBold"
+                           Margin="0,10,0,5"/>
+                <Border Grid.Row="5" Background="#FFF8E1" BorderBrush="#FFE082" BorderThickness="1"
+                        CornerRadius="4" Padding="8,6">
+                    <TextBlock FontFamily="Consolas" FontSize="11" LineHeight="18" Foreground="#555">
+                        <Run>.*     </Run><Run Foreground="#333">any characters (zero or more)</Run><LineBreak/>
+                        <Run>.+     </Run><Run Foreground="#333">any characters (one or more)</Run><LineBreak/>
+                        <Run>^      </Run><Run Foreground="#333">start of text</Run><LineBreak/>
+                        <Run>$      </Run><Run Foreground="#333">end of text</Run><LineBreak/>
+                        <Run>(a|b)  </Run><Run Foreground="#333">a OR b</Run><LineBreak/>
+                        <Run>\.     </Run><Run Foreground="#333">literal dot  (. = any char)</Run><LineBreak/>
+                        <Run>\d     </Run><Run Foreground="#333">any digit  0–9</Run><LineBreak/>
+                        <Run>\w     </Run><Run Foreground="#333">word char  a-z A-Z 0-9 _</Run><LineBreak/>
+                        <Run>[abc]  </Run><Run Foreground="#333">one of: a, b, or c</Run><LineBreak/>
+                        <Run>(?i)   </Run><Run Foreground="#333">case-insensitive flag</Run>
+                    </TextBlock>
+                </Border>
+            </Grid>
+
+            <!-- Divider -->
+            <GridSplitter Grid.Column="1" Width="1" Background="#DDD"
+                          HorizontalAlignment="Center" VerticalAlignment="Stretch"
+                          Margin="8,10,8,4" IsEnabled="False"/>
+
+            <!-- ── RIGHT: Test area + history messages ────────────────────── -->
+            <Grid Grid.Column="2" Margin="0,10,12,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="1"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- Test input -->
+                <TextBlock Grid.Row="0" Text="Live test" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                <TextBox Grid.Row="1" x:Name="TxtTest" Height="30"
+                         FontFamily="Consolas" FontSize="12"
+                         TextChanged="TxtTest_TextChanged"
+                         mah:TextBoxHelper.Watermark="Enter a filename or message text to test…"
+                         VerticalContentAlignment="Center" Padding="6,2"/>
+
+                <!-- Test mode toggle -->
+                <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,5,0,0">
+                    <RadioButton x:Name="RbFile" Content="As file name" IsChecked="True"
+                                 Checked="TestMode_Changed" Margin="0,0,16,0" FontSize="11"/>
+                    <RadioButton x:Name="RbMessage" Content="As message text"
+                                 Checked="TestMode_Changed" FontSize="11"/>
+                </StackPanel>
+
+                <!-- Test results -->
+                <Border Grid.Row="3" Background="#F8F8F8" BorderBrush="#DDD" BorderThickness="1"
+                        CornerRadius="4" Padding="8,6" Margin="0,6,0,0" MinHeight="60">
+                    <StackPanel>
+                        <TextBlock x:Name="TxtTestHint" Text="Type above to test patterns…"
+                                   Foreground="#999" FontSize="11"/>
+                        <ItemsControl x:Name="TestResults">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding}" FontFamily="Consolas" FontSize="11"
+                                               Margin="0,1"/>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+
+                <!-- Divider -->
+                <Rectangle Grid.Row="4" Fill="#DDD" Margin="0,10,0,6"/>
+
+                <!-- History messages header -->
+                <DockPanel Grid.Row="5" Margin="0,0,0,5">
+                    <TextBlock DockPanel.Dock="Left" Text="Messages from chat history"
+                               FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="TxtHistoryStatus" DockPanel.Dock="Right"
+                               FontSize="11" Foreground="#999" VerticalAlignment="Center"/>
+                </DockPanel>
+
+                <!-- History message list (read from JSONL) -->
+                <Border Grid.Row="6" BorderBrush="#DDD" BorderThickness="1" CornerRadius="4"
+                        Background="White">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <ItemsControl x:Name="HistoryList" Margin="4">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Margin="0,2" Padding="6,4" CornerRadius="3"
+                                            Background="#FAFAFA" BorderBrush="#EEE" BorderThickness="1">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="{Binding Header}"
+                                                           FontSize="10" Foreground="#888"
+                                                           Margin="0,0,0,2"/>
+                                                <TextBlock Text="{Binding Preview}"
+                                                           FontSize="12" TextWrapping="Wrap"
+                                                           Foreground="#222" MaxHeight="40"
+                                                           TextTrimming="CharacterEllipsis"/>
+                                            </StackPanel>
+                                            <Button Grid.Column="1" Content="Add ↑"
+                                                    Style="{StaticResource ChipBtn}"
+                                                    Tag="{Binding}"
+                                                    Click="BtnAddFromHistory_Click"
+                                                    VerticalAlignment="Center" Margin="8,0,0,0"
+                                                    ToolTip="Add this text as a pattern"/>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Border>
+            </Grid>
+        </Grid>
+
+        <!-- ── Footer ──────────────────────────────────────────────────────── -->
+        <Border Grid.Row="2" BorderBrush="#DDD" BorderThickness="0,1,0,0" Padding="14,8">
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Content="Cancel" Width="90"
+                        Margin="8,0,0,0" Click="BtnCancel_Click" IsCancel="True"/>
+                <Button DockPanel.Dock="Right" Content="Save" Width="90"
+                        Background="#2196F3" Foreground="White" BorderThickness="0"
+                        Click="BtnSave_Click" IsDefault="True"/>
+                <TextBlock VerticalAlignment="Center" FontSize="11" Foreground="#888"
+                           Text="Patterns are case-insensitive by default. Add (?-i) to force case-sensitive."/>
+            </DockPanel>
+        </Border>
+    </Grid>
+</mah:MetroWindow>

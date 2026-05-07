@@ -24,6 +24,17 @@ namespace TelegramAutoDownload.Models
         // Key used to cancel this download via CancellationRegistry
         public string CancellationKey { get; set; } = string.Empty;
 
+        private string _errorMessage = string.Empty;
+
+        /// <summary>Error detail shown as tooltip on the "✖ Error" row.</summary>
+        public string ErrorMessage
+        {
+            get => _errorMessage;
+            set { _errorMessage = value; OnPropertyChanged(nameof(ErrorMessage)); OnPropertyChanged(nameof(HasError)); }
+        }
+
+        public bool HasError => !string.IsNullOrEmpty(_errorMessage);
+
         // Timestamp when this download started (used for speed/ETA calculation)
         public DateTime StartTime { get; set; } = DateTime.UtcNow;
 

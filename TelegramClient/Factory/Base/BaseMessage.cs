@@ -170,7 +170,10 @@ namespace TelegramClient.Factory.Base
                 chatDto.FolderTemplate, TypeMessage.ToString(), folderName);
             if (resolvedTemplate != null)
             {
-                var fullDir = Path.Combine(PathFolderToSaveFiles ?? string.Empty, resolvedTemplate);
+                // Absolute template (e.g. "C:\MyFolder") — use directly without basePath.
+                var fullDir = Path.IsPathRooted(resolvedTemplate)
+                    ? resolvedTemplate
+                    : Path.Combine(PathFolderToSaveFiles ?? string.Empty, resolvedTemplate);
                 Directory.CreateDirectory(fullDir);
                 return Path.Combine(fullDir, fileName);
             }

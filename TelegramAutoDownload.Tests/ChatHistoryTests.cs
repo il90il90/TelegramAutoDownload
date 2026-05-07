@@ -36,8 +36,9 @@ namespace TelegramAutoDownload.Tests
         {
             var path = ChatHistoryService.GetHistoryFilePath("Channel", "TechNews", _baseDir);
 
+            // History/{ChatName}.jsonl — the Type subdirectory was removed
             path.Should().EndWith("TechNews.jsonl");
-            path.Should().Contain(Path.Combine("History", "Channel"));
+            path.Should().Contain("History");
         }
 
         [Fact]
@@ -47,17 +48,18 @@ namespace TelegramAutoDownload.Tests
             var dir  = Path.GetDirectoryName(path)!;
 
             Directory.Exists(dir).Should().BeTrue(
-                "GetHistoryFilePath must create the History/{Type}/ folder automatically");
+                "GetHistoryFilePath must create the History/ folder automatically");
         }
 
         [Fact]
-        public void GetHistoryFilePath_DifferentTypes_ProduceDifferentPaths()
+        public void GetHistoryFilePath_SameName_SameFile_RegardlessOfType()
         {
+            // After removing the {Type} subdirectory, same chat name → same file.
             var channelPath = ChatHistoryService.GetHistoryFilePath("Channel", "Alpha", _baseDir);
             var groupPath   = ChatHistoryService.GetHistoryFilePath("Group",   "Alpha", _baseDir);
 
-            channelPath.Should().NotBe(groupPath,
-                because: "Channel and Group with the same name must use different subdirectories");
+            channelPath.Should().Be(groupPath,
+                because: "chat type is no longer part of the file path — only the chat name matters");
         }
 
         [Fact]

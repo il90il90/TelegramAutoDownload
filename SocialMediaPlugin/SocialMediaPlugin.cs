@@ -169,11 +169,11 @@ namespace SocialMediaPlugin
                 CancellationRegistry.Remove(cancelKey);
                 return new ResultExecute(config.ChatName) { IsSuccess = false, ErrorMessage = "Cancelled" };
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 OnComplete?.Invoke(config.ChatName, tempName, false);
                 CancellationRegistry.Remove(cancelKey);
-                return new ResultExecute(config.ChatName) { IsSuccess = false };
+                return new ResultExecute(config.ChatName) { IsSuccess = false, ErrorMessage = ex.Message, NotificationKey = tempName };
             }
 
             // If file was downloaded, consider it a success even if there were warnings
@@ -195,7 +195,7 @@ namespace SocialMediaPlugin
             {
                 OnComplete?.Invoke(config.ChatName, tempName, false);
                 CancellationRegistry.Remove(cancelKey);
-                return new ResultExecute(config.ChatName) { IsSuccess = false, NotificationKey = tempName };
+                return new ResultExecute(config.ChatName) { IsSuccess = false, ErrorMessage = errorMessage, NotificationKey = tempName };
             }
 
             OnComplete?.Invoke(config.ChatName, tempName, true);

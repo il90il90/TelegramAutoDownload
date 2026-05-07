@@ -10,6 +10,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Data;
 using System.Windows.Documents;
 using System.Windows.Media;
@@ -69,7 +70,15 @@ namespace TelegramAutoDownload
             var configParams = config.Read();
             _notification = new Notification(configParams);
             telegram.OnSaved = _notification.OnUpdateResultMessageAsync;
-            telegram.OnWarnningMessage = _notification.OnWarnningMessageAsync;
+            telegram.OnWarnningMessage = async eventMsg =>
+            {
+                // Propagate error message to the download row so the UI shows it as a tooltip
+                var r = eventMsg.ResultExecute;
+                var lookupName = !string.IsNullOrEmpty(r.NotificationKey) ? r.NotificationKey : r.FileName;
+                if (!string.IsNullOrEmpty(lookupName) && !string.IsNullOrEmpty(r.ErrorMessage))
+                    DownloadProgressService.Instance.SetDownloadError(eventMsg.Chat.Name, lookupName, r.ErrorMessage);
+                return await _notification.OnWarnningMessageAsync(eventMsg);
+            };
 
             // Wire download progress reporting to the UI panel and Telegram live updates
             telegram.OnEnqueued = (chatName, msgId, previewName) =>
@@ -284,6 +293,17 @@ namespace TelegramAutoDownload
                     "Sync", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
+
+            var confirmSync = MessageBox.Show(
+                "Syncing all history can take a long time for large chats — " +
+                "Telegram allows fetching up to 100 messages per request.\n\n" +
+                "The app will remain responsive and you can see progress at the bottom.\n\n" +
+                "Continue?",
+                "Sync — this may take a while",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Information);
+
+            if (confirmSync != MessageBoxResult.Yes) return;
 
             btn.IsEnabled = false;
             btn.Content = "…";
@@ -861,39 +881,38 @@ namespace TelegramAutoDownload
             // This handler exists only to avoid XAML compilation errors.
         }
 
-        private void Provider_Loaded(object sender, RoutedEventArgs e)
+        private void ProviderPill_Loaded(object sender, RoutedEventArgs e)
         {
-            if (sender is not CheckBox checkBox) return;
-            var chatDto = checkBox.DataContext as ChatDto;
-            var pluginName = checkBox.Tag as string ?? string.Empty;
+            if (sender is not ToggleButton pill) return;
+            var chatDto   = pill.DataContext as ChatDto;
+            var pluginName = pill.Tag as string ?? string.Empty;
             if (chatDto == null) return;
 
-            // Set initial value without triggering save (suppress via _isLoading)
             _isLoading = true;
-            checkBox.IsChecked = chatDto.EnabledPlugins.TryGetValue(pluginName, out var enabled)
-                ? enabled : true;
+            // Default is now FALSE — plugins must be explicitly enabled per chat
+            pill.IsChecked = chatDto.EnabledPlugins.TryGetValue(pluginName, out var enabled) && enabled;
             _isLoading = false;
         }
 
-        private void Provider_Checked(object sender, RoutedEventArgs e)
+        private void ProviderPill_Click(object sender, RoutedEventArgs e)
         {
             if (_isLoading) return;
-            if (sender is CheckBox checkBox)
+            if (sender is not ToggleButton pill) return;
+
+            var chatDto    = pill.DataContext as ChatDto;
+            var pluginName = pill.Tag as string ?? string.Empty;
+            if (chatDto == null || string.IsNullOrEmpty(pluginName)) return;
+
+            var isEnabled = pill.IsChecked == true;
+            chatDto.EnabledPlugins[pluginName] = isEnabled;
+
+            var config    = ConfigFile.Read();
+            var foundChat = config.Chats.FirstOrDefault(a => a.Id == chatDto.Id);
+            if (foundChat != null)
             {
-                var chatDto = checkBox.DataContext as ChatDto;
-                var pluginName = checkBox.Tag as string ?? string.Empty;
-                if (chatDto == null || string.IsNullOrEmpty(pluginName)) return;
-
-                chatDto.EnabledPlugins[pluginName] = checkBox.IsChecked == true;
-
-                var config = ConfigFile.Read();
-                var foundChat = config.Chats.FirstOrDefault(a => a.Id == chatDto.Id);
-                if (foundChat != null)
-                {
-                    foundChat.EnabledPlugins[pluginName] = checkBox.IsChecked == true;
-                    ConfigFile.Save(config);
-                    TelegramApp.UpdateConfig(config);
-                }
+                foundChat.EnabledPlugins[pluginName] = isEnabled;
+                ConfigFile.Save(config);
+                TelegramApp.UpdateConfig(config);
             }
         }
 
@@ -930,29 +949,37 @@ namespace TelegramAutoDownload
 
         // ── Filter (IgnoreFileByRegex) ────────────────────────────────────────────────
 
-        private void FilterTextBox_Loaded(object sender, RoutedEventArgs e)
+        /// <summary>Opens the rich Filter Editor dialog for the chat on the clicked row.</summary>
+        private void FilterDialog_Click(object sender, RoutedEventArgs e)
         {
-            if (sender is TextBox tb && tb.DataContext is ChatDto chat)
-                tb.Text = string.Join("; ", chat.IgnoreFileByRegex);
-        }
+            if (sender is not Button btn || btn.Tag is not ChatDto chat) return;
 
-        private void FilterTextBox_LostFocus(object sender, RoutedEventArgs e)
-        {
-            if (sender is not TextBox tb || tb.DataContext is not ChatDto chat) return;
+            var config   = ConfigFile.Read();
+            var basePath = config.PathSaveFile ?? string.Empty;
 
-            chat.IgnoreFileByRegex = tb.Text
-                .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .Where(s => !string.IsNullOrWhiteSpace(s))
-                .ToList();
+            var dlg = new FilterDialog(
+                currentPatterns: chat.IgnoreFileByRegex,
+                chatName:        chat.Name,
+                chatType:        chat.Type ?? "Other",
+                basePath:        basePath,
+                fetchMessages:   () => TelegramApp.GetRecentMessagesAsync(chat, 50))
+            {
+                Owner = this
+            };
 
-            var config = ConfigFile.Read();
+            if (dlg.ShowDialog() != true) return;
+
+            chat.IgnoreFileByRegex = dlg.ResultPatterns;
+
             var found = config.Chats.FirstOrDefault(c => c.Id == chat.Id);
             if (found != null)
             {
-                found.IgnoreFileByRegex = chat.IgnoreFileByRegex;
+                found.IgnoreFileByRegex = dlg.ResultPatterns;
                 ConfigFile.Save(config);
                 TelegramApp.UpdateConfig(config);
             }
+
+            ItemsListView.Items.Refresh();
         }
 
         // ── Folder Template ───────────────────────────────────────────────────────────
@@ -977,6 +1004,40 @@ namespace TelegramAutoDownload
                 ConfigFile.Save(config);
                 TelegramApp.UpdateConfig(config);
             }
+        }
+
+        /// <summary>Opens the guided Folder Template dialog for the chat on the clicked row.</summary>
+        private void FolderTemplateDialog_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not Button btn || btn.Tag is not ChatDto chat) return;
+
+            var config   = ConfigFile.Read();
+            var basePath = config.PathSaveFile ?? string.Empty;
+
+            var dlg = new FolderTemplateDialog(
+                currentTemplate: chat.FolderTemplate,
+                chatName:        chat.Name,
+                chatType:        chat.Type ?? "Other",
+                basePath:        basePath)
+            {
+                Owner = this
+            };
+
+            if (dlg.ShowDialog() != true) return;
+
+            // Persist the new template
+            chat.FolderTemplate = dlg.ResultTemplate;
+
+            var found = config.Chats.FirstOrDefault(c => c.Id == chat.Id);
+            if (found != null)
+            {
+                found.FolderTemplate = dlg.ResultTemplate;
+                ConfigFile.Save(config);
+                TelegramApp.UpdateConfig(config);
+            }
+
+            // Refresh row so the TextBox shows the updated value
+            ItemsListView.Items.Refresh();
         }
 
         // ── History (SaveHistory toggle + Export) ────────────────────────────────────
@@ -1022,6 +1083,17 @@ namespace TelegramAutoDownload
                     "Export History", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
+
+            var confirmExport = MessageBox.Show(
+                "Exporting the full chat history can take a long time for large chats — " +
+                "Telegram allows fetching up to 100 messages per request.\n\n" +
+                "The app will remain responsive and you can see progress at the bottom.\n\n" +
+                "Continue?",
+                "Export History — this may take a while",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Information);
+
+            if (confirmExport != MessageBoxResult.Yes) return;
 
             btn.IsEnabled = false;
             btn.Content   = "…";

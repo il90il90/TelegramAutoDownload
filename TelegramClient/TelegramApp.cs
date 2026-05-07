@@ -579,6 +579,91 @@ namespace TelegramClient
         }
 
         /// <summary>
+        /// Fetches the most recent <paramref name="count"/> messages from Telegram for a chat.
+        /// Returns them newest-first. Returns an empty list if the peer cannot be resolved
+        /// (e.g. not yet connected) or on error.
+        /// </summary>
+        public async Task<List<HistoryEntry>> GetRecentMessagesAsync(ChatDto chatDto, int count = 50)
+        {
+            try
+            {
+                InputPeer? peer = null;
+                if (_accessHashes.TryGetValue(chatDto.Id, out var hash))
+                {
+                    peer = hash != 0
+                        ? new InputPeerChannel(chatDto.Id, hash)
+                        : new InputPeerChat(chatDto.Id);
+                }
+                else
+                {
+                    var dialogsResult = await Client.Messages_GetDialogs(
+                        offset_date: default, offset_id: 0, offset_peer: null!, limit: 500, hash: 0);
+                    if (dialogsResult is TL.Messages_Dialogs dlg)
+                    {
+                        if (dlg.chats.TryGetValue(chatDto.Id, out var cb) && cb is TL.Channel tgCh)
+                        {
+                            _accessHashes[chatDto.Id] = tgCh.access_hash;
+                            peer = new InputPeerChannel(chatDto.Id, tgCh.access_hash);
+                        }
+                        else if (dlg.chats.TryGetValue(chatDto.Id, out var grp) && grp is TL.Chat)
+                        {
+                            _accessHashes[chatDto.Id] = 0;
+                            peer = new InputPeerChat(chatDto.Id);
+                        }
+                        else if (dlg.users.TryGetValue(chatDto.Id, out var tgUsr) && tgUsr is TL.User u)
+                        {
+                            _accessHashes[chatDto.Id] = u.access_hash;
+                            peer = new InputPeerUser(chatDto.Id, u.access_hash);
+                        }
+                    }
+                }
+
+                if (peer == null) return [];
+
+                var history = await Client.Messages_GetHistory(peer, limit: count);
+                var result  = new List<HistoryEntry>();
+
+                // Extract users dictionary from the concrete history result type
+                Dictionary<long, User>? users = null;
+                if      (history is TL.Messages_Messages       m1) users = m1.users;
+                else if (history is TL.Messages_MessagesSlice  m2) users = m2.users;
+                else if (history is TL.Messages_ChannelMessages m3) users = m3.users;
+                users ??= [];
+
+                foreach (var msg in history.Messages)
+                {
+                    if (msg is not TL.Message m) continue;
+                    var senderId = m.from_id is PeerUser pu2 ? pu2.user_id : chatDto.Id;
+                    var entry = new HistoryEntry
+                    {
+                        Id         = m.ID,
+                        Date       = new DateTimeOffset(m.Date),
+                        SenderId   = senderId,
+                        SenderName = users.TryGetValue(senderId, out var sender)
+                                        ? (sender.MainUsername ?? sender.first_name) : null,
+                        Text       = m.message ?? string.Empty,
+                        MediaType  = m.media switch
+                        {
+                            MessageMediaPhoto     => "Photo",
+                            MessageMediaDocument  => "Document",
+                            _                     => null,
+                        },
+                        FileName   = m.media is MessageMediaDocument { document: Document doc }
+                                        ? doc.Filename : null,
+                    };
+                    result.Add(entry);
+                }
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"GetRecentMessagesAsync failed: {ex.Message}");
+                return [];
+            }
+        }
+
+        /// <summary>
         /// Exports the full message history of a chat to a JSONL file.
         /// Fetches all messages (newest → oldest) and writes them oldest-first.
         /// File: {basePath}/History/{ChatType}/{ChatName}.jsonl
@@ -784,7 +869,10 @@ namespace TelegramClient
                     chatDto.FolderTemplate, chatDto.Type ?? "Other", chatDto.Name)
                     ?? System.IO.Path.Combine(chatDto.Type ?? "Other", chatDto.Name);
 
-                var folder = System.IO.Path.Combine(basePath, chatFolder, "Messages");
+                // Absolute template overrides basePath entirely
+                var resolvedBase = System.IO.Path.IsPathRooted(chatFolder) ? chatFolder
+                    : System.IO.Path.Combine(basePath, chatFolder);
+                var folder = System.IO.Path.Combine(resolvedBase, "Messages");
                 System.IO.Directory.CreateDirectory(folder);
 
                 var safeName = $"{msg.date:yyyyMMdd_HHmmss}_{msg.ID}.txt";

@@ -78,8 +78,8 @@ namespace TelegramClient.Factory.Service
 
                     if (!pluginInstance!.CanHandle(config)) continue;
 
-                    // Skip if plugin is explicitly disabled for this chat (missing key = enabled)
-                    if (config.EnabledPlugins.TryGetValue(pluginInstance.PluginName, out var enabled) && !enabled)
+                    // Skip unless plugin is explicitly enabled for this chat (missing key = disabled)
+                    if (!config.EnabledPlugins.TryGetValue(pluginInstance.PluginName, out var enabled) || !enabled)
                         continue;
 
                     // Wire progress callbacks so the plugin can report to the UI

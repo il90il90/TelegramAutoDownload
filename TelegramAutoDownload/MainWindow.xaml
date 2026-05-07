@@ -4,6 +4,7 @@
        xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+       xmlns:conv="clr-namespace:TelegramAutoDownload.Converters"
        mc:Ignorable="d"
        Title="Telegram Auto Download"
        Height="800" Width="1440"
@@ -19,6 +20,80 @@
                 <DiscreteDoubleKeyFrame KeyTime="0:0:1.2" Value="1.0"/>
             </DoubleAnimationUsingKeyFrames>
         </Storyboard>
+
+        <conv:StringNotEmptyConverter     x:Key="StringNotEmpty"/>
+        <conv:CollectionNotEmptyConverter x:Key="CollectionNotEmpty"/>
+
+        <!-- Compact indicator button for Filter column: amber when patterns are set -->
+        <Style x:Key="FilterBtnStyle" TargetType="Button">
+            <Setter Property="Width"         Value="26"/>
+            <Setter Property="Height"        Value="22"/>
+            <Setter Property="FontSize"      Value="13"/>
+            <Setter Property="Padding"       Value="0"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Background"    Value="Transparent"/>
+            <Setter Property="Foreground"    Value="{DynamicResource MahApps.Brushes.Gray3}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush"   Value="{DynamicResource MahApps.Brushes.Gray7}"/>
+            <Setter Property="ToolTip"       Value="Open filter editor"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IgnoreFileByRegex, Converter={StaticResource CollectionNotEmpty}}"
+                             Value="True">
+                    <Setter Property="Background"  Value="#FF9800"/>
+                    <Setter Property="Foreground"  Value="White"/>
+                    <Setter Property="BorderBrush" Value="#E65100"/>
+                    <Setter Property="FontWeight"  Value="Bold"/>
+                    <Setter Property="ToolTip"     Value="Filter patterns are set — click to edit"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Compact pill / toggle-button for the Providers column -->
+        <Style x:Key="ProviderPillStyle" TargetType="ToggleButton">
+            <Setter Property="Padding"          Value="5,2"/>
+            <Setter Property="Margin"           Value="2,0"/>
+            <Setter Property="FontSize"         Value="11"/>
+            <Setter Property="MinWidth"         Value="28"/>
+            <Setter Property="Height"           Value="20"/>
+            <Setter Property="Background"       Value="Transparent"/>
+            <Setter Property="BorderBrush"      Value="#BBBBBB"/>
+            <Setter Property="BorderThickness"  Value="1"/>
+            <Setter Property="Foreground"       Value="#888888"/>
+            <Setter Property="Cursor"           Value="Hand"/>
+            <Style.Triggers>
+                <Trigger Property="IsChecked" Value="True">
+                    <Setter Property="Background"  Value="#2196F3"/>
+                    <Setter Property="Foreground"  Value="White"/>
+                    <Setter Property="BorderBrush" Value="#1565C0"/>
+                </Trigger>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="BorderBrush" Value="#888888"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Style for the Folder button: blue when a custom template is set, plain otherwise -->
+        <Style x:Key="FolderBtnStyle" TargetType="Button">
+            <Setter Property="Width"  Value="26"/>
+            <Setter Property="Height" Value="22"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{DynamicResource MahApps.Brushes.Gray3}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource MahApps.Brushes.Gray7}"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding FolderTemplate, Converter={StaticResource StringNotEmpty}}"
+                             Value="True">
+                    <Setter Property="Background"   Value="#2196F3"/>
+                    <Setter Property="Foreground"   Value="White"/>
+                    <Setter Property="BorderBrush"  Value="#1565C0"/>
+                    <Setter Property="FontWeight"   Value="Bold"/>
+                    <Setter Property="ToolTip"      Value="Custom folder is set — click to edit"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
     </mah:MetroWindow.Resources>
 
     <Grid>
@@ -214,15 +289,27 @@
                             </GridViewColumn.CellTemplate>
                         </GridViewColumn>
 
-                        <!-- Providers: wider to ensure Direct is fully visible -->
-                        <GridViewColumn Header="Providers" Width="310">
+                        <!-- Providers: compact toggle-pill buttons (click to enable/disable per plugin) -->
+                        <GridViewColumn Header="Providers" Width="160">
                             <GridViewColumn.CellTemplate>
                                 <DataTemplate>
                                     <StackPanel Orientation="Horizontal">
-                                        <CheckBox Content="YouTube" Tag="YouTube" Margin="6,0" Checked="Provider_Checked" Unchecked="Provider_Checked" Loaded="Provider_Loaded"/>
-                                        <CheckBox Content="Social" Tag="SocialMedia" Margin="6,0" Checked="Provider_Checked" Unchecked="Provider_Checked" Loaded="Provider_Loaded"/>
-                                        <CheckBox Content="Torrent" Tag="Torrent" Margin="6,0" Checked="Provider_Checked" Unchecked="Provider_Checked" Loaded="Provider_Loaded"/>
-                                        <CheckBox Content="Direct" Tag="Download" Margin="6,0" Checked="Provider_Checked" Unchecked="Provider_Checked" Loaded="Provider_Loaded"/>
+                                        <ToggleButton Content="YT"  Tag="YouTube"
+                                                      Style="{StaticResource ProviderPillStyle}"
+                                                      Loaded="ProviderPill_Loaded" Click="ProviderPill_Click"
+                                                      ToolTip="YouTube"/>
+                                        <ToggleButton Content="SO"  Tag="SocialMedia"
+                                                      Style="{StaticResource ProviderPillStyle}"
+                                                      Loaded="ProviderPill_Loaded" Click="ProviderPill_Click"
+                                                      ToolTip="Social Media"/>
+                                        <ToggleButton Content="TR"  Tag="Torrent"
+                                                      Style="{StaticResource ProviderPillStyle}"
+                                                      Loaded="ProviderPill_Loaded" Click="ProviderPill_Click"
+                                                      ToolTip="Torrent"/>
+                                        <ToggleButton Content="DL"  Tag="Download"
+                                                      Style="{StaticResource ProviderPillStyle}"
+                                                      Loaded="ProviderPill_Loaded" Click="ProviderPill_Click"
+                                                      ToolTip="Direct Download"/>
                                     </StackPanel>
                                 </DataTemplate>
                             </GridViewColumn.CellTemplate>
@@ -240,26 +327,28 @@
                             </GridViewColumn.CellTemplate>
                         </GridViewColumn>
 
-                        <!-- Filter: regex patterns — files matching any pattern are skipped -->
-                        <GridViewColumn Header="Filter" Width="115">
+                        <!-- Filter: amber when patterns set, opens full FilterDialog -->
+                        <GridViewColumn Header="Filter" Width="52">
                             <GridViewColumn.CellTemplate>
                                 <DataTemplate>
-                                    <TextBox Width="100"
-                                             Loaded="FilterTextBox_Loaded"
-                                             LostFocus="FilterTextBox_LostFocus"
-                                             ToolTip="Semicolon-separated regex patterns.&#x0a;• File attachments: SKIP files whose name matches.&#x0a;• Text messages: CAPTURE &amp; save as .txt when text matches.&#x0a;Example: \.jpg$; sale; ^\[Ad\]"/>
+                                    <Button Content="⚡"
+                                            Style="{StaticResource FilterBtnStyle}"
+                                            Tag="{Binding}"
+                                            Click="FilterDialog_Click"/>
                                 </DataTemplate>
                             </GridViewColumn.CellTemplate>
                         </GridViewColumn>
 
                         <!-- Folder: custom download folder template per chat -->
-                        <GridViewColumn Header="Folder" Width="120">
+                        <GridViewColumn Header="Folder" Width="52">
                             <GridViewColumn.CellTemplate>
                                 <DataTemplate>
-                                    <TextBox Width="105"
-                                             Loaded="FolderTemplateTextBox_Loaded"
-                                             LostFocus="FolderTemplateTextBox_LostFocus"
-                                             ToolTip="Custom folder path template. Tokens: {Type}, {ChatName}, {Year}, {Month}, {Day}. Empty = default layout.&#x0a;Example: {ChatName}/{Year}-{Month}"/>
+                                    <!-- Blue when a custom template is set, plain when using default layout -->
+                                    <Button Content="…"
+                                            Style="{StaticResource FolderBtnStyle}"
+                                            Tag="{Binding}"
+                                            Click="FolderTemplateDialog_Click"
+                                            ToolTip="Open folder template editor"/>
                                 </DataTemplate>
                             </GridViewColumn.CellTemplate>
                         </GridViewColumn>
@@ -413,7 +502,7 @@
                             <!-- ETA -->
                             <DataGridTextColumn Header="ETA" Binding="{Binding Eta}" Width="75"/>
 
-                            <!-- Status -->
+                            <!-- Status — red on error with tooltip showing the error message -->
                             <DataGridTemplateColumn Header="Status" Width="80">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
@@ -430,6 +519,10 @@
                                                         </DataTrigger>
                                                         <DataTrigger Binding="{Binding Status}" Value="✖ Cancelled">
                                                             <Setter Property="Foreground" Value="#FF9800"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding HasError}" Value="True">
+                                                            <Setter Property="ToolTip" Value="{Binding ErrorMessage}"/>
+                                                            <Setter Property="TextDecorations" Value="Underline"/>
                                                         </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
