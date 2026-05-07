@@ -7,7 +7,7 @@
        mc:Ignorable="d"
        Title="Telegram Auto Download"
        Height="800" Width="1440"
-       MinWidth="1100" MinHeight="600"
+       MinWidth="640" MinHeight="400"
        WindowStartupLocation="CenterScreen">
 
     <mah:MetroWindow.Resources>
@@ -82,7 +82,7 @@
                       VirtualizingPanel.IsVirtualizing="True"
                       VirtualizingPanel.VirtualizationMode="Recycling"
                       ScrollViewer.CanContentScroll="True"
-                      ScrollViewer.IsDeferredScrollingEnabled="True"
+                      ScrollViewer.IsDeferredScrollingEnabled="False"
                       GridViewColumnHeader.Click="ColumnHeader_Click">
                 <ListView.Resources>
                     <Style TargetType="GridViewColumnHeader">
