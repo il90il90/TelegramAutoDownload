@@ -1,0 +1,51 @@
+<mah:MetroWindow
+    x:Class="TelegramAutoDownload.SplashWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
+    Title="Telegram Auto Download"
+    Width="340" Height="260"
+    WindowStartupLocation="CenterScreen"
+    ResizeMode="NoResize"
+    ShowTitleBar="False"
+    ShowCloseButton="False"
+    WindowStyle="None"
+    AllowsTransparency="True"
+    Background="Transparent">
+
+    <Border CornerRadius="12" Background="{DynamicResource MahApps.Brushes.Window.Background}"
+            BorderBrush="{DynamicResource MahApps.Brushes.Gray7}" BorderThickness="1">
+        <Grid>
+            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+
+                <!-- Telegram blue circle with icon -->
+                <Border Width="72" Height="72" CornerRadius="36"
+                        Background="#2AABEE" Margin="0,0,0,16"
+                        HorizontalAlignment="Center">
+                    <TextBlock Text="✈" FontSize="36" Foreground="White"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               Margin="0,2,0,0"/>
+                </Border>
+
+                <!-- App name -->
+                <TextBlock Text="Telegram Auto Download"
+                           FontSize="17" FontWeight="SemiBold"
+                           HorizontalAlignment="Center"
+                           Margin="0,0,0,4"/>
+
+                <!-- Spinner -->
+                <mah:ProgressRing x:Name="Ring" IsActive="True"
+                                  Width="36" Height="36"
+                                  Foreground="#2AABEE"
+                                  Margin="0,18,0,10"
+                                  HorizontalAlignment="Center"/>
+
+                <!-- Status text -->
+                <TextBlock x:Name="TxtStatus"
+                           Text="Connecting…"
+                           FontSize="12" Foreground="#888"
+                           HorizontalAlignment="Center"/>
+            </StackPanel>
+        </Grid>
+    </Border>
+</mah:MetroWindow>

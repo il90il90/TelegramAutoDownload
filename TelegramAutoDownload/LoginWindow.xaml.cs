@@ -45,7 +45,8 @@ namespace TelegramAutoDownload
                 _telegram = await System.Threading.Tasks.Task.Run(() =>
                     new TelegramApp(_configParams.AppId, _configParams.ApiHash));
 
-                await System.Threading.Tasks.Task.Delay(2000);
+                // Give WTelegramClient a moment to restore session if somehow reached
+                await System.Threading.Tasks.Task.Delay(800);
 
                 if (_telegram.Client.UserId != 0)
                 {

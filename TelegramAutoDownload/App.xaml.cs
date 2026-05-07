@@ -82,7 +82,16 @@ namespace TelegramAutoDownload
             };
             TrayIcon.DoubleClick += (_, __) => ShowMainWindow();
 
-            new LoginWindow(configFile).Show();
+            // If a session file already exists the user is (very likely) already logged in.
+            // Show a clean splash/loading screen instead of the login form.
+            var sessionPath = System.IO.Path.Combine(
+                System.Environment.GetFolderPath(System.Environment.SpecialFolder.ApplicationData),
+                "TelegramAutoDownload", "session.dat");
+
+            if (System.IO.File.Exists(sessionPath) && configFile.Read().AppId != 0)
+                new SplashWindow(configFile).Show();
+            else
+                new LoginWindow(configFile).Show();
         }
 
         private static void ShowMainWindow()
