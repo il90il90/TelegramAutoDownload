@@ -409,12 +409,13 @@ namespace TelegramClient
                     var history = await Client.Messages_GetHistory(peer,
                         offset_id: offsetId, limit: pageSize);
 
-                    // Use the raw message list for pagination control.
-                    // Pages may contain many text-only messages with no media — we must not
-                    // stop early just because none of them matched the download filter.
-                    var rawMessages = history.Messages.OfType<Message>().ToList();
+                    // Use the TOTAL message count (including MessageService and MessageEmpty) for
+                    // pagination control. A page that contains only service messages would have
+                    // rawMessages.Count == 0 even though Telegram returned a full page, causing
+                    // the loop to stop early and miss older messages.
+                    if (history.Messages.Length == 0) break;
 
-                    if (rawMessages.Count == 0) break;
+                    var rawMessages = history.Messages.OfType<Message>().ToList();
 
                     // Native media that matches this chat's download settings (Videos, Photos, Music, Files)
                     var mediaMessages = rawMessages
@@ -492,10 +493,11 @@ namespace TelegramClient
                     totalQueued += mediaMessages.Count;
                     onStatus?.Invoke($"Syncing {chatDto.Name}: {totalQueued} files queued…");
 
-                    // Pagination: stop only when the API returns fewer messages than requested.
-                    // Use the min ID from the RAW page so we don't skip messages that had no media.
-                    if (rawMessages.Count < pageSize) break;
-                    offsetId = rawMessages.Min(m => m.ID);
+                    // Stop when the API returns fewer items than requested (beginning of chat).
+                    // Use the min ID across ALL message types (MessageService, MessageEmpty included)
+                    // so service-message-heavy pages don't create ID gaps.
+                    if (history.Messages.Length < pageSize) break;
+                    offsetId = history.Messages.Select(m => m.ID).Min();
                 }
 
                 onStatus?.Invoke($"Sync complete: {totalQueued} files from {chatDto.Name}");
@@ -562,8 +564,12 @@ namespace TelegramClient
                     var history = await Client.Messages_GetHistory(peer,
                         offset_id: offsetId, limit: pageSize);
 
+                    // Stop only when the API truly returns nothing (end of history).
+                    // Checking history.Messages.Length includes MessageService and MessageEmpty
+                    // so a page that is all service messages does not terminate the loop early.
+                    if (history.Messages.Length == 0) break;
+
                     var rawMessages = history.Messages.OfType<Message>().ToList();
-                    if (rawMessages.Count == 0) break;
 
                     // Resolve user display names when available (only in full messages responses)
                     Dictionary<long, User>? userMap = null;
@@ -582,8 +588,9 @@ namespace TelegramClient
 
                     onStatus?.Invoke($"Exporting {chatDto.Name}: {allEntries.Count} messages…");
 
-                    if (rawMessages.Count < pageSize) break;
-                    offsetId = rawMessages.Min(m => m.ID);
+                    // Partial page = beginning of chat. Use min ID across ALL types to avoid gaps.
+                    if (history.Messages.Length < pageSize) break;
+                    offsetId = history.Messages.Select(m => m.ID).Min();
                 }
 
                 // Sort oldest-first before writing
@@ -712,11 +719,9 @@ namespace TelegramClient
                     var history = await Client.Messages_GetHistory(peer,
                         offset_id: offsetId, limit: pageSize);
 
-                    // Use the raw list for pagination decisions — a page full of text messages
-                    // must not cause early termination before we reach the watermark.
-                    var rawMessages = history.Messages.OfType<Message>().ToList();
+                    if (history.Messages.Length == 0) break;
 
-                    if (rawMessages.Count == 0) break;
+                    var rawMessages = history.Messages.OfType<Message>().ToList();
 
                     // Stop paginating once all messages on this page are at or below the watermark
                     if (rawMessages.All(m => m.ID <= watermark)) break;
@@ -751,9 +756,9 @@ namespace TelegramClient
 
                     await Task.WhenAll(tasks);
 
-                    // Pagination: base decision on the raw page size, offset on the raw min ID
-                    if (rawMessages.Count < pageSize) break;
-                    offsetId = rawMessages.Min(m => m.ID);
+                    // Pagination: base stop condition on total page size (incl. service messages)
+                    if (history.Messages.Length < pageSize) break;
+                    offsetId = history.Messages.Select(m => m.ID).Min();
                 }
             }
             catch (Exception ex)
