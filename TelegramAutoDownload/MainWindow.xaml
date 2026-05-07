@@ -247,7 +247,7 @@
                                     <TextBox Width="100"
                                              Loaded="FilterTextBox_Loaded"
                                              LostFocus="FilterTextBox_LostFocus"
-                                             ToolTip="Skip files whose name matches any pattern (semicolon-separated regex). Example: \.jpg$; thumb_"/>
+                                             ToolTip="Semicolon-separated regex patterns.&#x0a;• File attachments: SKIP files whose name matches.&#x0a;• Text messages: CAPTURE &amp; save as .txt when text matches.&#x0a;Example: \.jpg$; sale; ^\[Ad\]"/>
                                 </DataTemplate>
                             </GridViewColumn.CellTemplate>
                         </GridViewColumn>

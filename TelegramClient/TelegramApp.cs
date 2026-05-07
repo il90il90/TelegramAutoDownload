@@ -188,6 +188,10 @@ namespace TelegramClient
 
                 if (update is UpdateNewMessage updateNewMessage)
                 {
+                    // Declared here so the Task.Run lambda below can capture it via closure.
+                    // Non-null when a text-only message matches a Filter regex pattern.
+                    string? capturedTextPreview = null;
+
                     // Track watermark so catch-up doesn't re-download this message
                     if (updateNewMessage.message is Message liveMsg)
                     {
@@ -202,6 +206,29 @@ namespace TelegramClient
                         var previewName = GetPreviewFileName(liveMsg);
                         if (previewName != null)
                             OnEnqueued?.Invoke(chat.Name, liveMsg.ID, previewName);
+
+                        // Filter regex also applies to message text: if a text-only message
+                        // (no downloadable media) matches any pattern, it is captured and
+                        // saved as a .txt file with the End Icon reaction.
+                        if (previewName == null
+                            && !string.IsNullOrEmpty(liveMsg.message)
+                            && chat.IgnoreFileByRegex.Count > 0)
+                        {
+                            foreach (var pattern in chat.IgnoreFileByRegex)
+                            {
+                                if (System.Text.RegularExpressions.Regex.IsMatch(
+                                        liveMsg.message, pattern,
+                                        System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+                                {
+                                    var snippet = liveMsg.message.Length > 45
+                                        ? liveMsg.message[..45] + "…"
+                                        : liveMsg.message;
+                                    capturedTextPreview = $"📝 {snippet}";
+                                    OnEnqueued?.Invoke(chat.Name, liveMsg.ID, capturedTextPreview);
+                                    break;
+                                }
+                            }
+                        }
                     }
 
                     // Capture the current semaphore instance so a concurrent UpdateConfig
@@ -238,27 +265,29 @@ namespace TelegramClient
                                 catch { /* history write must never break downloads */ }
                             }
 
-                            // Only signal "downloading" when something was actually enqueued.
-                            // Text-only messages that have no downloadable content are never added
-                            // to the queue (GetPreviewFileName returns null), so there is no UI
-                            // item to transition to "⬇ Downloading" — calling OnStarted for them
-                            // would generate a spurious QueueChanged badge update.
-                            var hasQueuedItem = GetPreviewFileName(infoMessage) != null;
+                            // Something is queued when the message has downloadable media OR when its
+                            // text matched a Filter regex pattern and will be captured as a .txt file.
+                            var hasQueuedItem = GetPreviewFileName(infoMessage) != null
+                                             || capturedTextPreview != null;
                             if (hasQueuedItem)
                                 OnStarted?.Invoke(chat.Name, infoMessage.ID);
 
                             try
                             {
 
-                                // Send "download starting" reaction only when there is actual
-                                // downloadable content — text-only messages must not trigger it.
+                                // Send "download starting" reaction only when there is content to process.
                                 if (hasQueuedItem && !string.IsNullOrEmpty(chat.DownloadStartIcon))
                                 {
                                     try { await ReactToMessage(chat, updates, infoMessage, chat.DownloadStartIcon); }
                                     catch { /* non-critical */ }
                                 }
 
-                                resultExecute = await factoryService.ExecuteAsync(updateNewMessage, chat);
+                                // Route text-only captures to SaveCapturedTextAsync; everything else
+                                // goes through the normal plugin/factory pipeline.
+                                if (capturedTextPreview != null && GetPreviewFileName(infoMessage) == null)
+                                    resultExecute = await SaveCapturedTextAsync(infoMessage, chat);
+                                else
+                                    resultExecute = await factoryService.ExecuteAsync(updateNewMessage, chat);
 
                                 var resultMessageEvent = new ResultMessageEvent
                                 {
@@ -431,11 +460,29 @@ namespace TelegramClient
                                     m.message.Contains("http", StringComparison.OrdinalIgnoreCase))
                         .ToList();
 
-                    // Enqueue only native media messages in the UI (URL messages show no queue entry)
+                    // Text-only messages that match a Filter regex pattern → save as .txt capture file.
+                    var textCaptureMessages = chatDto.IgnoreFileByRegex.Count > 0
+                        ? rawMessages
+                            .Where(m => m.media == null &&
+                                        !urlMessages.Contains(m) &&
+                                        !string.IsNullOrEmpty(m.message) &&
+                                        chatDto.IgnoreFileByRegex.Any(p =>
+                                            System.Text.RegularExpressions.Regex.IsMatch(
+                                                m.message, p,
+                                                System.Text.RegularExpressions.RegexOptions.IgnoreCase)))
+                            .ToList()
+                        : [];
+
+                    // Enqueue native media messages + text captures in the UI
                     foreach (var msg in mediaMessages)
                     {
                         var previewName = GetPreviewFileName(msg) ?? $"file_{msg.ID}";
                         OnEnqueued?.Invoke(chatDto.Name, msg.ID, previewName);
+                    }
+                    foreach (var msg in textCaptureMessages)
+                    {
+                        var snippet = msg.message!.Length > 45 ? msg.message[..45] + "…" : msg.message;
+                        OnEnqueued?.Invoke(chatDto.Name, msg.ID, $"📝 {snippet}");
                     }
 
                     var sem = _semaphore; // Capture before lambda — see Client_OnUpdates for explanation
@@ -489,8 +536,30 @@ namespace TelegramClient
                         finally { sem.Release(); }
                     }));
 
-                    await Task.WhenAll(mediaTasks.Concat(urlTasks));
-                    totalQueued += mediaMessages.Count;
+                    // Process text captures — save as .txt files with full UI lifecycle
+                    var textCaptureTasks = textCaptureMessages.Select(msg => Task.Run(async () =>
+                    {
+                        await sem.WaitAsync();
+                        try
+                        {
+                            OnStarted?.Invoke(chatDto.Name, msg.ID);
+                            var result = await SaveCapturedTextAsync(msg, chatDto);
+                            if (result.IsSuccess && string.IsNullOrEmpty(result.ErrorMessage) && OnSaved != null)
+                            {
+                                await OnSaved.Invoke(new ResultMessageEvent
+                                {
+                                    Chat = chatDto,
+                                    Message = msg.message,
+                                    PostAuthor = msg.post_author,
+                                    ResultExecute = result,
+                                });
+                            }
+                        }
+                        finally { sem.Release(); }
+                    }));
+
+                    await Task.WhenAll(mediaTasks.Concat(urlTasks).Concat(textCaptureTasks));
+                    totalQueued += mediaMessages.Count + textCaptureMessages.Count;
                     onStatus?.Invoke($"Syncing {chatDto.Name}: {totalQueued} files queued…");
 
                     // Stop when the API returns fewer items than requested (beginning of chat).
@@ -698,6 +767,53 @@ namespace TelegramClient
         /// that arrived after the last live update we processed (using _highWatermark).
         /// Called when Telegram sends UpdateChannelTooLong.
         /// </summary>
+        /// <summary>
+        /// Saves the text content of a message that matched a Filter regex pattern to a .txt file.
+        /// The file is placed under {basePath}/{chatFolder}/Messages/{yyyyMMdd_HHmmss}_{id}.txt.
+        /// Returns IsSuccess=true on success so the caller fires the End Icon and OnSaved notification.
+        /// </summary>
+        private async Task<ResultExecute> SaveCapturedTextAsync(Message msg, ChatDto chatDto)
+        {
+            try
+            {
+                var basePath = _configParams?.PathSaveFile;
+                if (string.IsNullOrEmpty(basePath))
+                    return new ResultExecute(chatDto.Name) { ErrorMessage = "No download folder configured" };
+
+                var chatFolder = FolderTemplateHelper.Resolve(
+                    chatDto.FolderTemplate, chatDto.Type ?? "Other", chatDto.Name)
+                    ?? System.IO.Path.Combine(chatDto.Type ?? "Other", chatDto.Name);
+
+                var folder = System.IO.Path.Combine(basePath, chatFolder, "Messages");
+                System.IO.Directory.CreateDirectory(folder);
+
+                var safeName = $"{msg.date:yyyyMMdd_HHmmss}_{msg.ID}.txt";
+                var filePath = System.IO.Path.Combine(folder, safeName);
+
+                var content = $"Chat:       {chatDto.Name}\r\n" +
+                              $"Date:       {msg.date:yyyy-MM-dd HH:mm:ss}\r\n" +
+                              $"Message ID: {msg.ID}\r\n\r\n" +
+                              msg.message;
+
+                await System.IO.File.WriteAllTextAsync(filePath, content, System.Text.Encoding.UTF8);
+
+                return new ResultExecute(chatDto.Name)
+                {
+                    IsSuccess = true,
+                    FileName  = safeName,
+                    ErrorMessage = string.Empty,
+                };
+            }
+            catch (Exception ex)
+            {
+                return new ResultExecute(chatDto.Name)
+                {
+                    IsSuccess = false,
+                    ErrorMessage = ex.Message,
+                };
+            }
+        }
+
         private async Task ProcessMissedMessagesAsync(long channelId, ChatDto chatDto)
         {
             try
