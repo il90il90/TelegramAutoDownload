@@ -82,8 +82,8 @@ namespace SocialMediaPlugin
             if (!Directory.Exists(outputFolder))
                 Directory.CreateDirectory(outputFolder);
 
-            // Build output template: title as filename, yt-dlp sanitises illegal chars on Windows automatically
-            var outputTemplate = Path.Combine(outputFolder, "%(title)s.%(ext)s");
+            // Limit title to 120 bytes to avoid Windows MAX_PATH overflow on long or Unicode titles
+            var outputTemplate = Path.Combine(outputFolder, "%(title).120B.%(ext)s");
 
             // Optional cookies file — place in AppData tools folder or install dir
             var cookiesAppData = Path.Combine(
@@ -158,7 +158,7 @@ namespace SocialMediaPlugin
                     if (!string.IsNullOrWhiteSpace(err) && !err.TrimStart().StartsWith("WARNING:"))
                     {
                         hasError = true;
-                        errorMessage = err;
+                        errorMessage = MapKnownError(config.Text, err);
                     }
                 };
 
@@ -207,6 +207,31 @@ namespace SocialMediaPlugin
                 NotificationKey = tempName
             };
         }
+        /// <summary>
+        /// Maps known yt-dlp error strings to user-friendly messages that explain
+        /// how to resolve platform authentication or regional restrictions.
+        /// </summary>
+        private static string MapKnownError(string url, string rawError)
+        {
+            var platform = GetPlatformName(url);
+            var hint = string.Empty;
+
+            if (rawError.Contains("empty media response") || rawError.Contains("not granting access") ||
+                rawError.Contains("login") || rawError.Contains("authentication") ||
+                rawError.Contains("cookies") || rawError.Contains("logged-in") ||
+                rawError.Contains("logged in"))
+            {
+                hint = $"{platform} requires authentication. Add a cookies.txt file to %APPDATA%\\TelegramAutoDownload\\tools\\cookies.txt";
+            }
+            else if (rawError.Contains("IP address is blocked") || rawError.Contains("geo") ||
+                     rawError.Contains("not available in your country"))
+            {
+                hint = $"{platform} blocked this request (IP/region restriction). A VPN or cookies.txt may be required.";
+            }
+
+            return string.IsNullOrEmpty(hint) ? rawError : $"{hint}\n\nDetail: {rawError}";
+        }
+
         /// <summary>
         /// Returns a friendly platform name from the URL (e.g. "YouTube", "Facebook").
         /// Used as the subfolder name so downloads are organised by source.

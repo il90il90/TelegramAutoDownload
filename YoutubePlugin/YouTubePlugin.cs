@@ -45,8 +45,8 @@ namespace YoutubePlugin
             if (!Directory.Exists(baseFolder))
                 Directory.CreateDirectory(baseFolder);
 
-            // %(channel)s creates a per-channel subfolder; yt-dlp sanitises names automatically
-            var outputTemplate = Path.Combine(baseFolder, "%(channel)s", "%(title)s.%(ext)s");
+            // %(channel)s creates a per-channel subfolder; title capped at 120 bytes to avoid Windows MAX_PATH overflow
+            var outputTemplate = Path.Combine(baseFolder, "%(channel)s", "%(title).120B.%(ext)s");
 
             // Optional cookies file for authenticated downloads
             var cookiesAppData = Path.Combine(
