@@ -6,6 +6,11 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <!-- Copy NuGet assemblies (Ytdlp.NET.dll) to build output so they land in Plugins folder -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="Ytdlp.NET" Version="3.0.4" />
   </ItemGroup>
@@ -13,5 +18,16 @@
   <ItemGroup>
     <ProjectReference Include="..\BasePlugin\BasePlugins.csproj" />
   </ItemGroup>
+
+  <!-- Deploy plugin DLLs to the main app's bin Plugins folder for local dev/debug runs -->
+  <Target Name="DeployPlugin" AfterTargets="Build">
+    <PropertyGroup>
+      <PluginsDir>$(MSBuildProjectDirectory)\..\TelegramAutoDownload\bin\$(Configuration)\net8.0-windows\Plugins\YouTube</PluginsDir>
+    </PropertyGroup>
+    <MakeDir Directories="$(PluginsDir)" />
+    <Copy SourceFiles="$(OutputPath)YoutubePlugin.dll" DestinationFolder="$(PluginsDir)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="$(OutputPath)Ytdlp.NET.dll" DestinationFolder="$(PluginsDir)" SkipUnchangedFiles="true"
+          Condition="Exists('$(OutputPath)Ytdlp.NET.dll')" />
+  </Target>
 
 </Project>

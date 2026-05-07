@@ -10,4 +10,13 @@
     <ProjectReference Include="..\BasePlugin\BasePlugins.csproj" />
   </ItemGroup>
 
+  <!-- Deploy plugin DLLs to the main app's bin Plugins folder for local dev/debug runs -->
+  <Target Name="DeployPlugin" AfterTargets="Build">
+    <PropertyGroup>
+      <PluginsDir>$(MSBuildProjectDirectory)\..\TelegramAutoDownload\bin\$(Configuration)\net8.0-windows\Plugins\Other</PluginsDir>
+    </PropertyGroup>
+    <MakeDir Directories="$(PluginsDir)" />
+    <Copy SourceFiles="$(OutputPath)DownloadPlugin.dll" DestinationFolder="$(PluginsDir)" SkipUnchangedFiles="true" />
+  </Target>
+
 </Project>

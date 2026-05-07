@@ -31,9 +31,38 @@
     <ProjectReference Include="..\Logger\Logger.csproj" />
     <ProjectReference Include="..\TelegramClient\TelegramClient.csproj" />
     <!-- Plugin projects: ReferenceOutputAssembly=false means we don't link against them,
-         but MSBuild still builds them (and their DeployPlugin post-build target fires) -->
+         but MSBuild still builds them so their DLLs are available for CopyPluginsToPublishDir -->
     <ProjectReference Include="..\SocialMediaPlugin\SocialMediaPlugin.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\YoutubePlugin\YoutubePlugin.csproj"         ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\DownloadService\DownloadPlugin.csproj"      ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\TorrentPlugin\TorrentPlugin.csproj"         ReferenceOutputAssembly="false" />
   </ItemGroup>
+
+  <!-- Copy each plugin's DLL (and its NuGet-only dependencies) to publish_out/Plugins/<Name>/
+       BasePlugins.dll is intentionally excluded — it is already bundled inside the main exe. -->
+  <Target Name="CopyPluginsToPublishDir" AfterTargets="Publish">
+    <ItemGroup>
+      <!-- Shared yt-dlp wrapper used by both SocialMedia and YouTube plugins -->
+      <YtdlpNetDll Include="$(MSBuildProjectDirectory)\..\SocialMediaPlugin\bin\$(Configuration)\net8.0\Ytdlp.NET.dll"
+                   Condition="Exists('$(MSBuildProjectDirectory)\..\SocialMediaPlugin\bin\$(Configuration)\net8.0\Ytdlp.NET.dll')" />
+
+      <!-- Plugin DLLs (one per plugin) -->
+      <SocialMediaPluginDll Include="$(MSBuildProjectDirectory)\..\SocialMediaPlugin\bin\$(Configuration)\net8.0\SocialMediaPlugin.dll" />
+      <YoutubePluginDll     Include="$(MSBuildProjectDirectory)\..\YoutubePlugin\bin\$(Configuration)\net8.0\YoutubePlugin.dll" />
+      <DownloadPluginDll    Include="$(MSBuildProjectDirectory)\..\DownloadService\bin\$(Configuration)\net8.0\DownloadPlugin.dll" />
+
+      <!-- Torrent plugin + MonoTorrent NuGet DLLs (exclude BasePlugins which is in the main exe) -->
+      <TorrentDlls Include="$(MSBuildProjectDirectory)\..\TorrentPlugin\bin\$(Configuration)\net8.0\*.dll"
+                   Exclude="$(MSBuildProjectDirectory)\..\TorrentPlugin\bin\$(Configuration)\net8.0\BasePlugins.dll" />
+    </ItemGroup>
+
+    <MakeDir Directories="$(PublishDir)Plugins\SocialMedia;$(PublishDir)Plugins\YouTube;$(PublishDir)Plugins\Other;$(PublishDir)Plugins\Torrent" />
+
+    <Copy SourceFiles="@(SocialMediaPluginDll);@(YtdlpNetDll)" DestinationFolder="$(PublishDir)Plugins\SocialMedia\" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(YoutubePluginDll);@(YtdlpNetDll)"      DestinationFolder="$(PublishDir)Plugins\YouTube\"      SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(DownloadPluginDll)"                     DestinationFolder="$(PublishDir)Plugins\Other\"        SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(TorrentDlls)"                           DestinationFolder="$(PublishDir)Plugins\Torrent\"      SkipUnchangedFiles="true" />
+  </Target>
 
   <ItemGroup>
     <Resource Include="044a51cf-2359-480c-8c20-bf372f8a4cab.ico" />
