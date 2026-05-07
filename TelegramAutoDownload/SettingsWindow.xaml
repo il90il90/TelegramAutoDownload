@@ -204,21 +204,42 @@ Enable this only if you want to receive a Telegram message when a download finis
         </ScrollViewer>
 
         <!-- Action buttons -->
-        <DockPanel Grid.Row="1" Margin="0,16,0,0">
-            <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
+        <Grid Grid.Row="1" Margin="0,16,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Left: config export/import -->
+            <StackPanel Grid.Column="0" Orientation="Horizontal">
                 <Button Content="Export…" Width="80" Height="32" Margin="0,0,8,0"
                         Click="BtnExport_Click"/>
                 <Button Content="Import…" Width="80" Height="32"
                         Click="BtnImport_Click"/>
             </StackPanel>
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+
+            <!-- Centre: Logout (destructive — red) -->
+            <Button Grid.Column="1"
+                    x:Name="BtnLogout"
+                    Content="🚪 Logout"
+                    Height="32" Width="100"
+                    HorizontalAlignment="Center"
+                    Foreground="White"
+                    Background="#D32F2F"
+                    BorderBrush="#B71C1C"
+                    ToolTip="Log out of Telegram and delete the local session. You will need to re-enter your phone number on next launch."
+                    Click="BtnLogout_Click"/>
+
+            <!-- Right: Cancel / Save -->
+            <StackPanel Grid.Column="2" Orientation="Horizontal">
                 <Button Content="Cancel" Width="80" Height="32" Margin="0,0,8,0"
                         Click="BtnCancel_Click"/>
                 <Button Content="Save" Width="80" Height="32" IsDefault="True"
                         Style="{DynamicResource MahApps.Styles.Button.Square.Accent}"
                         Click="BtnSave_Click"/>
             </StackPanel>
-        </DockPanel>
+        </Grid>
     </Grid>
 
 </mah:MetroWindow>

@@ -8,20 +8,26 @@ using System.Net.Http;
 using System.Windows;
 using System.Windows.Navigation;
 using TelegramAutoDownload.Models;
+using TelegramClient;
 
 namespace TelegramAutoDownload
 {
     public partial class SettingsWindow : MetroWindow
     {
-        private readonly ConfigFile _configFile;
-        private ConfigParams _config;
+        private readonly ConfigFile  _configFile;
+        private readonly TelegramApp? _telegram;
+        private ConfigParams         _config;
 
-        public SettingsWindow(ConfigFile configFile)
+        public SettingsWindow(ConfigFile configFile, TelegramApp? telegram = null)
         {
             InitializeComponent();
             _configFile = configFile;
-            _config = _configFile.Read();
+            _telegram   = telegram;
+            _config     = _configFile.Read();
             LoadValues();
+
+            // Hide the logout button if Telegram is not connected
+            BtnLogout.Visibility = telegram != null ? Visibility.Visible : Visibility.Collapsed;
         }
 
         private void LoadValues()
@@ -260,6 +266,32 @@ namespace TelegramAutoDownload
         {
             Process.Start(new ProcessStartInfo(e.Uri.AbsoluteUri) { UseShellExecute = true });
             e.Handled = true;
+        }
+
+        private async void BtnLogout_Click(object sender, RoutedEventArgs e)
+        {
+            var confirm = MessageBox.Show(
+                "This will log you out of Telegram and delete the local session.\n\n" +
+                "The app will restart and ask for your phone number again.\n\n" +
+                "Continue?",
+                "Logout",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+
+            if (confirm != MessageBoxResult.Yes) return;
+
+            BtnLogout.IsEnabled = false;
+            BtnLogout.Content   = "Logging out…";
+
+            if (_telegram != null)
+                await _telegram.LogoutAsync();
+
+            // Restart the application so it goes through the login flow cleanly
+            var exe = System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName;
+            if (!string.IsNullOrEmpty(exe))
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(exe) { UseShellExecute = true });
+
+            Application.Current.Shutdown();
         }
     }
 }

@@ -104,6 +104,24 @@ namespace TelegramClient
         /// </summary>
         /// <param name="chatIds">The list of chat IDs to update.</param>
         /// <param name="pathFolderToSaveFiles">The path to the folder where files will be saved.</param>
+        /// <summary>
+        /// Logs out the current Telegram session, deletes the local session file,
+        /// and disposes the client. The caller should restart the application afterwards.
+        /// </summary>
+        public async Task LogoutAsync()
+        {
+            try { await Client.Auth_LogOut(); } catch { /* ignore network errors during logout */ }
+
+            // Dispose client to release file locks on the session file
+            try { Client.Dispose(); } catch { }
+
+            // Delete the session file so the next startup triggers re-authentication
+            var sessionPath = System.IO.Path.Combine(
+                System.Environment.GetFolderPath(System.Environment.SpecialFolder.ApplicationData),
+                "TelegramAutoDownload", "session.dat");
+            try { System.IO.File.Delete(sessionPath); } catch { }
+        }
+
         public void UpdateConfig(ConfigParams configParams)
         {
             _configParams = configParams;

@@ -356,7 +356,7 @@ namespace TelegramAutoDownload
 
         private void BtnSettings_Click(object sender, RoutedEventArgs e)
         {
-            var settingsWindow = new SettingsWindow(ConfigFile) { Owner = this };
+            var settingsWindow = new SettingsWindow(ConfigFile, TelegramApp) { Owner = this };
             if (settingsWindow.ShowDialog() == true)
             {
                 // Reload and re-apply config after settings are saved
