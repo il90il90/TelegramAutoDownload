@@ -227,6 +227,13 @@ namespace TelegramClient
                                 {
                                     var entry = ChatHistoryService.CreateEntry(infoMessage);
                                     OnHistoryEntry.Invoke(chat, entry);
+
+                                    // Send history reaction only when history is enabled and an icon is set
+                                    if (!string.IsNullOrEmpty(chat.HistoryIcon))
+                                    {
+                                        try { await ReactToMessage(chat, updates, infoMessage, chat.HistoryIcon); }
+                                        catch { /* non-critical */ }
+                                    }
                                 }
                                 catch { /* history write must never break downloads */ }
                             }
@@ -243,8 +250,9 @@ namespace TelegramClient
                             try
                             {
 
-                                // Send "download starting" reaction before the download begins
-                                if (!string.IsNullOrEmpty(chat.DownloadStartIcon))
+                                // Send "download starting" reaction only when there is actual
+                                // downloadable content — text-only messages must not trigger it.
+                                if (hasQueuedItem && !string.IsNullOrEmpty(chat.DownloadStartIcon))
                                 {
                                     try { await ReactToMessage(chat, updates, infoMessage, chat.DownloadStartIcon); }
                                     catch { /* non-critical */ }

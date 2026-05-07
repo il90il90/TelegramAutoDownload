@@ -68,6 +68,12 @@ namespace TelegramClient.Models
         /// </summary>
         public bool SaveHistory { get; set; } = false;
 
+        /// <summary>
+        /// Reaction emoji sent to Telegram when a message is appended to the history log.
+        /// Empty = no reaction. Only fires when SaveHistory = true.
+        /// </summary>
+        public string HistoryIcon { get; set; } = string.Empty;
+
         public event PropertyChangedEventHandler? PropertyChanged;
         protected void OnPropertyChanged(string name) =>
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));

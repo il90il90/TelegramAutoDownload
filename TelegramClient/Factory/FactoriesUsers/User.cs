@@ -48,6 +48,7 @@ namespace TelegramClient.Factory.FactoriesUsers
                     YtdlpQuality = chatParams.YtdlpQuality,
                     FolderTemplate = chatParams.FolderTemplate,
                     SaveHistory = chatParams.SaveHistory,
+                    HistoryIcon = chatParams.HistoryIcon,
                 };
             }
             catch (Exception)

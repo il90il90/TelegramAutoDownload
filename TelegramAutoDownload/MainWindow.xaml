@@ -278,7 +278,7 @@
                         </GridViewColumn>
 
                         <!-- History: save every message to a JSONL log file -->
-                        <GridViewColumn Width="105">
+                        <GridViewColumn Width="175">
                             <GridViewColumn.Header>
                                 <TextBlock Text="History" ToolTip="Save all messages to a JSONL file in History/{Type}/{Chat}.jsonl"/>
                             </GridViewColumn.Header>
@@ -289,6 +289,12 @@
                                                   ToolTip="Track new messages in a JSONL history file"
                                                   Loaded="HistoryCheckBox_Loaded"
                                                   Click="HistoryCheckBox_Click"/>
+                                        <ComboBox Tag="history"
+                                                  Loaded="HistoryIconComboBox_Loaded"
+                                                  DropDownOpened="EmojiComboBox_DropDownOpened"
+                                                  SelectionChanged="HistoryIconComboBox_SelectionChanged"
+                                                  Width="60"
+                                                  ToolTip="Reaction sent to Telegram when a message is saved to history (only when History is enabled)"/>
                                         <Button Content="📤" Height="22" Width="26" FontSize="11"
                                                 Padding="0" VerticalAlignment="Center"
                                                 Tag="{Binding}"

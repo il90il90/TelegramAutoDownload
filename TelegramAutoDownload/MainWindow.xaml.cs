@@ -653,11 +653,11 @@ namespace TelegramAutoDownload
                 ? Visibility.Collapsed
                 : Visibility.Visible;
 
-            // Walk the visual tree to find all ComboBoxes tagged "start" or "end" in this row
+            // Walk the visual tree to find all icon ComboBoxes in this row
             foreach (var combo in FindVisualChildren<ComboBox>(row))
             {
                 var tag = combo.Tag as string;
-                if (tag == "start" || tag == "end")
+                if (tag == "start" || tag == "end" || tag == "history")
                     combo.Visibility = visibility;
             }
         }
@@ -707,6 +707,36 @@ namespace TelegramAutoDownload
                 comboBox.Visibility = Visibility.Collapsed;
         }
 
+        private void HistoryIconComboBox_Loaded(object sender, RoutedEventArgs e)
+        {
+            if (sender is not ComboBox comboBox) return;
+            var chatDto = GetChatDtoFromComboBox(comboBox);
+            if (chatDto == null) return;
+            SetupEmojiComboBox(comboBox, chatDto, chatDto.HistoryIcon);
+
+            if (chatDto.AvailableReactions?.Count == 0)
+                comboBox.Visibility = Visibility.Collapsed;
+        }
+
+        private void HistoryIconComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_isLoading) return;
+            if (sender is not ComboBox comboBox || comboBox.SelectedItem == null) return;
+
+            var icon = comboBox.SelectedItem as string ?? string.Empty;
+            var dataContext = comboBox.DataContext as ChatDto;
+            if (dataContext == null) return;
+
+            var config = ConfigFile.Read();
+            var foundChat = config.Chats.FirstOrDefault(a => a.Id == dataContext.Id);
+            if (foundChat == null) return;
+
+            dataContext.HistoryIcon = icon;
+            foundChat.HistoryIcon = icon;
+            ConfigFile.Save(config);
+            TelegramApp.UpdateConfig(config);
+        }
+
         /// <summary>
         /// Fetches available reactions from Telegram when the user opens a ComboBox dropdown.
         /// The ComboBox Tag ("start" or "end") identifies which icon field to restore after loading.
@@ -728,12 +758,14 @@ namespace TelegramAutoDownload
 
                 if (!comboBox.IsLoaded) return;
 
-                var isStart = comboBox.Tag as string == "start";
-                var currentValue = isStart ? chatDto.DownloadStartIcon : chatDto.ReactionIcon;
+                var tag = comboBox.Tag as string;
+                var currentValue = tag == "start"   ? chatDto.DownloadStartIcon
+                                 : tag == "history" ? chatDto.HistoryIcon
+                                 : chatDto.ReactionIcon;
 
                 SetupEmojiComboBox(comboBox, chatDto, currentValue);
 
-                // Update visibility for both icon ComboBoxes in the same row
+                // Update visibility for all icon ComboBoxes in the same row
                 var row = GetListViewItemFromComboBox(comboBox);
                 UpdateIconComboBoxVisibility(chatDto, row);
             }
