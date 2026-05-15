@@ -179,10 +179,12 @@ Enable this only if you want to receive a Telegram message when a download finis
                         </DockPanel>
 
                         <TextBlock Text="Parallel Download Threads" FontWeight="SemiBold" Margin="0,16,0,4"/>
+                        <TextBlock Text="How many files download at once (1–16). Higher = faster when many files queue; if Telegram throttles you, lower this."
+                                   TextWrapping="Wrap" Foreground="#666" FontSize="11" Margin="0,0,0,6"/>
                         <DockPanel>
                             <TextBlock x:Name="tbThreadsValue" DockPanel.Dock="Right" Width="28"
-                                       VerticalAlignment="Center" TextAlignment="Right" Text="3"/>
-                            <Slider x:Name="sliderThreads" Minimum="1" Maximum="10" Value="3"
+                                       VerticalAlignment="Center" TextAlignment="Right" Text="6"/>
+                            <Slider x:Name="sliderThreads" Minimum="1" Maximum="16" Value="6"
                                     IsSnapToTickEnabled="True" TickFrequency="1"
                                     ValueChanged="SliderThreads_ValueChanged"/>
                         </DockPanel>

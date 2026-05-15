@@ -93,6 +93,7 @@ namespace TelegramClient
                 catch { /* login handled manually via Login() calls in LoginWindow */ }
             });
             Client.OnUpdates += Client_OnUpdates;
+            TelegramDownloadPerf.ConfigureClient(Client);
         }
 
         /// <summary>
@@ -134,7 +135,8 @@ namespace TelegramClient
             factoryService.RefreshMessage = RefreshMessageAsync;
             factoryService.WireProgressCallbacks();
             factoryUserService = new FactoryUserService(chatIds, configParams);
-            _semaphore = new SemaphoreSlim(Math.Max(1, configParams.DownloadThreads));
+            TelegramDownloadPerf.ConfigureClient(Client);
+            _semaphore = new SemaphoreSlim(TelegramDownloadPerf.ClampDownloadThreads(configParams.DownloadThreads));
 
             // Clean up stale .part files in the background so startup is not blocked.
             // Files older than 7 days are treated as abandoned (resume is unlikely after that long).
@@ -246,134 +248,116 @@ namespace TelegramClient
                 var sem = _semaphore;
                 var task = Task.Run(async () =>
                 {
-                    await sem.WaitAsync();
-                    try
+                    if (updateNewMessage.message is not Message infoMessage)
+                        return;
+
+                    // History + history reaction — do not hold a download slot
+                    if (capturedChat.SaveHistory && OnHistoryEntry != null)
                     {
-
-                    ResultExecute resultExecute = new ResultExecute(capturedChat.Name);
-
-                    if (updateNewMessage.message is Message infoMessage)
-                    {
-                            // Append to JSONL history file if the chat has SaveHistory enabled.
-                            // Runs for every message type (text, media, stickers, etc.) — the
-                            // history captures the full conversation, not just downloadable media.
-                        if (capturedChat.SaveHistory && OnHistoryEntry != null)
-                        {
-                            try
-                            {
-                                var entry = ChatHistoryService.CreateEntry(infoMessage);
-                                OnHistoryEntry.Invoke(capturedChat, entry);
-
-                                if (!string.IsNullOrEmpty(capturedChat.HistoryIcon))
-                                {
-                                    try { await ReactToMessage(capturedChat, updates, infoMessage, capturedChat.HistoryIcon); }
-                                    catch { /* non-critical */ }
-                                }
-                            }
-                            catch { /* history write must never break downloads */ }
-                        }
-
-                        var mediaPreview = GetPreviewFileName(infoMessage);
-                        var mediaEnabled = mediaPreview != null
-                            && IsDownloadTypeEnabledForMessage(infoMessage, capturedChat);
-                        var hasUrl = !string.IsNullOrEmpty(infoMessage.message)
-                            && infoMessage.message.Contains("http", StringComparison.OrdinalIgnoreCase);
-                        var hasQueuedItem = mediaEnabled || textPreviewCapture != null;
-                        if (hasQueuedItem)
-                            OnStarted?.Invoke(capturedChat.Name, infoMessage.ID);
-
-                        var shouldRunPipeline = textPreviewCapture != null || mediaEnabled || hasUrl;
-                        if (!shouldRunPipeline)
-                            return;
-
                         try
                         {
-                            if (hasQueuedItem && !string.IsNullOrEmpty(capturedChat.DownloadStartIcon))
-                            {
-                                try { await ReactToMessage(capturedChat, updates, infoMessage, capturedChat.DownloadStartIcon); }
-                                catch { /* non-critical */ }
-                            }
+                            var entry = ChatHistoryService.CreateEntry(infoMessage);
+                            OnHistoryEntry.Invoke(capturedChat, entry);
+                            if (!string.IsNullOrEmpty(capturedChat.HistoryIcon))
+                                _ = ReactToMessage(capturedChat, updates, infoMessage, capturedChat.HistoryIcon);
+                        }
+                        catch { /* history write must never break downloads */ }
+                    }
 
+                    var mediaPreview = GetPreviewFileName(infoMessage);
+                    var mediaEnabled = mediaPreview != null
+                        && IsDownloadTypeEnabledForMessage(infoMessage, capturedChat);
+                    var hasUrl = !string.IsNullOrEmpty(infoMessage.message)
+                        && infoMessage.message.Contains("http", StringComparison.OrdinalIgnoreCase);
+                    var hasQueuedItem = mediaEnabled || textPreviewCapture != null;
+                    var shouldRunPipeline = textPreviewCapture != null || mediaEnabled || hasUrl;
+                    if (!shouldRunPipeline)
+                        return;
+
+                    if (hasQueuedItem)
+                        OnStarted?.Invoke(capturedChat.Name, infoMessage.ID);
+
+                    if (hasQueuedItem && !string.IsNullOrEmpty(capturedChat.DownloadStartIcon))
+                        _ = ReactToMessage(capturedChat, updates, infoMessage, capturedChat.DownloadStartIcon);
+
+                    var resultExecute = new ResultExecute(capturedChat.Name);
+                    try
+                    {
+                        await sem.WaitAsync();
+                        try
+                        {
                             if (textPreviewCapture != null && mediaPreview == null)
                                 resultExecute = await SaveCapturedTextAsync(infoMessage, capturedChat);
                             else
                                 resultExecute = await factoryService.ExecuteAsync(updateNewMessage, capturedChat);
+                        }
+                        finally
+                        {
+                            sem.Release();
+                        }
 
-                            var resultMessageEvent = new ResultMessageEvent
+                        var resultMessageEvent = new ResultMessageEvent
+                        {
+                            Chat = capturedChat,
+                            Message = infoMessage.message,
+                            PostAuthor = infoMessage.post_author,
+                            ResultExecute = resultExecute,
+                        };
+
+                        if (resultExecute.IsSuccess && string.IsNullOrEmpty(resultExecute.ErrorMessage))
+                        {
+                            if (!string.IsNullOrEmpty(capturedChat.ReactionIcon))
                             {
-                                Chat = capturedChat,
-                                Message = infoMessage.message,
-                                PostAuthor = infoMessage.post_author,
-                                ResultExecute = resultExecute,
-                            };
-                            if (resultExecute.IsSuccess && capturedChat.ReactionIcon != null && string.IsNullOrEmpty(resultExecute.ErrorMessage))
+                                try { await ReactToMessage(capturedChat, updates, infoMessage, capturedChat.ReactionIcon); }
+                                catch (Exception reactionEx) { resultExecute.ErrorMessage = reactionEx.Message; }
+                            }
+                            if (OnSaved != null)
+                                await OnSaved.Invoke(resultMessageEvent);
+                        }
+                        else if (resultExecute.IsSuccess && !string.IsNullOrEmpty(resultExecute.ErrorMessage))
+                        {
+                            OnSkipped?.Invoke(capturedChat.Name, infoMessage.ID);
+                        }
+                        else if (!string.IsNullOrEmpty(resultExecute.ErrorMessage))
+                        {
+                            if (OnWarnningMessage != null)
+                                await OnWarnningMessage.Invoke(resultMessageEvent);
+
+                            if (!resultExecute.IsSuccess && !string.IsNullOrEmpty(resultExecute.FileName))
                             {
-                                if (!string.IsNullOrEmpty(capturedChat.ReactionIcon))
+                                var capturedUpdate = updateNewMessage;
+                                var capturedSem = sem;
+                                OnRetryReady?.Invoke(capturedChat.Name, resultExecute.FileName, async () =>
                                 {
+                                    await capturedSem.WaitAsync();
                                     try
                                     {
-                                        await ReactToMessage(capturedChat, updates, infoMessage, capturedChat.ReactionIcon);
-                                    }
-                                    catch (Exception reactionEx)
-                                    {
-                                        resultExecute.ErrorMessage = reactionEx.Message;
-                                    }
-                                }
-                                if (OnSaved != null)
-                                    await OnSaved.Invoke(resultMessageEvent);
-                            }
-                            else
-                            {
-                                if (resultExecute.IsSuccess && !string.IsNullOrEmpty(resultExecute.ErrorMessage))
-                                    OnSkipped?.Invoke(capturedChat.Name, infoMessage.ID);
-                                else if (!string.IsNullOrEmpty(resultExecute.ErrorMessage))
-                                {
-                                    if (OnWarnningMessage != null)
-                                        await OnWarnningMessage.Invoke(resultMessageEvent);
-
-                                    if (!resultExecute.IsSuccess && !string.IsNullOrEmpty(resultExecute.FileName))
-                                    {
-                                        var capturedUpdate = updateNewMessage;
-                                        var capturedSem = sem;
-                                        OnRetryReady?.Invoke(capturedChat.Name, resultExecute.FileName, async () =>
-                                        {
-                                            await capturedSem.WaitAsync();
-                                            try
+                                        OnStarted?.Invoke(capturedChat.Name, infoMessage.ID);
+                                        var retryResult = await factoryService.ExecuteAsync(capturedUpdate, capturedChat);
+                                        if (retryResult.IsSuccess && string.IsNullOrEmpty(retryResult.ErrorMessage) && OnSaved != null)
+                                            await OnSaved.Invoke(new ResultMessageEvent
                                             {
-                                                OnStarted?.Invoke(capturedChat.Name, infoMessage.ID);
-                                                var retryResult = await factoryService.ExecuteAsync(capturedUpdate, capturedChat);
-                                                if (retryResult.IsSuccess && string.IsNullOrEmpty(retryResult.ErrorMessage) && OnSaved != null)
-                                                    await OnSaved.Invoke(new ResultMessageEvent
-                                                    {
-                                                        Chat = capturedChat,
-                                                        Message = infoMessage.message,
-                                                        PostAuthor = infoMessage.post_author,
-                                                        ResultExecute = retryResult,
-                                                    });
-                                            }
-                                            finally { capturedSem.Release(); }
-                                        });
+                                                Chat = capturedChat,
+                                                Message = infoMessage.message,
+                                                PostAuthor = infoMessage.post_author,
+                                                ResultExecute = retryResult,
+                                            });
                                     }
-                                }
+                                    finally { capturedSem.Release(); }
+                                });
                             }
                         }
-                        catch (Exception ex)
-                        {
-                            resultExecute.ErrorMessage = ex.Message;
-                            OnErrorResultMessage?.Invoke(new ResultMessageEvent
-                            {
-                                Chat = capturedChat,
-                                Message = infoMessage.message,
-                                PostAuthor = infoMessage.post_author,
-                                ResultExecute = resultExecute,
-                            });
-                        }
                     }
-
-                    }
-                    finally
+                    catch (Exception ex)
                     {
-                        sem.Release();
+                        resultExecute.ErrorMessage = ex.Message;
+                        OnErrorResultMessage?.Invoke(new ResultMessageEvent
+                        {
+                            Chat = capturedChat,
+                            Message = infoMessage.message,
+                            PostAuthor = infoMessage.post_author,
+                            ResultExecute = resultExecute,
+                        });
                     }
                 });
                 tasks.Add(task);

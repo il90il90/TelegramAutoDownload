@@ -76,6 +76,9 @@ namespace TelegramClient.Factory.Base
             // Always create a callback so that:
             //   a) inactivity timer is reset on every received chunk, and
             //   b) ThrowIfCancellationRequested is polled during the transfer.
+            long lastUiReportTicks = 0;
+            var uiIntervalTicks = TelegramDownloadPerf.ProgressUiInterval.Ticks;
+
             Client.ProgressCallback callback = (transmitted, total) =>
             {
                 token.ThrowIfCancellationRequested();
@@ -83,7 +86,13 @@ namespace TelegramClient.Factory.Base
                 inactivityCts.CancelAfter(TimeSpan.FromMinutes(3));
 
                 if (OnProgress == null) return;
+
                 long effectiveTotal = total > 0 ? total : totalBytes;
+                var complete = effectiveTotal > 0 && transmitted >= effectiveTotal;
+                var now = Environment.TickCount64;
+                if (!complete && now - lastUiReportTicks < uiIntervalTicks) return;
+                lastUiReportTicks = now;
+
                 double pct = effectiveTotal > 0 ? transmitted * 100.0 / effectiveTotal : 0;
                 OnProgress.Invoke(chatName, fileName, TypeMessage.ToString(), Math.Min(99, pct), transmitted, effectiveTotal);
             };
@@ -112,13 +121,16 @@ namespace TelegramClient.Factory.Base
         /// </summary>
         protected static FileStream OpenOrResumePartFile(string partPath)
         {
+            var buffer = TelegramDownloadPerf.FileStreamBufferBytes;
             if (File.Exists(partPath))
             {
-                var stream = new FileStream(partPath, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+                var stream = new FileStream(partPath, FileMode.Open, FileAccess.ReadWrite, FileShare.None,
+                    buffer, FileOptions.SequentialScan);
                 stream.Seek(0, SeekOrigin.End);
                 return stream;
             }
-            return File.Create(partPath);
+            return new FileStream(partPath, FileMode.Create, FileAccess.ReadWrite, FileShare.None,
+                buffer, FileOptions.SequentialScan);
         }
 
         /// <summary>
@@ -251,34 +263,28 @@ namespace TelegramClient.Factory.Base
         /// Passing <paramref name="expectedSize"/> = 0 skips the size check (photos, etc.).
         /// Returns the subfolder name where the duplicate was found, or null.
         /// </summary>
-        protected string GetPathOfDuplicateFile(string fileName, long expectedSize = 0)
+        protected string GetPathOfDuplicateFile(string fileName, long expectedSize = 0, string? preferChatFolder = null)
         {
             try
             {
-                var rootPathByType = $"{PathFolderToSaveFiles}/{TypeMessage}";
+                if (string.IsNullOrEmpty(PathFolderToSaveFiles)) return null;
 
-                var folders = Directory.GetDirectories(rootPathByType);
-                foreach (var folder in folders)
+                var rootPathByType = Path.Combine(PathFolderToSaveFiles, TypeMessage.ToString());
+
+                if (!string.IsNullOrWhiteSpace(preferChatFolder))
                 {
-                    var nameFolder = folder.Split("\\").LastOrDefault();
-                    var files = Directory.GetFiles(folder);
-                    foreach (var file in files)
-                    {
-                        var nameFile = file.Split("\\").LastOrDefault();
-                        // Skip in-progress or interrupted download artifacts
-                        if (nameFile != null && nameFile.EndsWith(".part", StringComparison.OrdinalIgnoreCase)) continue;
-                        if (nameFile != fileName) continue;
+                    var chatDir = Path.Combine(rootPathByType, SanitizeFolderName(preferChatFolder));
+                    var fast = FindDuplicateInFolder(chatDir, fileName, expectedSize);
+                    if (fast != null) return fast;
+                }
 
-                        // When size is known, verify it matches to avoid false positives
-                        // (two different files that happen to share the same filename)
-                        if (expectedSize > 0)
-                        {
-                            var info = new FileInfo(file);
-                            if (info.Length != expectedSize) continue;
-                        }
+                if (!Directory.Exists(rootPathByType)) return null;
 
-                        return $"{nameFolder}";
-                    }
+                foreach (var folder in Directory.GetDirectories(rootPathByType))
+                {
+                    var nameFolder = Path.GetFileName(folder);
+                    var hit = FindDuplicateInFolder(folder, fileName, expectedSize);
+                    if (hit != null) return nameFolder;
                 }
 
                 return null;
@@ -287,6 +293,23 @@ namespace TelegramClient.Factory.Base
             {
                 return null;
             }
+        }
+
+        private static string SanitizeFolderName(string name)
+        {
+            foreach (var c in Path.GetInvalidFileNameChars())
+                name = name.Replace(c, ' ');
+            return name.Replace('~', ' ').TrimEnd();
+        }
+
+        private static string? FindDuplicateInFolder(string folder, string fileName, long expectedSize)
+        {
+            if (!Directory.Exists(folder)) return null;
+
+            var candidate = Path.Combine(folder, fileName);
+            if (!File.Exists(candidate)) return null;
+            if (expectedSize > 0 && new FileInfo(candidate).Length != expectedSize) return null;
+            return Path.GetFileName(folder);
         }
     }
 }

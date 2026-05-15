@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using BasePlugins;
+using TelegramClient;
 using TelegramClient.Models;
 
 namespace TelegramAutoDownload.Models
@@ -15,7 +16,7 @@ namespace TelegramAutoDownload.Models
         public string BotToken { get; set; } = Environment.GetEnvironmentVariable("BOT_TOKEN") ?? string.Empty;
         public string ChatId { get; set; } = Environment.GetEnvironmentVariable("CHAT_ID") ?? string.Empty;
 
-        public int DownloadThreads { get; set; } = 3;
+        public int DownloadThreads { get; set; } = TelegramDownloadPerf.DefaultDownloadThreads;
 
         // Notification preferences — which events should trigger a Telegram bot message
         public bool NotifyOnStartup { get; set; } = true;

@@ -41,7 +41,7 @@ namespace TelegramClient.Factory.Factories
                 if (FileDownloadIndex.IsAlreadyDownloaded(document.ID))
                 {
                     // Verify the file still exists on disk — guards against stale index after reinstall / moved files
-                    var existingFile = GetPathOfDuplicateFile(fileName, document.size);
+                    var existingFile = GetPathOfDuplicateFile(fileName, document.size, chatDto.Name);
                     if (existingFile != null)
                         return new ResultExecute(chatDto.Name) { IsSuccess = true, FileName = fileName, ErrorMessage = $"{fileName} already downloaded (id match)" };
                     // Stale index entry — file gone from disk, remove and re-download
@@ -49,37 +49,39 @@ namespace TelegramClient.Factory.Factories
                 }
 
                 // Secondary dedup: filename + file size match on disk
-                var fileExist = GetPathOfDuplicateFile(fileName, document.size);
+                var fileExist = GetPathOfDuplicateFile(fileName, document.size, chatDto.Name);
                 if (fileExist != null)
                 {
                     FileDownloadIndex.MarkDownloaded(document.ID);
                     return new ResultExecute(chatDto.Name) { IsSuccess = true, FileName = fileName, ErrorMessage = $"{fileName} is exist on {fileExist}" };
                 }
                 savedPath = PathLocationFolder(chatDto, fileName);
+                var partPath = GetPartFilePath(savedPath);
                 OnProgress?.Invoke(chatDto.Name, fileName, TypeMessage.ToString(), 0, 0, document.size);
-                var (progress, downloadToken, _) = MakeProgress(chatDto.Name, fileName, document.size);
+                var (progress, downloadToken, userCancelToken) = MakeProgress(chatDto.Name, fileName, document.size);
                 try
                 {
                     await WithRetryAsync(async () =>
                     {
-                        using var fileStream = File.Create(savedPath);
-                        // Dispose the stream on cancel so a hung DownloadFileAsync is force-interrupted
-                        using var _ = downloadToken.Register(() => { try { fileStream.Dispose(); } catch { } });
-                        await Client.DownloadFileAsync(document, fileStream, null, progress);
+                        using var stream = OpenOrResumePartFile(partPath);
+                        using var _ = downloadToken.Register(() => { try { stream.Dispose(); } catch { } });
+                        await Client.DownloadFileAsync(document, stream, null, progress);
                         return true;
                     }, downloadToken);
+                    File.Move(partPath, savedPath, overwrite: true);
                     FileDownloadIndex.MarkDownloaded(document.ID);
                     OnComplete?.Invoke(chatDto.Name, fileName, true);
                 }
                 catch (OperationCanceledException)
                 {
-                    DeletePartialFile(savedPath);
+                    if (userCancelToken.IsCancellationRequested)
+                        DeletePartialFile(partPath);
                     CancellationRegistry.Remove(CancellationRegistry.MakeKey(chatDto.Name, fileName));
                     return new ResultExecute(chatDto.Name) { IsSuccess = false, FileName = fileName, ErrorMessage = "Cancelled by user" };
                 }
                 catch (Exception) when (downloadToken.IsCancellationRequested)
                 {
-                    DeletePartialFile(savedPath);
+                    DeletePartialFile(partPath);
                     CancellationRegistry.Remove(CancellationRegistry.MakeKey(chatDto.Name, fileName));
                     return new ResultExecute(chatDto.Name) { IsSuccess = false, FileName = fileName, ErrorMessage = "Download cancelled (no progress)" };
                 }
@@ -97,7 +99,7 @@ namespace TelegramClient.Factory.Factories
                 if (FileDownloadIndex.IsAlreadyDownloaded(photo.id))
                 {
                     // Verify the file still exists on disk — guards against stale index after reinstall / moved files
-                    var existingFile = GetPathOfDuplicateFile(fileName);
+                    var existingFile = GetPathOfDuplicateFile(fileName, preferChatFolder: chatDto.Name);
                     if (existingFile != null)
                         return new ResultExecute(chatDto.Name) { IsSuccess = true, FileName = fileName, ErrorMessage = $"{fileName} already downloaded (id match)" };
                     // Stale index entry — file gone from disk, remove and re-download
@@ -105,7 +107,7 @@ namespace TelegramClient.Factory.Factories
                 }
 
                 // Secondary dedup: filename match on disk (photos have predictable names from photo.id)
-                var fileExist = GetPathOfDuplicateFile(fileName);
+                var fileExist = GetPathOfDuplicateFile(fileName, preferChatFolder: chatDto.Name);
                 if (fileExist != null)
                 {
                     FileDownloadIndex.MarkDownloaded(photo.id);

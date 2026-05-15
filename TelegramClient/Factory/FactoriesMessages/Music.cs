@@ -39,7 +39,7 @@ namespace TelegramClient.Factory.FactoriesMessages
                 if (FileDownloadIndex.IsAlreadyDownloaded(document.ID))
                 {
                     // Verify the file still exists on disk — guards against stale index after reinstall / moved files
-                    var existingFile = GetPathOfDuplicateFile(fileName, document.size);
+                    var existingFile = GetPathOfDuplicateFile(fileName, document.size, chatDto.Name);
                     if (existingFile != null)
                         return new ResultExecute(chatDto.Name) { IsSuccess = true, FileName = fileName, ErrorMessage = $"{fileName} already downloaded (id match)" };
                     // Stale index entry — file gone from disk, remove and re-download
@@ -47,7 +47,7 @@ namespace TelegramClient.Factory.FactoriesMessages
                 }
 
                 // Secondary dedup: filename + file size match on disk
-                var fileExist = GetPathOfDuplicateFile(fileName, document.size);
+                var fileExist = GetPathOfDuplicateFile(fileName, document.size, chatDto.Name);
                 if (fileExist != null)
                 {
                     FileDownloadIndex.MarkDownloaded(document.ID);

@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.7.7] - 2026-05-15
+
+### Changed
+
+- Faster Telegram downloads: WTelegramClient 4.3.12 with 10 parallel chunk transfers and 1 MB parts (was 2 transfers / 512 KB)
+- Default parallel download threads raised to 6 (slider max 16)
+- Download slots no longer held during reactions/history; UI progress updates throttled; faster duplicate checks; photos use resumable `.part` files
+
 ## [2.7.6] - 2026-05-15
 
 ### Fixed

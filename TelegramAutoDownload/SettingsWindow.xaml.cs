@@ -45,7 +45,7 @@ namespace TelegramAutoDownload
 
             // General
             txtDownloadPath.Text = _config.PathSaveFile ?? string.Empty;
-            sliderThreads.Value = Math.Max(1, Math.Min(10, _config.DownloadThreads));
+            sliderThreads.Value = TelegramClient.TelegramDownloadPerf.ClampDownloadThreads(_config.DownloadThreads);
             tbThreadsValue.Text = ((int)sliderThreads.Value).ToString();
 
             // Notification preferences
@@ -117,7 +117,7 @@ namespace TelegramAutoDownload
             _config.BotToken = pbBotToken.Text;
             _config.ChatId = txtChatId.Text.Trim();
             _config.PathSaveFile = txtDownloadPath.Text.Trim();
-            _config.DownloadThreads = (int)sliderThreads.Value;
+            _config.DownloadThreads = TelegramClient.TelegramDownloadPerf.ClampDownloadThreads((int)sliderThreads.Value);
 
             // Notification preferences
             _config.NotifyOnStartup  = chkNotifyStartup.IsChecked  == true;
@@ -182,7 +182,7 @@ namespace TelegramAutoDownload
                 BotToken          = pbBotToken.Text ?? string.Empty,
                 ChatId            = txtChatId.Text?.Trim() ?? string.Empty,
                 PathSaveFile      = txtDownloadPath.Text?.Trim() ?? string.Empty,
-                DownloadThreads   = Math.Max(1, Math.Min(10, (int)sliderThreads.Value)),
+                DownloadThreads   = TelegramClient.TelegramDownloadPerf.ClampDownloadThreads((int)sliderThreads.Value),
                 NotifyOnStartup   = chkNotifyStartup.IsChecked == true,
                 NotifyOnProgress  = chkNotifyProgress.IsChecked == true,
                 NotifyOnComplete  = chkNotifyComplete.IsChecked == true,
@@ -202,8 +202,8 @@ namespace TelegramAutoDownload
             _config.ChatId = imported.ChatId ?? string.Empty;
             if (!string.IsNullOrWhiteSpace(imported.PathSaveFile))
                 _config.PathSaveFile = imported.PathSaveFile;
-            if (imported.DownloadThreads >= 1 && imported.DownloadThreads <= 10)
-                _config.DownloadThreads = imported.DownloadThreads;
+            if (imported.DownloadThreads >= TelegramClient.TelegramDownloadPerf.MinDownloadThreads)
+                _config.DownloadThreads = TelegramClient.TelegramDownloadPerf.ClampDownloadThreads(imported.DownloadThreads);
             _config.NotifyOnStartup = imported.NotifyOnStartup;
             _config.NotifyOnProgress = imported.NotifyOnProgress;
             _config.NotifyOnComplete = imported.NotifyOnComplete;
