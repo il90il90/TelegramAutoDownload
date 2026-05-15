@@ -5,7 +5,6 @@
 #define AppExeName "TelegramAutoDownload.exe"
 #define SourceDir "..\publish"
 #define OutputDir ".."
-#define OutputName "TelegramAutoDownload_v2.7.4_Setup"
 
 [Setup]
 AppId={{A3F2C8E1-4D7B-4E9A-B5C0-1234567890AB}
@@ -21,7 +20,7 @@ DefaultGroupName={#AppName}
 AllowNoIcons=yes
 LicenseFile=
 OutputDir={#OutputDir}
-OutputBaseFilename={#OutputName}
+OutputBaseFilename=TelegramAutoDownload_v{#AppVersion}_Setup
 SetupIconFile=..\TelegramAutoDownload\044a51cf-2359-480c-8c20-bf372f8a4cab.ico
 Compression=lzma2/ultra64
 SolidCompression=yes
