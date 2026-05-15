@@ -88,11 +88,15 @@ namespace TelegramClient
             System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(sessionPath)!);
             Client = new Client(appId, apiHash, sessionPath);
             // Store the login task so callers can await it when needed
-            _loginTask = Task.Run(async () =>
+            _loginTask = Task.Run(() => TelegramClientApiGate.RunAsync(async () =>
             {
-                try { await Client.LoginUserIfNeeded(); }
-                catch { /* login handled manually via Login() calls in LoginWindow */ }
-            });
+                try { await Client.LoginUserIfNeeded().ConfigureAwait(false); }
+                catch (Exception ex)
+                {
+                    // LoginWindow may complete login later; log for diagnostics only.
+                    Log.Debug(ex, "Background LoginUserIfNeeded did not complete yet");
+                }
+            }));
             Client.OnUpdates += Client_OnUpdates;
             TelegramDownloadPerf.ConfigureClient(Client);
         }
@@ -102,6 +106,33 @@ namespace TelegramClient
         /// </summary>
         public Task WaitForLoginAsync(int timeoutMs = 10000) =>
             Task.WhenAny(_loginTask, Task.Delay(timeoutMs)).ContinueWith(_ => { });
+
+        /// <summary>
+        /// Ensures the Telegram session is connected before any API call. Returns false if not logged in.
+        /// </summary>
+        public async Task<bool> EnsureTelegramReadyAsync()
+        {
+            try { await _loginTask.ConfigureAwait(false); }
+            catch { /* background login may fail when manual login is required */ }
+
+            if (Client.UserId != 0) return true;
+
+            try
+            {
+                await TelegramClientApiGate.RunAsync(() => Client.LoginUserIfNeeded()).ConfigureAwait(false);
+                return Client.UserId != 0;
+            }
+            catch (RpcException ex) when (ex.Code == 404 || ex.Message.Contains("AUTH", StringComparison.OrdinalIgnoreCase))
+            {
+                Log.Warning(ex, "Telegram session invalid (auth key)");
+                return false;
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "EnsureTelegramReadyAsync failed");
+                return false;
+            }
+        }
 
         /// <summary>
         /// Update the configuration for chat IDs and folder for file saving.
@@ -149,25 +180,30 @@ namespace TelegramClient
         /// Re-fetches a single message from Telegram to obtain a fresh file reference.
         /// Called automatically when FILE_REFERENCE_EXPIRED is encountered during download.
         /// </summary>
-        private async Task<Message?> RefreshMessageAsync(ChatDto chatDto, int msgId)
+        private Task<Message?> RefreshMessageAsync(ChatDto chatDto, int msgId) =>
+            TelegramClientApiGate.RunAsync(() => RefreshMessageCoreAsync(chatDto, msgId));
+
+        private async Task<Message?> RefreshMessageCoreAsync(ChatDto chatDto, int msgId)
         {
             try
             {
+                if (!await EnsureTelegramReadyAsync().ConfigureAwait(false))
+                    return null;
+
                 _accessHashes.TryGetValue(chatDto.Id, out var accessHash);
                 MessageBase[]? messages;
 
                 if (accessHash != 0)
                 {
-                    // Channel or supergroup — must use Channels_GetMessages for fresh references
                     var result = await Client.Channels_GetMessages(
                         new InputChannel(chatDto.Id, accessHash),
-                        new InputMessageID { id = msgId });
+                        new InputMessageID { id = msgId }).ConfigureAwait(false);
                     messages = result?.Messages;
                 }
                 else
                 {
-                    // Basic group or user conversation
-                    var result = await Client.Messages_GetMessages(new InputMessageID { id = msgId });
+                    var result = await Client.Messages_GetMessages(new InputMessageID { id = msgId })
+                        .ConfigureAwait(false);
                     messages = result?.Messages;
                 }
 
@@ -623,7 +659,7 @@ namespace TelegramClient
                 DateTime offsetDate = default;
                 InputPeer offsetPeer = null!;
                 const int pageSize = 100;
-                const int maxPages = 50;
+                const int maxPages = 8; // fallback lookup only — full list uses FetchDialogFolder
 
                 for (int page = 0; page < maxPages; page++)
                 {
@@ -792,6 +828,12 @@ namespace TelegramClient
         {
             try
             {
+                if (!await EnsureTelegramReadyAsync().ConfigureAwait(false))
+                {
+                    return (Array.Empty<Message>(), offsetId, false,
+                        "Not connected to Telegram. Log out and sign in again, then click Refresh.");
+                }
+
                 var peer = await ResolveInputPeerAsync(chatDto).ConfigureAwait(false);
                 if (peer == null)
                 {
@@ -1504,17 +1546,21 @@ namespace TelegramClient
             return new List<string> { "👍", "❤️", "🔥", "👌", "💯", "😂", "😮", "🎉" };
         }
 
-        public async Task<IList<ChatDto>> GetAllChats()
+        public Task<IList<ChatDto>> GetAllChats() =>
+            TelegramClientApiGate.RunAsync(GetAllChatsCoreAsync);
+
+        private async Task<IList<ChatDto>> GetAllChatsCoreAsync()
         {
+            if (!await EnsureTelegramReadyAsync().ConfigureAwait(false))
+                throw new InvalidOperationException("Not connected to Telegram. Log out and sign in again.");
+
             var groups = new List<ChatDto>();
             var seenIds = new HashSet<long>();
 
             // Fetch both the main dialog list (folder 0) and the archive (folder 1)
             // so channels/groups that were archived in Telegram are also visible.
             foreach (int folderId in new[] { 0, 1 })
-            {
-                await FetchDialogFolder(folderId, groups, seenIds);
-            }
+                await FetchDialogFolder(folderId, groups, seenIds).ConfigureAwait(false);
 
             // Deduplicate entries that share the same name and type but differ in members count.
             // This handles migrated groups: when a regular group is upgraded to a supergroup,

@@ -33,8 +33,12 @@ namespace TelegramAutoDownload
                 var telegram = await Task.Run(() =>
                     new TelegramApp(config.AppId, config.ApiHash));
 
-                // Give WTelegramClient a moment to restore the session
-                await Task.Delay(1500);
+                await Task.Run(() => telegram.WaitForLoginAsync(60000));
+                if (!await telegram.EnsureTelegramReadyAsync().ConfigureAwait(true))
+                {
+                    FallbackToLogin();
+                    return;
+                }
 
                 if (telegram.Client.UserId != 0)
                 {

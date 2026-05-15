@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.7.10] - 2026-05-15
+
+### Fixed
+
+- Telegram client stability: all dialog/history API calls serialized (re-entrant gate); login awaited before refresh; UI shows refresh/connection errors instead of empty chat list
+- Prevents `TaskCanceledException` / `Auth key not found` when loading groups while downloads run
+
 ## [2.7.9] - 2026-05-15
 
 ### Fixed

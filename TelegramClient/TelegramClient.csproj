@@ -13,4 +13,8 @@
     <ProjectReference Include="..\BasePlugin\BasePlugins.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="TelegramAutoDownload.Tests" />
+  </ItemGroup>
+
 </Project>

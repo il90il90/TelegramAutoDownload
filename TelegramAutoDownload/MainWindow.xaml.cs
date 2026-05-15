@@ -183,11 +183,12 @@ namespace TelegramAutoDownload
             _ = YtdlpService.EnsureAsync();
 
             // Step 4: Connect to Telegram and fetch fresh chats in background
-            await Task.Run(() => TelegramApp.WaitForLoginAsync(15000));
+            await Task.Run(() => TelegramApp.WaitForLoginAsync(30000));
             await RefreshChatsFromTelegramAsync();
 
             mainLoadingRing.IsActive = false;
-            tbLoadingStatus.Text = string.Empty;
+            if (string.IsNullOrEmpty(tbLoadingStatus.Text) || tbLoadingStatus.Text.StartsWith("Refreshing", StringComparison.Ordinal))
+                tbLoadingStatus.Text = string.Empty;
 
             // Step 5: Apply saved config (UpdateConfig, path, notifications)
             ConfigParams configParams = ConfigFile.Read();
@@ -265,7 +266,14 @@ namespace TelegramAutoDownload
         {
             try
             {
+                tbLoadingStatus.Text = "Refreshing chats…";
                 ConfigParams configParams = ConfigFile.Read();
+
+                if (!await Task.Run(() => TelegramApp.EnsureTelegramReadyAsync()).ConfigureAwait(true))
+                {
+                    tbLoadingStatus.Text = "Telegram not connected — use Settings → Log out, then sign in again.";
+                    return;
+                }
 
                 var freshChats = await Task.Run(async () =>
                 {
@@ -312,10 +320,15 @@ namespace TelegramAutoDownload
                 ReapplyColumnSort();
                 _isLoading = false;
                 tbCountChats.Text = _chats.Count.ToString();
+                tbLoadingStatus.Text = string.Empty;
             }
             catch (Exception ex)
             {
                 Log.Warning(ex, "RefreshChatsFromTelegramAsync failed");
+                var hint = ex is InvalidOperationException or TaskCanceledException
+                    ? " Refresh failed — wait for downloads to finish or restart the app, then click Refresh."
+                    : $" Refresh failed: {ex.Message}";
+                tbLoadingStatus.Text = hint.Trim();
             }
         }
 
