@@ -36,6 +36,7 @@ namespace TelegramAutoDownload
                 await Task.Run(() => telegram.WaitForLoginAsync(60000));
                 if (!await telegram.EnsureTelegramReadyAsync().ConfigureAwait(true))
                 {
+                    TelegramSessionHelper.DeleteSessionFile();
                     FallbackToLogin();
                     return;
                 }
@@ -57,6 +58,8 @@ namespace TelegramAutoDownload
             catch (Exception ex)
             {
                 Serilog.Log.Warning(ex, "SplashWindow: connection failed, falling back to login");
+                if (TelegramSessionHelper.IsAuthKeyError(ex))
+                    TelegramSessionHelper.DeleteSessionFile();
                 FallbackToLogin();
             }
         }

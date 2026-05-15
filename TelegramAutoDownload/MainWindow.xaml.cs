@@ -262,6 +262,13 @@ namespace TelegramAutoDownload
         /// Fetches fresh chat data from Telegram in the background and merges saved settings into the result.
         /// Updates the UI once the refresh is complete.
         /// </summary>
+        private void OpenLoginAfterSessionInvalid()
+        {
+            var login = new LoginWindow(ConfigFile);
+            login.Show();
+            Close();
+        }
+
         private async Task RefreshChatsFromTelegramAsync()
         {
             try
@@ -271,7 +278,7 @@ namespace TelegramAutoDownload
 
                 if (!await Task.Run(() => TelegramApp.EnsureTelegramReadyAsync()).ConfigureAwait(true))
                 {
-                    tbLoadingStatus.Text = "Telegram not connected — use Settings → Log out, then sign in again.";
+                    tbLoadingStatus.Text = "Connecting to Telegram failed — close other copies of this app, then restart.";
                     return;
                 }
 
@@ -321,6 +328,12 @@ namespace TelegramAutoDownload
                 _isLoading = false;
                 tbCountChats.Text = _chats.Count.ToString();
                 tbLoadingStatus.Text = string.Empty;
+            }
+            catch (TelegramSessionInvalidException ex)
+            {
+                Log.Warning(ex, "Session invalid during refresh");
+                tbLoadingStatus.Text = "Session expired — opening sign-in…";
+                Dispatcher.Invoke(() => OpenLoginAfterSessionInvalid());
             }
             catch (Exception ex)
             {

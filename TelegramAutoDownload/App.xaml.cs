@@ -13,9 +13,22 @@ namespace TelegramAutoDownload
     public partial class App : System.Windows.Application
     {
         public static WinForms.NotifyIcon? TrayIcon { get; private set; }
+        private static System.Threading.Mutex? _singleInstanceMutex;
 
         protected override void OnStartup(StartupEventArgs e)
         {
+            _singleInstanceMutex = new System.Threading.Mutex(true, "TelegramAutoDownload_SingleInstance_v1", out bool isFirst);
+            if (!isFirst)
+            {
+                System.Windows.MessageBox.Show(
+                    "Telegram Auto Download is already running.\n\nCheck the system tray, or end the other process in Task Manager.",
+                    "Already running",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+                Shutdown();
+                return;
+            }
+
             // Initialize the logger FIRST so exception handlers can write to it immediately.
             Log.Logger = new LoggerConfiguration()
                 .WriteTo.File(System.IO.Path.Combine(AppPaths.LogsDir, "app-.log"),
@@ -112,6 +125,9 @@ namespace TelegramAutoDownload
 
         protected override void OnExit(ExitEventArgs e)
         {
+            try { _singleInstanceMutex?.ReleaseMutex(); } catch { }
+            _singleInstanceMutex?.Dispose();
+
             // Flush the download index before exit so no completed-download records are lost.
             // The index uses a debounced background save; this ensures pending writes are persisted.
             TelegramClient.FileDownloadIndex.Flush();

@@ -82,11 +82,9 @@ namespace TelegramClient
         public TelegramApp(int appId, string apiHash)
         {
             // Store session in writable AppData folder so it survives installs/updates
-            var sessionPath = System.IO.Path.Combine(
-                System.Environment.GetFolderPath(System.Environment.SpecialFolder.ApplicationData),
-                "TelegramAutoDownload", "session.dat");
-            System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(sessionPath)!);
-            Client = new Client(appId, apiHash, sessionPath);
+            System.IO.Directory.CreateDirectory(
+                System.IO.Path.GetDirectoryName(TelegramSessionHelper.SessionFilePath)!);
+            Client = new Client(appId, apiHash, TelegramSessionHelper.SessionFilePath);
             // Store the login task so callers can await it when needed
             _loginTask = Task.Run(() => TelegramClientApiGate.RunAsync(async () =>
             {
@@ -115,16 +113,24 @@ namespace TelegramClient
             try { await _loginTask.ConfigureAwait(false); }
             catch { /* background login may fail when manual login is required */ }
 
-            if (Client.UserId != 0) return true;
-
             try
             {
+                if (Client.UserId != 0)
+                {
+                    // UserId can be stale after Auth key not found — verify with a tiny API call.
+                    await TelegramClientApiGate.RunAsync(() =>
+                        Client.Messages_GetDialogs(offset_date: default, offset_id: 0, offset_peer: null!,
+                            limit: 1, hash: 0)).ConfigureAwait(false);
+                    return true;
+                }
+
                 await TelegramClientApiGate.RunAsync(() => Client.LoginUserIfNeeded()).ConfigureAwait(false);
                 return Client.UserId != 0;
             }
-            catch (RpcException ex) when (ex.Code == 404 || ex.Message.Contains("AUTH", StringComparison.OrdinalIgnoreCase))
+            catch (Exception ex) when (TelegramSessionHelper.IsAuthKeyError(ex))
             {
-                Log.Warning(ex, "Telegram session invalid (auth key)");
+                Log.Warning(ex, "Telegram session invalid — removing session file");
+                TelegramSessionHelper.DeleteSessionFile();
                 return false;
             }
             catch (Exception ex)
@@ -132,6 +138,13 @@ namespace TelegramClient
                 Log.Warning(ex, "EnsureTelegramReadyAsync failed");
                 return false;
             }
+        }
+
+        /// <summary>Deletes corrupt session and throws <see cref="TelegramSessionInvalidException"/>.</summary>
+        public static void InvalidateSession(string reason, Exception? inner = null)
+        {
+            TelegramSessionHelper.DeleteSessionFile();
+            throw new TelegramSessionInvalidException(reason, inner);
         }
 
         /// <summary>
@@ -154,11 +167,7 @@ namespace TelegramClient
             // Dispose client to release file locks on the session file
             try { Client.Dispose(); } catch { }
 
-            // Delete the session file so the next startup triggers re-authentication
-            var sessionPath = System.IO.Path.Combine(
-                System.Environment.GetFolderPath(System.Environment.SpecialFolder.ApplicationData),
-                "TelegramAutoDownload", "session.dat");
-            try { System.IO.File.Delete(sessionPath); } catch { }
+            TelegramSessionHelper.DeleteSessionFile();
         }
 
         public void UpdateConfig(ConfigParams configParams)
@@ -1537,15 +1546,20 @@ namespace TelegramClient
         private async Task<IList<ChatDto>> GetAllChatsCoreAsync()
         {
             if (!await EnsureTelegramReadyAsync().ConfigureAwait(false))
-                throw new InvalidOperationException("Not connected to Telegram. Log out and sign in again.");
+                InvalidateSession("Telegram session expired. Sign in again when the app opens.");
 
             var groups = new List<ChatDto>();
             var seenIds = new HashSet<long>();
 
-            // Fetch both the main dialog list (folder 0) and the archive (folder 1)
-            // so channels/groups that were archived in Telegram are also visible.
-            foreach (int folderId in new[] { 0, 1 })
-                await FetchDialogFolder(folderId, groups, seenIds).ConfigureAwait(false);
+            try
+            {
+                foreach (int folderId in new[] { 0, 1 })
+                    await FetchDialogFolder(folderId, groups, seenIds).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (TelegramSessionHelper.IsAuthKeyError(ex))
+            {
+                InvalidateSession("Telegram session expired. Sign in again when the app opens.", ex);
+            }
 
             // Deduplicate entries that share the same name and type but differ in members count.
             // This handles migrated groups: when a regular group is upgraded to a supergroup,

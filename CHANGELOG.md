@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.7.12] - 2026-05-15
+
+### Fixed
+
+- Single app instance (prevents `session.dat` lock / broken startup)
+- Auto-detect corrupt Telegram session (`Auth key not found`), delete session file, open sign-in — no manual Logout required
+- Live smoke test tool (`TelegramSmokeTest`) for connection/chat/browse verification
+
 ## [2.7.11] - 2026-05-15
 
 ### Fixed

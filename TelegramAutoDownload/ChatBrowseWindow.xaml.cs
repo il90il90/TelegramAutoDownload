@@ -31,7 +31,16 @@ namespace TelegramAutoDownload
             var who = string.IsNullOrEmpty(chat.Username) ? chat.Name : $"{chat.Name}  @{chat.Username}";
             tbHeader.Text = $"{who}  ({chat.Type})";
             lvMessages.ItemsSource = Rows;
-            Loaded += async (_, _) => await LoadFirstPageAsync();
+            Loaded += async (_, _) =>
+            {
+                // If startup refresh has not cached access hashes yet, wait briefly and retry once.
+                await LoadFirstPageAsync();
+                if (Rows.Count == 0 && _nextOffset == 0)
+                {
+                    await Task.Delay(1500);
+                    await LoadFirstPageAsync();
+                }
+            };
         }
 
         private void RebuildKindQuickSelectButtons()
