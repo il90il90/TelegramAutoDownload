@@ -23,7 +23,8 @@ namespace TelegramClient.Factory.Factories
 
         public override async Task<ResultExecute> ExecuteAsync(Message message, ChatDto chatDto)
         {
-            if (!chatDto.Download.Videos) return new ResultExecute(chatDto.Name);
+            if (!chatDto.Download.Videos)
+                return new ResultExecute(chatDto.Name) { IsSuccess = true };
             if (message.media is not MessageMediaDocument mediaVideo) return new ResultExecute(chatDto.Name);
 
             var document = (Document)mediaVideo.document;

@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.7.5] - 2026-05-15
+
+### Added
+
+- Log alert on main window: blinking control when warnings/errors are written; click opens log viewer at that line
+- `LogAlertSink` + improved log file format and log viewer (line numbers, filters, find next error)
+
+### Fixed
+
+- Monitoring: only **selected** chats are listened to; each message is matched to its own chat (no wrong-chat downloads)
+- Disabled media types no longer log false "Download failed" with empty error
+- Chat browse window: dynamic "Only {Kind}" filters and footer buttons that stay visible when resizing
+
 ## [2.0.0] - 2026-05-05
 
 ### Added

@@ -1,4 +1,4 @@
-
+﻿
 _tmp_out/
 
 # Sensitive runtime files
@@ -430,7 +430,5 @@ FodyWeavers.xsd
 
 /TelegramAutoDownload/bin
 
-p u b l i s h _ r u n /  
- p u b l i s h _ r u n /  
- p u b l i s h _ o u t /  
- 
+publish_run/
+publish_out/

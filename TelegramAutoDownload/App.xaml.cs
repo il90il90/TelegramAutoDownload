@@ -6,6 +6,7 @@ using System.Drawing;
 using System.Windows;
 using WinForms = System.Windows.Forms;
 using TelegramAutoDownload.Models;
+using TelegramAutoDownload.Services;
 
 namespace TelegramAutoDownload
 {
@@ -21,6 +22,7 @@ namespace TelegramAutoDownload
                     rollingInterval: RollingInterval.Day,
                     retainedFileCountLimit: 7,
                     outputTemplate: SerilogFileSettings.FileOutputTemplate)
+                .WriteTo.Sink(new LogAlertSink(SerilogFileSettings.FileOutputTemplate))
                 .CreateLogger();
 
             // --- Global exception handlers: log and show instead of crashing ---
@@ -69,7 +71,7 @@ namespace TelegramAutoDownload
             contextMenu.Items.Add("Show", null, (_, __) => ShowMainWindow());
             contextMenu.Items.Add("Logs…", null, (_, __) =>
             {
-                new LogViewerWindow().Show();
+                LogViewerWindow.Open(null);
             });
             contextMenu.Items.Add(new WinForms.ToolStripSeparator());
             contextMenu.Items.Add("Exit", null, (_, __) => { TrayIcon?.Dispose(); Shutdown(); });

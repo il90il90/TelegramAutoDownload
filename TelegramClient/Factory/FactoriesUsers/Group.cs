@@ -21,7 +21,7 @@ namespace TelegramClient.Factory.FactoriesUsers
             if (group != null)
             {
                 var chatParams = ConfigParams.Chats.FirstOrDefault(a => a.Id == group.ID);
-                if (chatParams == null) return null;
+                if (chatParams == null || !chatParams.Selected) return null;
 
                 return new ChatDto()
                 {

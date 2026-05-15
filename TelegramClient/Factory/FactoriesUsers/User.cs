@@ -30,7 +30,7 @@ namespace TelegramClient.Factory.FactoriesUsers
                 var username = tlUser.MainUsername?.Replace("@", "");
                 if (username == null) return null;
                 var chatParams = ConfigParams.Chats.FirstOrDefault(a => a.Id == userKvp.Value.Key);
-                if (chatParams == null) return null;
+                if (chatParams == null || !chatParams.Selected) return null;
 
                 return new ChatDto()
                 {

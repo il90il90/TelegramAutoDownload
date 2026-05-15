@@ -3,21 +3,22 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
         Title="Application logs"
-        Height="560" Width="800"
-        MinHeight="400" MinWidth="560"
+        Height="620" Width="900"
+        MinHeight="420" MinWidth="640"
         WindowStartupLocation="CenterScreen"
         ShowInTaskbar="True">
 
     <Grid Margin="12">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="140"/>
+            <RowDefinition Height="120"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <TextBlock Grid.Row="0" TextWrapping="Wrap" Foreground="#555" FontSize="11" Margin="0,0,0,8">
-            Log files are stored under your AppData folder (see Open folder). Large files show the last portion only.
+            Line numbers are shown for navigation. Warnings and errors are highlighted when opened from the main-screen alert.
         </TextBlock>
 
         <DockPanel Grid.Row="1" Margin="0,0,0,8">
@@ -25,13 +26,25 @@
             <ListBox x:Name="lstLogs" SelectionChanged="LstLogs_OnSelectionChanged"/>
         </DockPanel>
 
-        <GroupBox Grid.Row="2" Header="Content" Padding="6">
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,6">
+            <CheckBox x:Name="chkShowInf" Content="Info" IsChecked="True" Margin="0,0,12,0"
+                      Checked="Filter_Changed" Unchecked="Filter_Changed"/>
+            <CheckBox x:Name="chkShowWrn" Content="Warnings" IsChecked="True" Margin="0,0,12,0"
+                      Checked="Filter_Changed" Unchecked="Filter_Changed"/>
+            <CheckBox x:Name="chkShowErr" Content="Errors" IsChecked="True" Margin="0,0,12,0"
+                      Checked="Filter_Changed" Unchecked="Filter_Changed"/>
+            <TextBlock x:Name="tbNavStatus" VerticalAlignment="Center" Foreground="#C62828" FontWeight="SemiBold"
+                       TextWrapping="Wrap"/>
+        </StackPanel>
+
+        <GroupBox Grid.Row="3" Header="Content" Padding="6">
             <TextBox x:Name="tbContent" IsReadOnly="True" FontFamily="Consolas" FontSize="11"
                      VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
-                     TextWrapping="NoWrap"/>
+                     TextWrapping="NoWrap" Background="#FAFAFA"/>
         </GroupBox>
 
-        <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,12,0,0" HorizontalAlignment="Right">
+        <StackPanel Grid.Row="4" Orientation="Horizontal" Margin="0,12,0,0" HorizontalAlignment="Right">
+            <Button Content="Find next error" Width="110" Height="30" Margin="0,0,8,0" Click="BtnFindNextError_OnClick"/>
             <Button Content="Refresh" Width="88" Height="30" Margin="0,0,8,0" Click="BtnRefresh_OnClick"/>
             <Button Content="Open folder" Width="100" Height="30" Margin="0,0,8,0" Click="BtnOpenFolder_OnClick"/>
             <Button Content="Delete selected" Width="110" Height="30" Margin="0,0,8,0" Click="BtnDelete_OnClick"/>

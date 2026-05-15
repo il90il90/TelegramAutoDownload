@@ -127,7 +127,7 @@ namespace TelegramClient
         public void UpdateConfig(ConfigParams configParams)
         {
             _configParams = configParams;
-            var chatIds = configParams.Chats?.Select(c => c.Id).ToList() ?? new List<long>();
+            var chatIds = MonitoredChatHelper.GetMonitoredChatIds(configParams.Chats);
             factoryService = new FactoryMessagesService(Client, configParams.PathSaveFile ?? string.Empty);
             factoryService.OnProgress = OnProgress;
             factoryService.OnComplete = OnComplete;
@@ -178,7 +178,7 @@ namespace TelegramClient
         }
         private async Task Client_OnUpdates(UpdatesBase updates)
         {
-            if (factoryUserService == null)
+            if (factoryService == null || _configParams == null)
                 return;
 
             // Cache access hashes for all channels/chats we see in any update
@@ -189,8 +189,6 @@ namespace TelegramClient
                 else if (kv.Value is TL.Chat grp)
                     _accessHashes[grp.ID] = 0;
             }
-
-            var chat = factoryUserService.Execute(updates);
 
             List<Task> tasks = [];
             foreach (Update update in updates.UpdateList)
@@ -204,196 +202,181 @@ namespace TelegramClient
                     continue;
                 }
 
+                if (update is not UpdateNewMessage updateNewMessage) continue;
+                if (updateNewMessage.message is not Message liveMsg) continue;
+
+                // Resolve settings per message peer — never reuse one chat for an entire update batch.
+                var chat = FindMonitoredChat(MonitoredChatHelper.GetPeerId(liveMsg));
                 if (chat == null) continue;
 
-                if (update is UpdateNewMessage updateNewMessage)
+                var peerId = MonitoredChatHelper.GetPeerId(liveMsg);
+                if (peerId != 0)
+                    _highWatermark.AddOrUpdate(peerId, liveMsg.ID, (_, prev) => Math.Max(prev, liveMsg.ID));
+
+                // Non-null when a text-only message matches a Filter regex pattern.
+                string? capturedTextPreview = null;
+
+                var previewName = GetPreviewFileName(liveMsg);
+                var typeEnabled = IsDownloadTypeEnabledForMessage(liveMsg, chat);
+                if (previewName != null && typeEnabled)
+                    OnEnqueued?.Invoke(chat.Name, liveMsg.ID, previewName);
+
+                if (previewName == null
+                    && !string.IsNullOrEmpty(liveMsg.message)
+                    && chat.IgnoreFileByRegex.Count > 0)
                 {
-                    // Declared here so the Task.Run lambda below can capture it via closure.
-                    // Non-null when a text-only message matches a Filter regex pattern.
-                    string? capturedTextPreview = null;
-
-                    // Track watermark so catch-up doesn't re-download this message
-                    if (updateNewMessage.message is Message liveMsg)
+                    foreach (var pattern in chat.IgnoreFileByRegex)
                     {
-                        var peerId = liveMsg.peer_id is PeerChannel pc ? pc.channel_id
-                                   : liveMsg.peer_id is PeerChat pg ? pg.chat_id
-                                   : liveMsg.peer_id is PeerUser pu ? pu.user_id : 0;
-                        if (peerId != 0)
-                            // AddOrUpdate is atomic: prevents lost-update race between concurrent threads
-                            _highWatermark.AddOrUpdate(peerId, liveMsg.ID, (_, prev) => Math.Max(prev, liveMsg.ID));
-
-                        // Register in queue immediately so the user can see it waiting
-                        var previewName = GetPreviewFileName(liveMsg);
-                        if (previewName != null)
-                            OnEnqueued?.Invoke(chat.Name, liveMsg.ID, previewName);
-
-                        // Filter regex also applies to message text: if a text-only message
-                        // (no downloadable media) matches any pattern, it is captured and
-                        // saved as a .txt file with the End Icon reaction.
-                        if (previewName == null
-                            && !string.IsNullOrEmpty(liveMsg.message)
-                            && chat.IgnoreFileByRegex.Count > 0)
+                        if (System.Text.RegularExpressions.Regex.IsMatch(
+                                liveMsg.message, pattern,
+                                System.Text.RegularExpressions.RegexOptions.IgnoreCase))
                         {
-                            foreach (var pattern in chat.IgnoreFileByRegex)
-                            {
-                                if (System.Text.RegularExpressions.Regex.IsMatch(
-                                        liveMsg.message, pattern,
-                                        System.Text.RegularExpressions.RegexOptions.IgnoreCase))
-                                {
-                                    var snippet = liveMsg.message.Length > 45
-                                        ? liveMsg.message[..45] + "…"
-                                        : liveMsg.message;
-                                    capturedTextPreview = $"📝 {snippet}";
-                                    OnEnqueued?.Invoke(chat.Name, liveMsg.ID, capturedTextPreview);
-                                    break;
-                                }
-                            }
+                            var snippet = liveMsg.message.Length > 45
+                                ? liveMsg.message[..45] + "…"
+                                : liveMsg.message;
+                            capturedTextPreview = $"📝 {snippet}";
+                            OnEnqueued?.Invoke(chat.Name, liveMsg.ID, capturedTextPreview);
+                            break;
                         }
                     }
+                }
 
-                    // Capture the current semaphore instance so a concurrent UpdateConfig
-                    // call that replaces _semaphore does not cause a SemaphoreFullException
-                    // when the finally block calls Release() on the wrong instance.
-                    var sem = _semaphore;
-                    var task = Task.Run(async () =>
+                var capturedChat = chat;
+                var textPreviewCapture = capturedTextPreview;
+                var sem = _semaphore;
+                var task = Task.Run(async () =>
+                {
+                    await sem.WaitAsync();
+                    try
                     {
-                        await sem.WaitAsync();
-                        try
-                        {
 
-                        ResultExecute resultExecute = new ResultExecute(chat.Name);
+                    ResultExecute resultExecute = new ResultExecute(capturedChat.Name);
 
-                        if (updateNewMessage.message is Message infoMessage)
-                        {
+                    if (updateNewMessage.message is Message infoMessage)
+                    {
                             // Append to JSONL history file if the chat has SaveHistory enabled.
                             // Runs for every message type (text, media, stickers, etc.) — the
                             // history captures the full conversation, not just downloadable media.
-                            if (chat.SaveHistory && OnHistoryEntry != null)
-                            {
-                                try
-                                {
-                                    var entry = ChatHistoryService.CreateEntry(infoMessage);
-                                    OnHistoryEntry.Invoke(chat, entry);
-
-                                    // Send history reaction only when history is enabled and an icon is set
-                                    if (!string.IsNullOrEmpty(chat.HistoryIcon))
-                                    {
-                                        try { await ReactToMessage(chat, updates, infoMessage, chat.HistoryIcon); }
-                                        catch { /* non-critical */ }
-                                    }
-                                }
-                                catch { /* history write must never break downloads */ }
-                            }
-
-                            // Something is queued when the message has downloadable media OR when its
-                            // text matched a Filter regex pattern and will be captured as a .txt file.
-                            var hasQueuedItem = GetPreviewFileName(infoMessage) != null
-                                             || capturedTextPreview != null;
-                            if (hasQueuedItem)
-                                OnStarted?.Invoke(chat.Name, infoMessage.ID);
-
+                        if (capturedChat.SaveHistory && OnHistoryEntry != null)
+                        {
                             try
                             {
+                                var entry = ChatHistoryService.CreateEntry(infoMessage);
+                                OnHistoryEntry.Invoke(capturedChat, entry);
 
-                                // Send "download starting" reaction only when there is content to process.
-                                if (hasQueuedItem && !string.IsNullOrEmpty(chat.DownloadStartIcon))
+                                if (!string.IsNullOrEmpty(capturedChat.HistoryIcon))
                                 {
-                                    try { await ReactToMessage(chat, updates, infoMessage, chat.DownloadStartIcon); }
+                                    try { await ReactToMessage(capturedChat, updates, infoMessage, capturedChat.HistoryIcon); }
                                     catch { /* non-critical */ }
                                 }
-
-                                // Route text-only captures to SaveCapturedTextAsync; everything else
-                                // goes through the normal plugin/factory pipeline.
-                                if (capturedTextPreview != null && GetPreviewFileName(infoMessage) == null)
-                                    resultExecute = await SaveCapturedTextAsync(infoMessage, chat);
-                                else
-                                    resultExecute = await factoryService.ExecuteAsync(updateNewMessage, chat);
-
-                                var resultMessageEvent = new ResultMessageEvent
-                                {
-                                    Chat = chat,
-                                    Message = infoMessage.message,
-                                    PostAuthor = infoMessage.post_author,
-                                    ResultExecute = resultExecute,
-                                };
-                                if (resultExecute.IsSuccess && chat.ReactionIcon != null && string.IsNullOrEmpty(resultExecute.ErrorMessage))
-                                {
-                                    if (updateNewMessage != null && !string.IsNullOrEmpty(chat.ReactionIcon))
-                                    {
-                                        try
-                                        {
-                                            await ReactToMessage(chat, updates, infoMessage, chat.ReactionIcon);
-                                        }
-                                        catch (Exception reactionEx)
-                                        {
-                                            // Reaction failure must not suppress the OnSaved notification
-                                            resultExecute.ErrorMessage = reactionEx.Message;
-                                        }
-                                    }
-                                    if (OnSaved != null)
-                                        await OnSaved.Invoke(resultMessageEvent);
-                                }
-                                else
-                                {
-                                    if (resultExecute.IsSuccess && !string.IsNullOrEmpty(resultExecute.ErrorMessage))
-                                    {
-                                        // Dedup skip — remove the UI entry silently, no warning needed
-                                        OnSkipped?.Invoke(chat.Name, infoMessage.ID);
-                                    }
-                                    else if (!string.IsNullOrEmpty(resultExecute.ErrorMessage))
-                                    {
-                                        if (OnWarnningMessage != null)
-                                            await OnWarnningMessage.Invoke(resultMessageEvent);
-
-                                        // Offer retry when a genuine failure occurred (not a dedup skip)
-                                        if (!resultExecute.IsSuccess && !string.IsNullOrEmpty(resultExecute.FileName))
-                                        {
-                                            var capturedUpdate = updateNewMessage;
-                                            var capturedChat   = chat;
-                                            var capturedSem    = sem;
-                                            OnRetryReady?.Invoke(capturedChat.Name, resultExecute.FileName, async () =>
-                                            {
-                                                await capturedSem.WaitAsync();
-                                                try
-                                                {
-                                                    OnStarted?.Invoke(capturedChat.Name, infoMessage.ID);
-                                                    var retryResult = await factoryService.ExecuteAsync(capturedUpdate, capturedChat);
-                                                    if (retryResult.IsSuccess && string.IsNullOrEmpty(retryResult.ErrorMessage) && OnSaved != null)
-                                                        await OnSaved.Invoke(new ResultMessageEvent
-                                                        {
-                                                            Chat = capturedChat,
-                                                            Message = infoMessage.message,
-                                                            PostAuthor = infoMessage.post_author,
-                                                            ResultExecute = retryResult,
-                                                        });
-                                                }
-                                                finally { capturedSem.Release(); }
-                                            });
-                                        }
-                                    }
-                                }
                             }
-                            catch (Exception ex)
-                            {
-                                resultExecute.ErrorMessage = ex.Message;
-                                OnErrorResultMessage?.Invoke(new ResultMessageEvent
-                                {
-                                    Chat = chat,
-                                    Message = infoMessage.message,
-                                    PostAuthor = infoMessage.post_author,
-                                    ResultExecute = resultExecute,
-                                });
-                            }
+                            catch { /* history write must never break downloads */ }
                         }
 
-                        }
-                        finally
+                        var mediaPreview = GetPreviewFileName(infoMessage);
+                        var mediaEnabled = mediaPreview != null
+                            && IsDownloadTypeEnabledForMessage(infoMessage, capturedChat);
+                        var hasUrl = !string.IsNullOrEmpty(infoMessage.message)
+                            && infoMessage.message.Contains("http", StringComparison.OrdinalIgnoreCase);
+                        var hasQueuedItem = mediaEnabled || textPreviewCapture != null;
+                        if (hasQueuedItem)
+                            OnStarted?.Invoke(capturedChat.Name, infoMessage.ID);
+
+                        var shouldRunPipeline = textPreviewCapture != null || mediaEnabled || hasUrl;
+                        if (!shouldRunPipeline)
+                            return;
+
+                        try
                         {
-                            sem.Release();
+                            if (hasQueuedItem && !string.IsNullOrEmpty(capturedChat.DownloadStartIcon))
+                            {
+                                try { await ReactToMessage(capturedChat, updates, infoMessage, capturedChat.DownloadStartIcon); }
+                                catch { /* non-critical */ }
+                            }
+
+                            if (textPreviewCapture != null && mediaPreview == null)
+                                resultExecute = await SaveCapturedTextAsync(infoMessage, capturedChat);
+                            else
+                                resultExecute = await factoryService.ExecuteAsync(updateNewMessage, capturedChat);
+
+                            var resultMessageEvent = new ResultMessageEvent
+                            {
+                                Chat = capturedChat,
+                                Message = infoMessage.message,
+                                PostAuthor = infoMessage.post_author,
+                                ResultExecute = resultExecute,
+                            };
+                            if (resultExecute.IsSuccess && capturedChat.ReactionIcon != null && string.IsNullOrEmpty(resultExecute.ErrorMessage))
+                            {
+                                if (!string.IsNullOrEmpty(capturedChat.ReactionIcon))
+                                {
+                                    try
+                                    {
+                                        await ReactToMessage(capturedChat, updates, infoMessage, capturedChat.ReactionIcon);
+                                    }
+                                    catch (Exception reactionEx)
+                                    {
+                                        resultExecute.ErrorMessage = reactionEx.Message;
+                                    }
+                                }
+                                if (OnSaved != null)
+                                    await OnSaved.Invoke(resultMessageEvent);
+                            }
+                            else
+                            {
+                                if (resultExecute.IsSuccess && !string.IsNullOrEmpty(resultExecute.ErrorMessage))
+                                    OnSkipped?.Invoke(capturedChat.Name, infoMessage.ID);
+                                else if (!string.IsNullOrEmpty(resultExecute.ErrorMessage))
+                                {
+                                    if (OnWarnningMessage != null)
+                                        await OnWarnningMessage.Invoke(resultMessageEvent);
+
+                                    if (!resultExecute.IsSuccess && !string.IsNullOrEmpty(resultExecute.FileName))
+                                    {
+                                        var capturedUpdate = updateNewMessage;
+                                        var capturedSem = sem;
+                                        OnRetryReady?.Invoke(capturedChat.Name, resultExecute.FileName, async () =>
+                                        {
+                                            await capturedSem.WaitAsync();
+                                            try
+                                            {
+                                                OnStarted?.Invoke(capturedChat.Name, infoMessage.ID);
+                                                var retryResult = await factoryService.ExecuteAsync(capturedUpdate, capturedChat);
+                                                if (retryResult.IsSuccess && string.IsNullOrEmpty(retryResult.ErrorMessage) && OnSaved != null)
+                                                    await OnSaved.Invoke(new ResultMessageEvent
+                                                    {
+                                                        Chat = capturedChat,
+                                                        Message = infoMessage.message,
+                                                        PostAuthor = infoMessage.post_author,
+                                                        ResultExecute = retryResult,
+                                                    });
+                                            }
+                                            finally { capturedSem.Release(); }
+                                        });
+                                    }
+                                }
+                            }
                         }
-                    });
-                    tasks.Add(task);
-                }
+                        catch (Exception ex)
+                        {
+                            resultExecute.ErrorMessage = ex.Message;
+                            OnErrorResultMessage?.Invoke(new ResultMessageEvent
+                            {
+                                Chat = capturedChat,
+                                Message = infoMessage.message,
+                                PostAuthor = infoMessage.post_author,
+                                ResultExecute = resultExecute,
+                            });
+                        }
+                    }
+
+                    }
+                    finally
+                    {
+                        sem.Release();
+                    }
+                });
+                tasks.Add(task);
             }
             await Task.WhenAll(tasks);
         }
@@ -1140,7 +1123,7 @@ namespace TelegramClient
 
         /// <summary>Returns the monitored ChatDto for a given peer ID, or null if not monitored.</summary>
         private ChatDto? FindMonitoredChat(long peerId) =>
-            _configParams?.Chats?.FirstOrDefault(c => c.Id == peerId || c.Id == -peerId);
+            MonitoredChatHelper.FindMonitored(_configParams?.Chats, peerId);
 
         /// <summary>
         /// Saves the text content of a message that matched a Filter regex pattern to a .txt file.

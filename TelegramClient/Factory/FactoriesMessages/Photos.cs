@@ -23,7 +23,8 @@ namespace TelegramClient.Factory.Factories
 
         public override async Task<ResultExecute> ExecuteAsync(Message message, ChatDto chatDto)
         {
-            if (!chatDto.Download.Photos) return new ResultExecute(chatDto.Name);
+            if (!chatDto.Download.Photos)
+                return new ResultExecute(chatDto.Name) { IsSuccess = true };
             string fileName = "";
             string savedPath = "";
 

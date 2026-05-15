@@ -22,6 +22,15 @@
             </DoubleAnimationUsingKeyFrames>
         </Storyboard>
 
+        <Storyboard x:Key="BlinkLogAlert" RepeatBehavior="Forever">
+            <DoubleAnimationUsingKeyFrames Storyboard.TargetName="btnLogAlert"
+                                           Storyboard.TargetProperty="Opacity">
+                <DiscreteDoubleKeyFrame KeyTime="0:0:0.0" Value="1.0"/>
+                <DiscreteDoubleKeyFrame KeyTime="0:0:0.5" Value="0.15"/>
+                <DiscreteDoubleKeyFrame KeyTime="0:0:1.0" Value="1.0"/>
+            </DoubleAnimationUsingKeyFrames>
+        </Storyboard>
+
         <conv:StringNotEmptyConverter     x:Key="StringNotEmpty"/>
         <conv:CollectionNotEmptyConverter x:Key="CollectionNotEmpty"/>
 
@@ -623,6 +632,13 @@
             <DockPanel>
                 <!-- Right: version + connection dot + path controls -->
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button x:Name="btnLogAlert" Visibility="Collapsed"
+                            Style="{x:Null}"
+                            Background="#FFEBEE" BorderBrush="#E53935" BorderThickness="1"
+                            Foreground="#C62828" FontWeight="SemiBold" Cursor="Hand"
+                            Padding="8,2" Margin="0,0,10,0" VerticalAlignment="Center"
+                            ToolTip="Warnings or errors were written to the log — click to view"
+                            Click="BtnLogAlert_Click"/>
                     <Button x:Name="btnAppVersion" Content="v2.2.25"
                             Style="{x:Null}"
                             Background="Transparent" BorderThickness="0"

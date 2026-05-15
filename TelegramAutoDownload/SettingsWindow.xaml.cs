@@ -215,8 +215,7 @@ namespace TelegramAutoDownload
 
         private void BtnViewLogs_Click(object sender, RoutedEventArgs e)
         {
-            var w = new LogViewerWindow { Owner = this };
-            w.Show();
+            LogViewerWindow.Open(null, this);
         }
 
         private async void BtnTestBot_Click(object sender, RoutedEventArgs e)

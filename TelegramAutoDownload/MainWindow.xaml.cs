@@ -38,6 +38,8 @@ namespace TelegramAutoDownload
         // Holds the pending release when an update is available (shown via blink)
         private ReleaseInfo? _pendingRelease;
 
+        private System.Windows.Media.Animation.Storyboard? _logAlertBlink;
+
         // Guard against double-click while a manual update check is in progress
         private bool _checkingForUpdate = false;
 
@@ -129,11 +131,46 @@ namespace TelegramAutoDownload
 
             // Bootstrap StatisticsService (singleton) and refresh all-time counters whenever they change
             StatisticsService.Instance.Changed += UpdateStatsStrip;
+
+            AppLogAlertService.Instance.Changed += OnLogAlertChanged;
+            Closed += (_, _) => AppLogAlertService.Instance.Changed -= OnLogAlertChanged;
+        }
+
+        private void OnLogAlertChanged()
+        {
+            var count = AppLogAlertService.Instance.UnreadCount;
+            if (count <= 0)
+            {
+                btnLogAlert.Visibility = Visibility.Collapsed;
+                _logAlertBlink?.Stop();
+                _logAlertBlink = null;
+                btnLogAlert.Opacity = 1;
+                return;
+            }
+
+            btnLogAlert.Visibility = Visibility.Visible;
+            btnLogAlert.Content = count == 1 ? "⚠ View log" : $"⚠ View logs ({count})";
+            var latest = AppLogAlertService.Instance.Latest;
+            btnLogAlert.ToolTip = string.IsNullOrWhiteSpace(latest?.Summary)
+                ? "Click to open application logs at the latest warning or error"
+                : latest!.Summary;
+
+            if (_logAlertBlink != null) return;
+            _logAlertBlink = (System.Windows.Media.Animation.Storyboard)FindResource("BlinkLogAlert");
+            _logAlertBlink?.Begin();
+        }
+
+        private void BtnLogAlert_Click(object sender, RoutedEventArgs e)
+        {
+            var pointer = AppLogAlertService.Instance.Latest;
+            AppLogAlertService.Instance.Clear();
+            LogViewerWindow.Open(pointer, this);
         }
 
         private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
             btnAppVersion.Content = $"v{AppVersion.Current}";
+            OnLogAlertChanged();
 
             // Step 1: Show saved chats from last session immediately — no network call needed
             LoadChatsFromConfig();

@@ -23,7 +23,8 @@ namespace TelegramClient.Factory.FactoriesMessages
 
         public override async Task<ResultExecute> ExecuteAsync(Message message, ChatDto chatDto)
         {
-            if (!chatDto.Download.Music) return new ResultExecute(chatDto.Name);
+            if (!chatDto.Download.Music)
+                return new ResultExecute(chatDto.Name) { IsSuccess = true };
             if (message.media is MessageMediaDocument mediaDocument)
             {
                 var document = (Document)mediaDocument.document;
