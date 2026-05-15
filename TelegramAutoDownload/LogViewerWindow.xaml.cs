@@ -96,8 +96,13 @@ namespace TelegramAutoDownload
             }
         }
 
+        private bool IsFilterUiReady =>
+            tbContent != null && chkShowInf != null && chkShowWrn != null && chkShowErr != null;
+
         private void ApplyFilterAndDisplay()
         {
+            if (!IsFilterUiReady) return;
+
             if (string.IsNullOrEmpty(_rawFileText))
             {
                 tbContent.Text = string.Empty;
@@ -147,6 +152,8 @@ namespace TelegramAutoDownload
 
         private void NavigateToPointer(LogPointer pointer)
         {
+            if (!IsFilterUiReady) return;
+
             chkShowWrn.IsChecked = true;
             chkShowErr.IsChecked = true;
             ApplyFilterAndDisplay();
@@ -190,7 +197,11 @@ namespace TelegramAutoDownload
             tbNavStatus.Text = $"[{pointer.Level}] {pointer.Summary}";
         }
 
-        private void Filter_Changed(object sender, RoutedEventArgs e) => ApplyFilterAndDisplay();
+        private void Filter_Changed(object sender, RoutedEventArgs e)
+        {
+            if (!IsFilterUiReady) return;
+            ApplyFilterAndDisplay();
+        }
 
         private void BtnFindNextError_OnClick(object sender, RoutedEventArgs e)
         {

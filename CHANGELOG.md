@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.7.6] - 2026-05-15
+
+### Fixed
+
+- Log viewer crashed on open (`NullReferenceException`) when filter checkboxes initialized before the content text box
+
 ## [2.7.5] - 2026-05-15
 
 ### Added
