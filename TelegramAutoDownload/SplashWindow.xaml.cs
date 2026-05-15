@@ -31,12 +31,13 @@ namespace TelegramAutoDownload
                 SetStatus("Connecting…");
 
                 var telegram = await Task.Run(() =>
-                    new TelegramApp(config.AppId, config.ApiHash));
+                    AppTelegram.GetOrCreate(config.AppId, config.ApiHash));
 
                 await Task.Run(() => telegram.WaitForLoginAsync(60000));
                 if (!await telegram.EnsureTelegramReadyAsync().ConfigureAwait(true))
                 {
                     TelegramSessionHelper.DeleteSessionFile();
+                    AppTelegram.Release();
                     FallbackToLogin();
                     return;
                 }
@@ -52,7 +53,7 @@ namespace TelegramAutoDownload
                     return;
                 }
 
-                // Session existed but is no longer valid — fall through to login
+                AppTelegram.Release();
                 FallbackToLogin();
             }
             catch (Exception ex)
@@ -60,6 +61,7 @@ namespace TelegramAutoDownload
                 Serilog.Log.Warning(ex, "SplashWindow: connection failed, falling back to login");
                 if (TelegramSessionHelper.IsAuthKeyError(ex))
                     TelegramSessionHelper.DeleteSessionFile();
+                AppTelegram.Release();
                 FallbackToLogin();
             }
         }

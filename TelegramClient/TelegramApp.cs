@@ -164,10 +164,15 @@ namespace TelegramClient
             }
             catch { /* ignore network errors during logout */ }
 
-            // Dispose client to release file locks on the session file
-            try { Client.Dispose(); } catch { }
-
+            DisposeClient();
             TelegramSessionHelper.DeleteSessionFile();
+        }
+
+        /// <summary>Stops update handler and disposes the client so session.dat can be opened again.</summary>
+        public void DisposeClient()
+        {
+            try { Client.OnUpdates -= Client_OnUpdates; } catch { }
+            try { Client.Dispose(); } catch { }
         }
 
         public void UpdateConfig(ConfigParams configParams)

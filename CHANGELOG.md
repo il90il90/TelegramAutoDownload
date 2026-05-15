@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.7.13] - 2026-05-15
+
+### Fixed
+
+- Login screen "session.dat used by another process": one shared Telegram client per app; Splash releases client before login; wait for file unlock
+
 ## [2.7.12] - 2026-05-15
 
 ### Fixed

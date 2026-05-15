@@ -42,8 +42,9 @@ namespace TelegramAutoDownload
             {
                 loadingRing.IsActive = true;
 
+                await TelegramSessionHelper.WaitForSessionFileUnlockedAsync().ConfigureAwait(true);
                 _telegram = await System.Threading.Tasks.Task.Run(() =>
-                    new TelegramApp(_configParams.AppId, _configParams.ApiHash));
+                    AppTelegram.GetOrCreate(_configParams.AppId, _configParams.ApiHash)).ConfigureAwait(true);
 
                 // Give WTelegramClient a moment to restore session if somehow reached
                 await System.Threading.Tasks.Task.Delay(800);
@@ -53,6 +54,11 @@ namespace TelegramAutoDownload
                     MoveToMainWindow();
                     return;
                 }
+            }
+            catch (System.IO.IOException ex) when (ex.Message.Contains("session.dat", StringComparison.OrdinalIgnoreCase))
+            {
+                AppTelegram.Release();
+                ShowError("Session file is locked. Close other copies from the system tray, then click Send Code again.");
             }
             catch (Exception ex)
             {
@@ -86,8 +92,8 @@ namespace TelegramAutoDownload
                 loadingRing.IsActive = true;
                 btnLogin.IsEnabled = false;
 
-                _telegram ??= await System.Threading.Tasks.Task.Run(() =>
-                    new TelegramApp(_configParams.AppId, _configParams.ApiHash));
+                await TelegramSessionHelper.WaitForSessionFileUnlockedAsync().ConfigureAwait(true);
+                _telegram = AppTelegram.GetOrCreate(_configParams.AppId, _configParams.ApiHash);
 
                 var phone = txtPhoneNumber.Text.Trim();
                 if (!phone.StartsWith("+")) phone = "+" + phone;

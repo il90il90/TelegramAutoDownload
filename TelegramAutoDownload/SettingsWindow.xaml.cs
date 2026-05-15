@@ -298,6 +298,7 @@ namespace TelegramAutoDownload
 
             if (_telegram != null)
                 await _telegram.LogoutAsync();
+            AppTelegram.Release();
 
             // Restart the application so it goes through the login flow cleanly
             var exe = System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName;
