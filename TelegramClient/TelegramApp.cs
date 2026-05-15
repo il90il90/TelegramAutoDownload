@@ -572,42 +572,159 @@ namespace TelegramClient
 
         /// <summary>
         /// Resolves a chat/channel/user to an <see cref="InputPeer"/> for history API calls.
+        /// Paginates all dialog folders (main + archive) and falls back to username resolution.
         /// </summary>
         private async Task<InputPeer?> ResolveInputPeerAsync(ChatDto chatDto)
         {
-            if (_accessHashes.TryGetValue(chatDto.Id, out var hash))
-            {
-                if (string.Equals(chatDto.Type, "User", StringComparison.OrdinalIgnoreCase))
-                    return new InputPeerUser(chatDto.Id, hash);
-                if (hash == 0)
-                    return new InputPeerChat(chatDto.Id);
-                return new InputPeerChannel(chatDto.Id, hash);
-            }
+            if (TryBuildInputPeerFromCache(chatDto, out var peer))
+                return peer;
 
-            var dialogsResult = await Client.Messages_GetDialogs(
-                offset_date: default, offset_id: 0, offset_peer: null!, limit: 500, hash: 0);
-            if (dialogsResult is not TL.Messages_Dialogs dlg)
-                return null;
+            await TryCacheAccessHashFromDialogsAsync(chatDto.Id).ConfigureAwait(false);
+            if (TryBuildInputPeerFromCache(chatDto, out peer))
+                return peer;
 
-            if (dlg.chats.TryGetValue(chatDto.Id, out var cb) && cb is TL.Channel tgCh)
+            if (!string.IsNullOrWhiteSpace(chatDto.Username))
             {
-                _accessHashes[chatDto.Id] = tgCh.access_hash;
-                return new InputPeerChannel(chatDto.Id, tgCh.access_hash);
-            }
-
-            if (dlg.chats.TryGetValue(chatDto.Id, out var grp) && grp is TL.Chat)
-            {
-                _accessHashes[chatDto.Id] = 0;
-                return new InputPeerChat(chatDto.Id);
-            }
-
-            if (dlg.users.TryGetValue(chatDto.Id, out var tgUsr) && tgUsr is TL.User u)
-            {
-                _accessHashes[chatDto.Id] = u.access_hash;
-                return new InputPeerUser(chatDto.Id, u.access_hash);
+                await TryCacheAccessHashFromUsernameAsync(chatDto.Username).ConfigureAwait(false);
+                if (TryBuildInputPeerFromCache(chatDto, out peer))
+                    return peer;
             }
 
             return null;
+        }
+
+        private bool TryBuildInputPeerFromCache(ChatDto chatDto, out InputPeer? peer)
+        {
+            peer = null;
+            if (!_accessHashes.TryGetValue(chatDto.Id, out var hash))
+                return false;
+            peer = BuildInputPeer(chatDto, hash);
+            return true;
+        }
+
+        private static InputPeer BuildInputPeer(ChatDto chatDto, long accessHash)
+        {
+            if (string.Equals(chatDto.Type, "User", StringComparison.OrdinalIgnoreCase))
+                return new InputPeerUser(chatDto.Id, accessHash);
+            // Supergroups and broadcast channels use a non-zero access_hash; legacy basic groups use 0.
+            if (accessHash != 0)
+                return new InputPeerChannel(chatDto.Id, accessHash);
+            return new InputPeerChat(chatDto.Id);
+        }
+
+        /// <summary>
+        /// Walks main and archive dialog lists until <paramref name="chatId"/> is found and cached.
+        /// </summary>
+        private async Task<bool> TryCacheAccessHashFromDialogsAsync(long chatId)
+        {
+            foreach (int folderId in new[] { 0, 1 })
+            {
+                int offsetId = 0;
+                DateTime offsetDate = default;
+                InputPeer offsetPeer = null!;
+                const int pageSize = 100;
+                const int maxPages = 50;
+
+                for (int page = 0; page < maxPages; page++)
+                {
+                    var result = await Client.Messages_GetDialogs(
+                        offset_date: offsetDate,
+                        offset_id: offsetId,
+                        offset_peer: offsetPeer,
+                        limit: pageSize,
+                        hash: 0,
+                        folder_id: folderId).ConfigureAwait(false);
+
+                    Dialog[] pageDialogs;
+                    MessageBase[] pageMessages;
+                    Dictionary<long, ChatBase> pageChats;
+                    Dictionary<long, User> pageUsers;
+                    bool isLastPage;
+
+                    if (result is TL.Messages_DialogsSlice slice)
+                    {
+                        pageDialogs  = slice.dialogs.OfType<Dialog>().ToArray();
+                        pageMessages = slice.messages;
+                        pageChats    = slice.chats;
+                        pageUsers    = slice.users;
+                        isLastPage   = pageDialogs.Length < pageSize;
+                    }
+                    else if (result is TL.Messages_Dialogs full)
+                    {
+                        pageDialogs  = full.dialogs.OfType<Dialog>().ToArray();
+                        pageMessages = full.messages;
+                        pageChats    = full.chats;
+                        pageUsers    = full.users;
+                        isLastPage   = true;
+                    }
+                    else break;
+
+                    if (pageChats.TryGetValue(chatId, out var chatBase))
+                    {
+                        if (chatBase is TL.Channel ch)
+                            _accessHashes[chatId] = ch.access_hash;
+                        else if (chatBase is TL.Chat)
+                            _accessHashes[chatId] = 0;
+                        return true;
+                    }
+
+                    if (pageUsers.TryGetValue(chatId, out var userBase) && userBase is TL.User u)
+                    {
+                        _accessHashes[chatId] = u.access_hash;
+                        return true;
+                    }
+
+                    if (isLastPage || pageDialogs.Length == 0) break;
+
+                    var lastDialog = pageDialogs[^1];
+                    offsetId = lastDialog.top_message;
+                    var topMsg = pageMessages.OfType<Message>()
+                        .FirstOrDefault(m => m.ID == lastDialog.top_message);
+                    if (topMsg == null) break;
+                    offsetDate = topMsg.Date;
+
+                    var peerId = lastDialog.peer;
+                    if (pageChats.TryGetValue(peerId, out var peerChatBase))
+                    {
+                        offsetPeer = peerChatBase is Channel peerChannel
+                            ? new InputPeerChannel(peerId, peerChannel.access_hash)
+                            : (InputPeer)new InputPeerChat(peerId);
+                    }
+                    else if (pageUsers.TryGetValue(peerId, out var peerUserBase) && peerUserBase is User peerUser)
+                        offsetPeer = new InputPeerUser(peerId, peerUser.access_hash);
+                    else break;
+                }
+            }
+
+            return _accessHashes.ContainsKey(chatId);
+        }
+
+        private async Task TryCacheAccessHashFromUsernameAsync(string username)
+        {
+            var handle = username.Trim().TrimStart('@');
+            if (handle.Length == 0) return;
+
+            try
+            {
+                var resolved = await Client.Contacts_ResolveUsername(handle).ConfigureAwait(false);
+                foreach (var kv in resolved.chats)
+                {
+                    if (kv.Value is TL.Channel ch)
+                        _accessHashes[ch.ID] = ch.access_hash;
+                    else if (kv.Value is TL.Chat grp)
+                        _accessHashes[grp.ID] = 0;
+                }
+
+                foreach (var kv in resolved.users)
+                {
+                    if (kv.Value is TL.User u)
+                        _accessHashes[u.ID] = u.access_hash;
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Debug(ex, "Contacts_ResolveUsername failed for @{Username}", handle);
+            }
         }
 
         /// <summary>
@@ -666,29 +783,51 @@ namespace TelegramClient
         }
 
         /// <summary>One page of messages for the manual browse window (newest first when <paramref name="offsetId"/> is 0).</summary>
-        public async Task<(IReadOnlyList<Message> Messages, int NextOffsetId, bool HasMore)> FetchBrowseHistoryPageAsync(
-            ChatDto chatDto, int offsetId, int pageSize = 50)
+        public Task<(IReadOnlyList<Message> Messages, int NextOffsetId, bool HasMore, string? ErrorMessage)>
+            FetchBrowseHistoryPageAsync(ChatDto chatDto, int offsetId, int pageSize = 50) =>
+            TelegramClientApiGate.RunAsync(() => FetchBrowseHistoryPageCoreAsync(chatDto, offsetId, pageSize));
+
+        private async Task<(IReadOnlyList<Message> Messages, int NextOffsetId, bool HasMore, string? ErrorMessage)>
+            FetchBrowseHistoryPageCoreAsync(ChatDto chatDto, int offsetId, int pageSize)
         {
             try
             {
                 var peer = await ResolveInputPeerAsync(chatDto).ConfigureAwait(false);
                 if (peer == null)
-                    return (Array.Empty<Message>(), offsetId, false);
+                {
+                    return (Array.Empty<Message>(), offsetId, false,
+                        "Could not resolve this chat on Telegram. Click Refresh on the main window, then try again.");
+                }
 
-                var history = await Client.Messages_GetHistory(peer, offset_id: offsetId, limit: pageSize)
-                    .ConfigureAwait(false);
-                if (history.Messages.Length == 0)
-                    return (Array.Empty<Message>(), offsetId, false);
+                var currentOffset = offsetId;
+                const int maxServiceOnlySkips = 8;
+                for (int skip = 0; skip <= maxServiceOnlySkips; skip++)
+                {
+                    var history = await Client.Messages_GetHistory(peer, offset_id: currentOffset, limit: pageSize)
+                        .ConfigureAwait(false);
+                    if (history.Messages.Length == 0)
+                        return (Array.Empty<Message>(), currentOffset, false, null);
 
-                var page = history.Messages.OfType<Message>().ToList();
-                var nextOffset = history.Messages.Min(m => m.ID);
-                var hasMore = history.Messages.Length >= pageSize;
-                return (page, nextOffset, hasMore);
+                    var page = history.Messages.OfType<Message>().ToList();
+                    var nextOffset = history.Messages.Min(m => m.ID);
+                    var hasMore = history.Messages.Length >= pageSize;
+
+                    if (page.Count > 0)
+                        return (page, nextOffset, hasMore, null);
+
+                    if (!hasMore)
+                        return (page, nextOffset, false, null);
+
+                    currentOffset = nextOffset;
+                }
+
+                return (Array.Empty<Message>(), currentOffset, true,
+                    "Only system messages in this range — use Load older to continue.");
             }
             catch (Exception ex)
             {
                 Log.Warning(ex, "FetchBrowseHistoryPageAsync failed for chat {ChatName}", chatDto.Name);
-                return (Array.Empty<Message>(), offsetId, false);
+                return (Array.Empty<Message>(), offsetId, false, ex.Message);
             }
         }
 
@@ -1497,6 +1636,7 @@ namespace TelegramClient
                 foreach (var kv in pageUsers)
                 {
                     if (kv.Value is not TL.User user || !seenIds.Add(user.ID)) continue;
+                    _accessHashes[user.ID] = user.access_hash;
                     groups.Add(new ChatDto
                     {
                         Id       = user.ID,

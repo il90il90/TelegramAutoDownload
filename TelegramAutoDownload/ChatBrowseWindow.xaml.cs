@@ -95,15 +95,18 @@ namespace TelegramAutoDownload
             tbStatus.Text = "Loading…";
             try
             {
-                var (page, next, hasMore) = await _app.FetchBrowseHistoryPageAsync(_chat, _nextOffset, 40);
+                var (page, next, hasMore, error) = await _app.FetchBrowseHistoryPageAsync(_chat, _nextOffset, 40);
                 _nextOffset = next;
                 _hasMore = hasMore;
                 foreach (var m in page.OrderByDescending(x => x.ID))
                     Rows.Add(new ChatBrowseRow(m, _chat));
                 RebuildKindQuickSelectButtons();
-                tbStatus.Text = Rows.Count == 0
-                    ? "No messages loaded."
-                    : $"{Rows.Count} messages — use Load older for more history.";
+                if (!string.IsNullOrEmpty(error))
+                    tbStatus.Text = error;
+                else if (Rows.Count == 0)
+                    tbStatus.Text = "No messages in this chat yet, or history is empty.";
+                else
+                    tbStatus.Text = $"{Rows.Count} messages — use Load older for more history.";
             }
             catch (Exception ex)
             {

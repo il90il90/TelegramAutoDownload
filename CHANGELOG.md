@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.7.9] - 2026-05-15
+
+### Fixed
+
+- Chat browse ("Select by kind"): messages now load — full dialog pagination (main + archive), username resolution, user access-hash cache, clearer errors, skip service-only pages
+
 ## [2.7.8] - 2026-05-15
 
 ### Fixed
