@@ -60,6 +60,7 @@ namespace TelegramClient
         private FactoryMessagesService factoryService;
         private FactoryUserService factoryUserService;
         private SemaphoreSlim _semaphore = new SemaphoreSlim(3);
+
         private readonly Task _loginTask;
 
         // Stored config so we can look up monitored ChatDto objects by peer ID
@@ -259,7 +260,10 @@ namespace TelegramClient
                             var entry = ChatHistoryService.CreateEntry(infoMessage);
                             OnHistoryEntry.Invoke(capturedChat, entry);
                             if (!string.IsNullOrEmpty(capturedChat.HistoryIcon))
-                                _ = ReactToMessage(capturedChat, updates, infoMessage, capturedChat.HistoryIcon);
+                            {
+                                try { await ReactToMessage(capturedChat, updates, infoMessage, capturedChat.HistoryIcon); }
+                                catch { /* non-critical */ }
+                            }
                         }
                         catch { /* history write must never break downloads */ }
                     }
@@ -278,7 +282,10 @@ namespace TelegramClient
                         OnStarted?.Invoke(capturedChat.Name, infoMessage.ID);
 
                     if (hasQueuedItem && !string.IsNullOrEmpty(capturedChat.DownloadStartIcon))
-                        _ = ReactToMessage(capturedChat, updates, infoMessage, capturedChat.DownloadStartIcon);
+                    {
+                        try { await ReactToMessage(capturedChat, updates, infoMessage, capturedChat.DownloadStartIcon); }
+                        catch { /* non-critical */ }
+                    }
 
                     var resultExecute = new ResultExecute(capturedChat.Name);
                     try
@@ -351,6 +358,8 @@ namespace TelegramClient
                     catch (Exception ex)
                     {
                         resultExecute.ErrorMessage = ex.Message;
+                        Log.Error(ex, "Message pipeline failed for chat {Chat} msgId {MsgId}", capturedChat.Name, infoMessage.ID);
+                        OnComplete?.Invoke(capturedChat.Name, GetPreviewFileName(infoMessage) ?? $"file_{infoMessage.ID}", false);
                         OnErrorResultMessage?.Invoke(new ResultMessageEvent
                         {
                             Chat = capturedChat,
@@ -1228,7 +1237,10 @@ namespace TelegramClient
             }
         }
 
-        private async Task ReactToMessage(ChatDto chatDto, UpdatesBase updates, Message message, string reactionIcon)
+        private Task ReactToMessage(ChatDto chatDto, UpdatesBase updates, Message message, string reactionIcon) =>
+            TelegramClientApiGate.RunAsync(() => ReactToMessageCore(chatDto, updates, message, reactionIcon));
+
+        private async Task ReactToMessageCore(ChatDto chatDto, UpdatesBase updates, Message message, string reactionIcon)
         {
             var isChannel = updates?.Chats?.FirstOrDefault().Value?.IsChannel;
             var isGroup = updates?.Chats?.FirstOrDefault().Value?.IsGroup;

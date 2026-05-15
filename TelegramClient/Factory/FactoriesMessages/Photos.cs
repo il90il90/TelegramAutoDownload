@@ -61,12 +61,15 @@ namespace TelegramClient.Factory.Factories
                 var (progress, downloadToken, userCancelToken) = MakeProgress(chatDto.Name, fileName, document.size);
                 try
                 {
-                    await WithRetryAsync(async () =>
+                    await RunFileDownloadAsync(async () =>
                     {
-                        using var stream = OpenOrResumePartFile(partPath);
-                        using var _ = downloadToken.Register(() => { try { stream.Dispose(); } catch { } });
-                        await Client.DownloadFileAsync(document, stream, null, progress);
-                        return true;
+                        await WithRetryAsync(async () =>
+                        {
+                            using var stream = OpenOrResumePartFile(partPath);
+                            using var _ = downloadToken.Register(() => { try { stream.Dispose(); } catch { } });
+                            await Client.DownloadFileAsync(document, stream, null, progress);
+                            return true;
+                        }, downloadToken);
                     }, downloadToken);
                     File.Move(partPath, savedPath, overwrite: true);
                     FileDownloadIndex.MarkDownloaded(document.ID);
@@ -123,7 +126,10 @@ namespace TelegramClient.Factory.Factories
                     using var photoCts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
                     using var fileStream = File.Create(savedPath);
                     using var _ = photoCts.Token.Register(() => { try { fileStream.Dispose(); } catch { } });
-                    await Client.DownloadFileAsync(photo, fileStream);
+                    await RunFileDownloadAsync(async () =>
+                    {
+                        await Client.DownloadFileAsync(photo, fileStream);
+                    }, photoCts.Token);
                     FileDownloadIndex.MarkDownloaded(photo.id);
                     OnComplete?.Invoke(chatDto.Name, fileName, true);
                 }

@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.7.8] - 2026-05-15
+
+### Fixed
+
+- Downloads stuck at 0% after v2.7.7: reverted WTelegramClient to 4.1.1; serialize Client API (downloads vs reactions); conservative chunk settings
+
 ## [2.7.7] - 2026-05-15
 
 ### Changed

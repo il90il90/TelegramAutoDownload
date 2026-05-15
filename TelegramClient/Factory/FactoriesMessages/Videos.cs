@@ -66,13 +66,15 @@ namespace TelegramClient.Factory.Factories
             var (progress, downloadToken, userCancelToken) = MakeProgress(chatDto.Name, fileName, document.size);
             try
             {
-                await WithRetryAsync(async () =>
+                await RunFileDownloadAsync(async () =>
                 {
-                    // Resume from existing .part file if present; WTelegram reads stream.Position as offset
-                    using var stream = OpenOrResumePartFile(partPath);
-                    using var _ = downloadToken.Register(() => { try { stream.Dispose(); } catch { } });
-                    await Client.DownloadFileAsync(document, stream, null, progress);
-                    return true;
+                    await WithRetryAsync(async () =>
+                    {
+                        using var stream = OpenOrResumePartFile(partPath);
+                        using var _ = downloadToken.Register(() => { try { stream.Dispose(); } catch { } });
+                        await Client.DownloadFileAsync(document, stream, null, progress);
+                        return true;
+                    }, downloadToken);
                 }, downloadToken);
                 // Rename .part → final name once the download is complete
                 File.Move(partPath, pathFolderLocation, overwrite: true);

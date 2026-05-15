@@ -78,6 +78,7 @@ namespace TelegramClient.Factory.Base
             //   b) ThrowIfCancellationRequested is polled during the transfer.
             long lastUiReportTicks = 0;
             var uiIntervalTicks = TelegramDownloadPerf.ProgressUiInterval.Ticks;
+            var reportedOnce = false;
 
             Client.ProgressCallback callback = (transmitted, total) =>
             {
@@ -90,8 +91,19 @@ namespace TelegramClient.Factory.Base
                 long effectiveTotal = total > 0 ? total : totalBytes;
                 var complete = effectiveTotal > 0 && transmitted >= effectiveTotal;
                 var now = Environment.TickCount64;
-                if (!complete && now - lastUiReportTicks < uiIntervalTicks) return;
-                lastUiReportTicks = now;
+                if (!reportedOnce)
+                {
+                    reportedOnce = true;
+                    lastUiReportTicks = now;
+                }
+                else if (!complete && now - lastUiReportTicks < uiIntervalTicks)
+                {
+                    return;
+                }
+                else
+                {
+                    lastUiReportTicks = now;
+                }
 
                 double pct = effectiveTotal > 0 ? transmitted * 100.0 / effectiveTotal : 0;
                 OnProgress.Invoke(chatName, fileName, TypeMessage.ToString(), Math.Min(99, pct), transmitted, effectiveTotal);
@@ -119,6 +131,10 @@ namespace TelegramClient.Factory.Base
         /// WTelegram's DownloadFileAsync reads stream.Position to determine the byte offset to
         /// start from, so positioning at the end instructs it to resume after existing data.
         /// </summary>
+        /// <summary>Runs a WTelegram file download exclusively (no concurrent Client API calls).</summary>
+        protected static Task RunFileDownloadAsync(Func<Task> action, System.Threading.CancellationToken ct = default) =>
+            TelegramClientApiGate.RunAsync(action, ct);
+
         protected static FileStream OpenOrResumePartFile(string partPath)
         {
             var buffer = TelegramDownloadPerf.FileStreamBufferBytes;
