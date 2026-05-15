@@ -145,7 +145,11 @@ namespace TelegramClient
         /// </summary>
         public async Task LogoutAsync()
         {
-            try { await Client.Auth_LogOut(); } catch { /* ignore network errors during logout */ }
+            try
+            {
+                await TelegramClientApiGate.RunAsync(() => Client.Auth_LogOut()).ConfigureAwait(false);
+            }
+            catch { /* ignore network errors during logout */ }
 
             // Dispose client to release file locks on the session file
             try { Client.Dispose(); } catch { }
@@ -414,46 +418,27 @@ namespace TelegramClient
         /// Manually syncs all existing history for a chat — downloads every file that
         /// hasn't been downloaded yet. Called from the UI "Sync" button.
         /// </summary>
-        public async Task SyncHistoryAsync(ChatDto chatDto, Action<string>? onStatus = null)
+        public Task SyncHistoryAsync(ChatDto chatDto, Action<string>? onStatus = null) =>
+            TelegramClientApiGate.RunAsync(() => SyncHistoryCoreAsync(chatDto, onStatus));
+
+        private async Task SyncHistoryCoreAsync(ChatDto chatDto, Action<string>? onStatus = null)
         {
             try
             {
+                if (!await EnsureTelegramReadyAsync().ConfigureAwait(false))
+                {
+                    onStatus?.Invoke("Not connected to Telegram. Log out and sign in again.");
+                    return;
+                }
+
                 onStatus?.Invoke($"Syncing {chatDto.Name}…");
 
-                // Reset watermark so we re-evaluate all messages
                 _highWatermark[chatDto.Id] = 0;
 
-                // Build InputPeer — try access hash cache first, then resolve via GetAllChats
-                InputPeer? peer = null;
-                if (_accessHashes.TryGetValue(chatDto.Id, out var hash))
-                {
-                    peer = hash != 0
-                        ? new InputPeerChannel(chatDto.Id, hash)
-                        : new InputPeerChat(chatDto.Id);
-                }
-                else
-                {
-                    // Try to resolve by fetching dialogs
-                    var dialogs = await Client.Messages_GetDialogs(
-                        offset_date: default, offset_id: 0, offset_peer: null!, limit: 200, hash: 0);
-                    if (dialogs is TL.Messages_Dialogs dlg)
-                    {
-                        if (dlg.chats.TryGetValue(chatDto.Id, out var chatBase) && chatBase is TL.Channel ch)
-                        {
-                            _accessHashes[chatDto.Id] = ch.access_hash;
-                            peer = new InputPeerChannel(chatDto.Id, ch.access_hash);
-                        }
-                        else if (dlg.chats.TryGetValue(chatDto.Id, out var grp) && grp is TL.Chat g)
-                        {
-                            _accessHashes[chatDto.Id] = 0;
-                            peer = new InputPeerChat(chatDto.Id);
-                        }
-                    }
-                }
-
+                var peer = await ResolveInputPeerAsync(chatDto).ConfigureAwait(false);
                 if (peer == null)
                 {
-                    onStatus?.Invoke($"Could not resolve peer for {chatDto.Name}");
+                    onStatus?.Invoke($"Could not resolve peer for {chatDto.Name}. Click Refresh, then try again.");
                     return;
                 }
 
@@ -638,7 +623,7 @@ namespace TelegramClient
             return true;
         }
 
-        private static InputPeer BuildInputPeer(ChatDto chatDto, long accessHash)
+        internal static InputPeer BuildInputPeer(ChatDto chatDto, long accessHash)
         {
             if (string.Equals(chatDto.Type, "User", StringComparison.OrdinalIgnoreCase))
                 return new InputPeerUser(chatDto.Id, accessHash);
@@ -768,10 +753,16 @@ namespace TelegramClient
         /// Returns them newest-first. Returns an empty list if the peer cannot be resolved
         /// (e.g. not yet connected) or on error.
         /// </summary>
-        public async Task<List<HistoryEntry>> GetRecentMessagesAsync(ChatDto chatDto, int count = 50)
+        public Task<List<HistoryEntry>> GetRecentMessagesAsync(ChatDto chatDto, int count = 50) =>
+            TelegramClientApiGate.RunAsync(() => GetRecentMessagesCoreAsync(chatDto, count));
+
+        private async Task<List<HistoryEntry>> GetRecentMessagesCoreAsync(ChatDto chatDto, int count)
         {
             try
             {
+                if (!await EnsureTelegramReadyAsync().ConfigureAwait(false))
+                    return [];
+
                 var peer = await ResolveInputPeerAsync(chatDto).ConfigureAwait(false);
                 if (peer == null) return [];
 
@@ -989,33 +980,27 @@ namespace TelegramClient
         /// Reports progress via <paramref name="onProgress"/> (fetched, total).
         /// Returns an empty list when the peer cannot be resolved or access is denied.
         /// </summary>
-        public async Task<List<MemberEntry>> GetChannelMembersAsync(
+        public Task<List<MemberEntry>> GetChannelMembersAsync(
             ChatDto chatDto,
             Action<int, int>? onProgress = null,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default) =>
+            TelegramClientApiGate.RunAsync(() =>
+                GetChannelMembersCoreAsync(chatDto, onProgress, cancellationToken));
+
+        private async Task<List<MemberEntry>> GetChannelMembersCoreAsync(
+            ChatDto chatDto,
+            Action<int, int>? onProgress,
+            CancellationToken cancellationToken)
         {
             var result = new List<MemberEntry>();
             try
             {
-                // Resolve the peer — reuse cached access hash when available
+                if (!await EnsureTelegramReadyAsync().ConfigureAwait(false))
+                    return result;
+
+                await ResolveInputPeerAsync(chatDto).ConfigureAwait(false);
                 if (!_accessHashes.TryGetValue(chatDto.Id, out var hash))
-                {
-                    var dlgResult = await Client.Messages_GetDialogs(
-                        offset_date: default, offset_id: 0, offset_peer: null!, limit: 500, hash: 0);
-                    if (dlgResult is TL.Messages_Dialogs dlg)
-                    {
-                        if (dlg.chats.TryGetValue(chatDto.Id, out var cb) && cb is TL.Channel tgCh)
-                        {
-                            _accessHashes[chatDto.Id] = tgCh.access_hash;
-                            hash = tgCh.access_hash;
-                        }
-                        else if (dlg.chats.TryGetValue(chatDto.Id, out var grp) && grp is TL.Chat)
-                        {
-                            _accessHashes[chatDto.Id] = 0;
-                            hash = 0;
-                        }
-                    }
-                }
+                    return result;
 
                 if (hash != 0)
                 {
@@ -1107,43 +1092,27 @@ namespace TelegramClient
         /// Fetches all messages (newest → oldest) and writes them oldest-first.
         /// File: {basePath}/History/{ChatType}/{ChatName}.jsonl
         /// </summary>
-        public async Task ExportChatHistoryAsync(
-            ChatDto chatDto, string basePath, Action<string>? onStatus = null)
+        public Task ExportChatHistoryAsync(
+            ChatDto chatDto, string basePath, Action<string>? onStatus = null) =>
+            TelegramClientApiGate.RunAsync(() => ExportChatHistoryCoreAsync(chatDto, basePath, onStatus));
+
+        private async Task ExportChatHistoryCoreAsync(
+            ChatDto chatDto, string basePath, Action<string>? onStatus)
         {
             try
             {
+                if (!await EnsureTelegramReadyAsync().ConfigureAwait(false))
+                {
+                    onStatus?.Invoke("Not connected to Telegram. Log out and sign in again.");
+                    return;
+                }
+
                 onStatus?.Invoke($"Exporting history for {chatDto.Name}…");
 
-                // Resolve InputPeer — identical logic to SyncHistoryAsync
-                InputPeer? peer = null;
-                if (_accessHashes.TryGetValue(chatDto.Id, out var hash))
-                {
-                    peer = hash != 0
-                        ? new InputPeerChannel(chatDto.Id, hash)
-                        : new InputPeerChat(chatDto.Id);
-                }
-                else
-                {
-                    var dialogs = await Client.Messages_GetDialogs(
-                        offset_date: default, offset_id: 0, offset_peer: null!, limit: 200, hash: 0);
-                    if (dialogs is TL.Messages_Dialogs dlg)
-                    {
-                        if (dlg.chats.TryGetValue(chatDto.Id, out var cb) && cb is TL.Channel ch)
-                        {
-                            _accessHashes[chatDto.Id] = ch.access_hash;
-                            peer = new InputPeerChannel(chatDto.Id, ch.access_hash);
-                        }
-                        else if (dlg.chats.TryGetValue(chatDto.Id, out var grp) && grp is TL.Chat)
-                        {
-                            _accessHashes[chatDto.Id] = 0;
-                            peer = new InputPeerChat(chatDto.Id);
-                        }
-                    }
-                }
-
+                var peer = await ResolveInputPeerAsync(chatDto).ConfigureAwait(false);
                 if (peer == null)
                 {
-                    onStatus?.Invoke($"Could not resolve peer for {chatDto.Name}");
+                    onStatus?.Invoke($"Could not resolve peer for {chatDto.Name}. Click Refresh, then try again.");
                     return;
                 }
 
@@ -1349,11 +1318,22 @@ namespace TelegramClient
             }
         }
 
-        private async Task ProcessMissedMessagesAsync(long channelId, ChatDto chatDto)
+        private Task ProcessMissedMessagesAsync(long channelId, ChatDto chatDto) =>
+            TelegramClientApiGate.RunAsync(() => ProcessMissedMessagesCoreAsync(channelId, chatDto));
+
+        private async Task ProcessMissedMessagesCoreAsync(long channelId, ChatDto chatDto)
         {
             try
             {
-                if (!_accessHashes.TryGetValue(channelId, out var accessHash)) return;
+                if (!await EnsureTelegramReadyAsync().ConfigureAwait(false))
+                    return;
+
+                if (!_accessHashes.TryGetValue(channelId, out var accessHash))
+                {
+                    await ResolveInputPeerAsync(chatDto).ConfigureAwait(false);
+                    if (!_accessHashes.TryGetValue(channelId, out accessHash))
+                        return;
+                }
 
                 InputPeer peer = accessHash != 0
                     ? new InputPeerChannel(channelId, accessHash)
@@ -1475,11 +1455,16 @@ namespace TelegramClient
         /// For channels/groups this reads the chat's configured reactions; for users all reactions are available.
         /// Falls back to a sensible default set on any error.
         /// </summary>
-        public async Task<List<string>> GetChatAvailableReactionsAsync(ChatDto chatDto)
+        public Task<List<string>> GetChatAvailableReactionsAsync(ChatDto chatDto) =>
+            TelegramClientApiGate.RunAsync(() => GetChatAvailableReactionsCoreAsync(chatDto));
+
+        private async Task<List<string>> GetChatAvailableReactionsCoreAsync(ChatDto chatDto)
         {
             var fallback = new List<string> { "👍", "❤️", "🔥", "👌", "💯", "😂", "😮", "🎉" };
             try
             {
+                if (!await EnsureTelegramReadyAsync().ConfigureAwait(false))
+                    return fallback;
                 // DMs support all available reactions
                 if (chatDto.Type == "User")
                     return await GetAllAvailableReactionsAsync();
@@ -1584,17 +1569,23 @@ namespace TelegramClient
         /// Mutes or unmutes Telegram notifications for the given chat.
         /// Mute sets mute_until to int.MaxValue (indefinite); unmute sets it to 0.
         /// </summary>
-        public async Task MuteChatAsync(ChatDto chatDto, bool mute)
+        public Task MuteChatAsync(ChatDto chatDto, bool mute) =>
+            TelegramClientApiGate.RunAsync(() => MuteChatCoreAsync(chatDto, mute));
+
+        private async Task MuteChatCoreAsync(ChatDto chatDto, bool mute)
         {
             try
             {
-                _accessHashes.TryGetValue(chatDto.Id, out var hash);
-                InputPeer peer = hash != 0
-                    ? (InputPeer)new InputPeerChannel(chatDto.Id, hash)
-                    : new InputPeerChat(chatDto.Id);
+                if (!await EnsureTelegramReadyAsync().ConfigureAwait(false))
+                    throw new InvalidOperationException("Not connected to Telegram.");
 
-                // mute_until is a DateTime in WTelegramClient — use far-future date for indefinite mute,
-                // or epoch (unix 0) to unmute immediately.
+                if (!TryBuildInputPeerFromCache(chatDto, out var peer) || peer == null)
+                {
+                    await ResolveInputPeerAsync(chatDto).ConfigureAwait(false);
+                    if (!TryBuildInputPeerFromCache(chatDto, out peer) || peer == null)
+                        throw new InvalidOperationException($"Could not resolve chat {chatDto.Name}.");
+                }
+
                 await Client.Account_UpdateNotifySettings(
                     new TL.InputNotifyPeer { peer = peer },
                     new TL.InputPeerNotifySettings

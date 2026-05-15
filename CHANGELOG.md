@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.7.11] - 2026-05-15
+
+### Fixed
+
+- All Telegram API operations (sync, export, members, reactions, mute, catch-up history) now use the same serialized client gate as downloads and chat refresh — prevents session corruption and empty chat/browse lists
+- Sync/export/mute use shared peer resolution (Refresh + username fallback)
+- Browse window shows a clearer message on timeout
+
 ## [2.7.10] - 2026-05-15
 
 ### Fixed

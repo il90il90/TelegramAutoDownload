@@ -110,7 +110,9 @@ namespace TelegramAutoDownload
             }
             catch (Exception ex)
             {
-                tbStatus.Text = ex.Message;
+                tbStatus.Text = ex is TaskCanceledException
+                    ? "Timed out — click Refresh on the main window, then try again (wait if downloads are running)."
+                    : ex.Message;
             }
             finally
             {
