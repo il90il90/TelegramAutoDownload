@@ -241,6 +241,7 @@ namespace TelegramAutoDownload
                     Download        = c.Download ?? new Download(),
                     DownloadFromSize = c.DownloadFromSize,
                     IgnoreFileByRegex = c.IgnoreFileByRegex,
+                    FilterPatterns = c.FilterPatterns ?? [],
                     EnabledPlugins  = c.EnabledPlugins ?? new Dictionary<string, bool>(),
                     YtdlpQuality    = BasePlugins.YtdlpFormatHelper.HighestVideoQuality,
                     FolderTemplate  = c.FolderTemplate ?? string.Empty,
@@ -253,6 +254,9 @@ namespace TelegramAutoDownload
                     MembersCount    = c.MembersCount,
                     Muted           = c.Muted,
                 }).ToList();
+
+                foreach (var chat in chats)
+                    FilterPatternHelper.NormalizeChatFilters(chat);
 
                 _isLoading = true;
                 _chats = chats;
@@ -297,7 +301,10 @@ namespace TelegramAutoDownload
                             chat.Download.Files = saved.Download.Files;
                         }
                         chat.DownloadFromSize   = saved.DownloadFromSize;
-                        chat.IgnoreFileByRegex  = saved.IgnoreFileByRegex;
+                        chat.FilterPatterns     = saved.FilterPatterns?
+                            .Select(p => new FilterPatternRule { Pattern = p.Pattern, Mode = p.Mode })
+                            .ToList() ?? [];
+                        FilterPatternHelper.NormalizeChatFilters(chat);
                         chat.EnabledPlugins     = saved.EnabledPlugins ?? new Dictionary<string, bool>();
                         chat.YtdlpQuality       = BasePlugins.YtdlpFormatHelper.HighestVideoQuality;
                         chat.FolderTemplate     = saved.FolderTemplate ?? string.Empty;
@@ -692,7 +699,10 @@ namespace TelegramAutoDownload
                         chat.ReactionIcon       = existingChat.ReactionIcon;
                         chat.DownloadStartIcon  = existingChat.DownloadStartIcon;
                         chat.DownloadFromSize   = existingChat.DownloadFromSize;
-                        chat.IgnoreFileByRegex  = existingChat.IgnoreFileByRegex ?? chat.IgnoreFileByRegex;
+                        chat.FilterPatterns     = existingChat.FilterPatterns?
+                            .Select(p => new FilterPatternRule { Pattern = p.Pattern, Mode = p.Mode })
+                            .ToList() ?? chat.FilterPatterns;
+                        FilterPatternHelper.NormalizeChatFilters(chat);
                         chat.EnabledPlugins     = existingChat.EnabledPlugins ?? chat.EnabledPlugins;
                         chat.YtdlpQuality       = BasePlugins.YtdlpFormatHelper.HighestVideoQuality;
                         chat.FolderTemplate     = existingChat.FolderTemplate ?? string.Empty;
@@ -1117,7 +1127,7 @@ namespace TelegramAutoDownload
             }
         }
 
-        // ── Filter (IgnoreFileByRegex) ────────────────────────────────────────────────
+        // ── Filter patterns ───────────────────────────────────────────────────────────
 
         /// <summary>Opens the rich Filter Editor dialog for the chat on the clicked row.</summary>
         private void FilterDialog_Click(object sender, RoutedEventArgs e)
@@ -1126,9 +1136,10 @@ namespace TelegramAutoDownload
 
             var config   = ConfigFile.Read();
             var basePath = config.PathSaveFile ?? string.Empty;
+            FilterPatternHelper.NormalizeChatFilters(chat);
 
             var dlg = new FilterDialog(
-                currentPatterns: chat.IgnoreFileByRegex,
+                currentPatterns: chat.FilterPatterns,
                 chatName:        chat.Name,
                 chatType:        chat.Type ?? "Other",
                 basePath:        basePath,
@@ -1139,12 +1150,16 @@ namespace TelegramAutoDownload
 
             if (dlg.ShowDialog() != true) return;
 
-            chat.IgnoreFileByRegex = dlg.ResultPatterns;
+            chat.FilterPatterns = dlg.ResultFilterPatterns;
+            FilterPatternHelper.SyncLegacyExcludeList(chat);
 
             var found = config.Chats.FirstOrDefault(c => c.Id == chat.Id);
             if (found != null)
             {
-                found.IgnoreFileByRegex = dlg.ResultPatterns;
+                found.FilterPatterns = chat.FilterPatterns
+                    .Select(p => new FilterPatternRule { Pattern = p.Pattern, Mode = p.Mode })
+                    .ToList();
+                FilterPatternHelper.SyncLegacyExcludeList(found);
                 ConfigFile.Save(config);
                 TelegramApp.UpdateConfig(config);
             }

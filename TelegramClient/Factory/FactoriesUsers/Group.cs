@@ -33,6 +33,9 @@ namespace TelegramClient.Factory.FactoriesUsers
                     Download = chatParams.Download,
                     Type = chatParams.Type,
                     DownloadFromSize = chatParams.DownloadFromSize,
+                    FilterPatterns = chatParams.FilterPatterns
+                        .Select(p => new FilterPatternRule { Pattern = p.Pattern, Mode = p.Mode })
+                        .ToList(),
                     IgnoreFileByRegex = chatParams.IgnoreFileByRegex,
                     Selected = chatParams.Selected,
                     EnabledPlugins = chatParams.EnabledPlugins ?? new Dictionary<string, bool>(),

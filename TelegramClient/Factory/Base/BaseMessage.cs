@@ -292,18 +292,22 @@ namespace TelegramClient.Factory.Base
                     };
                 }
 
-                foreach (var regexPattern in chatDto.IgnoreFileByRegex)
+                var filterPatterns = FilterPatternHelper.GetPatterns(chatDto).ToList();
+                if (FilterPatternHelper.ShouldSkipFile(document.Filename, filterPatterns))
                 {
-                    Regex regex = new(regexPattern);
-                    if (regex.IsMatch(document.Filename))
+                    var matchedExclude = filterPatterns.FirstOrDefault(p =>
+                        p.Mode == FilterPatternMode.Exclude &&
+                        FilterPatternHelper.Matches(document.Filename, p.Pattern));
+                    var detail = matchedExclude != null
+                        ? $"exclude pattern '{matchedExclude.Pattern}' matched the document filename: {document.Filename}"
+                        : $"include whitelist — no include pattern matched filename: {document.Filename}";
+
+                    return new ResultExecute(chatDto.Name)
                     {
-                        return new ResultExecute(chatDto.Name)
-                        {
-                            FileName = document.Filename,
-                            IsSuccess = false,
-                            ErrorMessage = $"skip by regex pattern: '{regexPattern}' matched the document filename: {document.Filename}"
-                        };
-                    }
+                        FileName = document.Filename,
+                        IsSuccess = false,
+                        ErrorMessage = $"skip by regex filter: {detail}"
+                    };
                 }
                 return new ResultExecute(chatDto.Name)
                 {

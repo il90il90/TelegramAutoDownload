@@ -49,6 +49,9 @@ namespace TelegramClient.Models
 
         public Download Download { get; set; } = new Download();
         public int DownloadFromSize { get; set; }
+        /// <summary>Regex filter rules with Include/Exclude mode per pattern.</summary>
+        public List<FilterPatternRule> FilterPatterns { get; set; } = [];
+        /// <summary>Legacy exclude-only patterns — kept in sync with Exclude rules in <see cref="FilterPatterns"/>.</summary>
         public List<string> IgnoreFileByRegex { get; set; } = [];
         // Keys are PluginName values; missing key = disabled (user must explicitly enable per chat)
         public Dictionary<string, bool> EnabledPlugins { get; set; } = new();

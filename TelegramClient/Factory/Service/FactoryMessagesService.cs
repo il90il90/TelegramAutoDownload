@@ -178,9 +178,7 @@ namespace TelegramClient.Factory.Service
             var text = message.message ?? string.Empty;
             if (text.Contains("http", StringComparison.OrdinalIgnoreCase)) return true;
             if (text.Contains("magnet:", StringComparison.OrdinalIgnoreCase)) return true;
-            if (chatDto.IgnoreFileByRegex.Count > 0 && chatDto.IgnoreFileByRegex.Any(p =>
-                    !string.IsNullOrEmpty(text) &&
-                    Regex.IsMatch(text, p, RegexOptions.IgnoreCase)))
+            if (FilterPatternHelper.ShouldCaptureText(text, FilterPatternHelper.GetPatterns(chatDto).ToList()))
                 return true;
             return false;
         }

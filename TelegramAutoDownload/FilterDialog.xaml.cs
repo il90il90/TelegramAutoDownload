@@ -7,7 +7,6 @@ using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Media;
 using MahApps.Metro.Controls;
 using TelegramClient;
 using TelegramClient.Models;
@@ -19,6 +18,7 @@ namespace TelegramAutoDownload
     public class PatternEntry : INotifyPropertyChanged
     {
         private string _pattern = string.Empty;
+        private FilterPatternMode _mode = FilterPatternMode.Exclude;
 
         public string Pattern
         {
@@ -32,14 +32,31 @@ namespace TelegramAutoDownload
             }
         }
 
+        public FilterPatternMode Mode
+        {
+            get => _mode;
+            set
+            {
+                _mode = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(ModeLabel));
+            }
+        }
+
+        public string ModeLabel
+        {
+            get => _mode == FilterPatternMode.Include ? "Include" : "Exclude";
+            set
+            {
+                Mode = string.Equals(value, "Include", StringComparison.OrdinalIgnoreCase)
+                    ? FilterPatternMode.Include
+                    : FilterPatternMode.Exclude;
+            }
+        }
+
         public bool IsValid
         {
-            get
-            {
-                if (string.IsNullOrWhiteSpace(Pattern)) return false;
-                try { _ = new Regex(Pattern, RegexOptions.None, TimeSpan.FromSeconds(1)); return true; }
-                catch { return false; }
-            }
+            get => FilterPatternHelper.IsValidPattern(Pattern);
         }
 
         // ValidColour kept for possible future use; border colour is now handled by DataTrigger in XAML
@@ -70,8 +87,8 @@ namespace TelegramAutoDownload
 
         private readonly ObservableCollection<PatternEntry> _patterns = [];
 
-        /// <summary>Final pattern list — semicolon-joined — after user clicks Save.</summary>
-        public List<string> ResultPatterns { get; private set; } = [];
+        /// <summary>Final pattern list after user clicks Save.</summary>
+        public List<FilterPatternRule> ResultFilterPatterns { get; private set; } = [];
 
         // ── Quick patterns defined once ──────────────────────────────────────────
 
@@ -94,7 +111,7 @@ namespace TelegramAutoDownload
         // ────────────────────────────────────────────────────────────────────────
 
         public FilterDialog(
-            IEnumerable<string> currentPatterns,
+            IEnumerable<FilterPatternRule> currentPatterns,
             string chatName,
             string chatType,
             string basePath,
@@ -108,7 +125,7 @@ namespace TelegramAutoDownload
             _fetchMessages = fetchMessages;
 
             foreach (var p in currentPatterns)
-                _patterns.Add(new PatternEntry { Pattern = p });
+                _patterns.Add(new PatternEntry { Pattern = p.Pattern, Mode = p.Mode });
 
             PatternList.ItemsSource = _patterns;
 
@@ -170,6 +187,9 @@ namespace TelegramAutoDownload
         private void TestMode_Changed(object sender, RoutedEventArgs e)
             => UpdateTestResults();
 
+        private void PatternEntry_Changed(object sender, RoutedEventArgs e)
+            => UpdateTestResults();
+
         private void UpdateTestResults()
         {
             // Guard against being called before InitializeComponent completes
@@ -189,7 +209,11 @@ namespace TelegramAutoDownload
             bool isFileMode = RbFile.IsChecked == true;
             string modeLabel = isFileMode ? "file" : "message";
 
-            var validPatterns = _patterns.Where(p => p.IsValid).ToList();
+            var validPatterns = _patterns
+                .Where(p => p.IsValid)
+                .Select(p => new FilterPatternRule { Pattern = p.Pattern, Mode = p.Mode })
+                .ToList();
+
             if (validPatterns.Count == 0)
             {
                 results.Add("ℹ  No valid patterns to test.");
@@ -198,19 +222,19 @@ namespace TelegramAutoDownload
             {
                 foreach (var entry in validPatterns)
                 {
-                    bool match = false;
-                    try
-                    {
-                        match = Regex.IsMatch(input, entry.Pattern,
-                            RegexOptions.IgnoreCase, TimeSpan.FromSeconds(1));
-                    }
-                    catch { /* malformed — just treat as no-match */ }
-
-                    string action = isFileMode ? "→ skip file" : "→ capture as .txt";
+                    bool match = FilterPatternHelper.Matches(input, entry.Pattern);
+                    string action = isFileMode
+                        ? FilterPatternHelper.DescribeFileAction(entry, match)
+                        : FilterPatternHelper.DescribeMessageAction(entry, match);
                     results.Add(match
-                        ? $"✓  \"{entry.Pattern}\"  matches {modeLabel}  {action}"
-                        : $"✗  \"{entry.Pattern}\"  no match");
+                        ? $"✓  [{entry.Mode}] \"{entry.Pattern}\"  matches {modeLabel}  {action}"
+                        : $"✗  [{entry.Mode}] \"{entry.Pattern}\"  no match");
                 }
+
+                results.Add(string.Empty);
+                results.Add(isFileMode
+                    ? FilterPatternHelper.DescribeOverallFileOutcome(input, validPatterns)
+                    : FilterPatternHelper.DescribeOverallMessageOutcome(input, validPatterns));
             }
 
             TestResults.ItemsSource = results;
@@ -296,9 +320,9 @@ namespace TelegramAutoDownload
                 if (res != MessageBoxResult.Yes) return;
             }
 
-            ResultPatterns = _patterns
+            ResultFilterPatterns = _patterns
                 .Where(p => !string.IsNullOrWhiteSpace(p.Pattern) && p.IsValid)
-                .Select(p => p.Pattern)
+                .Select(p => new FilterPatternRule { Pattern = p.Pattern, Mode = p.Mode })
                 .ToList();
 
             DialogResult = true;

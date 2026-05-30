@@ -56,12 +56,12 @@
                 <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="#0D47A1"
                            Text="Filter Editor"/>
                 <TextBlock FontSize="11" Foreground="#555" Margin="0,3,0,0" TextWrapping="Wrap">
-                    <Run FontWeight="Bold">File / media:</Run>
-                    <Run> a matching filename is SKIPPED (not downloaded).   </Run>
-                    <Run FontWeight="Bold">Text message:</Run>
-                    <Run> matching message text is CAPTURED and saved as a .txt file.</Run>
+                    <Run FontWeight="Bold">Exclude</Run>
+                    <Run> — file: skip download | text: no capture.   </Run>
+                    <Run FontWeight="Bold">Include</Run>
+                    <Run> — file: whitelist (only download if matches) | text: capture as .txt.</Run>
                     <LineBreak/>
-                    <Run>Each pattern is a regular expression. Multiple patterns are ORed together.</Run>
+                    <Run>Each pattern is a regular expression. Multiple patterns are ORed within each mode.</Run>
                 </TextBlock>
             </StackPanel>
         </Border>
@@ -118,6 +118,7 @@
                                         <Grid>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="14"/>
+                                                <ColumnDefinition Width="86"/>
                                                 <ColumnDefinition Width="*"/>
                                                 <ColumnDefinition Width="24"/>
                                             </Grid.ColumnDefinitions>
@@ -136,9 +137,19 @@
                                                     </Style>
                                                 </Ellipse.Style>
                                             </Ellipse>
+                                            <!-- Include / Exclude -->
+                                            <ComboBox Grid.Column="1"
+                                                      SelectedValue="{Binding ModeLabel, UpdateSourceTrigger=PropertyChanged}"
+                                                      VerticalContentAlignment="Center"
+                                                      FontSize="11" Margin="0,0,4,0"
+                                                      SelectionChanged="PatternEntry_Changed">
+                                                <ComboBoxItem Content="Exclude"/>
+                                                <ComboBoxItem Content="Include"/>
+                                            </ComboBox>
                                             <!-- pattern text — explicit colours to override MahApps theme -->
-                                            <TextBox Grid.Column="1"
+                                            <TextBox Grid.Column="2"
                                                      Text="{Binding Pattern, UpdateSourceTrigger=PropertyChanged}"
+                                                     TextChanged="PatternEntry_Changed"
                                                      FontFamily="Consolas" FontSize="12"
                                                      Foreground="#111111" Background="Transparent"
                                                      BorderThickness="0"
@@ -147,7 +158,7 @@
                                                      CaretBrush="#111111"
                                                      SelectionBrush="#2196F3"/>
                                             <!-- delete -->
-                                            <Button Grid.Column="2" Content="×"
+                                            <Button Grid.Column="3" Content="×"
                                                     Width="20" Height="20" FontSize="13"
                                                     Background="Transparent" BorderThickness="0"
                                                     Foreground="#E53935"

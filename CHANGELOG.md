@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.9.4] - 2026-05-24
+
+### Added
+
+- **Filter Include/Exclude mode** — each regex pattern in the Filter Editor can be set to Exclude (skip files / block text capture) or Include (whitelist files / capture matching text as .txt)
+- Live test panel shows per-pattern and overall outcome for both file and message modes
+
+### Changed
+
+- Legacy `IgnoreFileByRegex` patterns are migrated automatically as **Exclude** rules
+
 ## [2.9.3] - 2026-05-24
 
 ### Added

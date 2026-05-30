@@ -1,6 +1,6 @@
 # Telegram Auto Download
 
-> **v2.9.3** — A WPF desktop application for Windows that monitors Telegram channels, groups, and DMs and automatically downloads media, YouTube/social-media links, and torrents.
+> **v2.9.4** — A WPF desktop application for Windows that monitors Telegram channels, groups, and DMs and automatically downloads media, YouTube/social-media links, and torrents.
 
 ---
 

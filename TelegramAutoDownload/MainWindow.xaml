@@ -47,7 +47,7 @@
             <Setter Property="BorderBrush"   Value="{DynamicResource MahApps.Brushes.Gray7}"/>
             <Setter Property="ToolTip"       Value="Open filter editor"/>
             <Style.Triggers>
-                <DataTrigger Binding="{Binding IgnoreFileByRegex, Converter={StaticResource CollectionNotEmpty}}"
+                <DataTrigger Binding="{Binding FilterPatterns, Converter={StaticResource CollectionNotEmpty}}"
                              Value="True">
                     <Setter Property="Background"  Value="#FF9800"/>
                     <Setter Property="Foreground"  Value="White"/>

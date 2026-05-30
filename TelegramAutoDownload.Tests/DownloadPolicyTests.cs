@@ -63,6 +63,44 @@ namespace TelegramAutoDownload.Tests
             result.IsSuccess.Should().BeTrue();
         }
 
+        [Fact]
+        public void Policy_ExcludeRegex_SkipsMatchingFile()
+        {
+            var stub = new BaseMessageStub();
+            var chat = MakeChat(0);
+            chat.FilterPatterns =
+            [
+                new TelegramClient.Models.FilterPatternRule
+                {
+                    Pattern = @"(?i).*sample.*",
+                    Mode = TelegramClient.Models.FilterPatternMode.Exclude,
+                }
+            ];
+
+            var message = CreateMessageWithDocument(fileSizeBytes: 1024, filename: "trailer.sample.mkv");
+            var result = stub.CheckDownloadPolicy(chat, message);
+            result.IsSuccess.Should().BeFalse();
+        }
+
+        [Fact]
+        public void Policy_IncludeWhitelist_SkipsNonMatchingFile()
+        {
+            var stub = new BaseMessageStub();
+            var chat = MakeChat(0);
+            chat.FilterPatterns =
+            [
+                new TelegramClient.Models.FilterPatternRule
+                {
+                    Pattern = @"(?i).*1080p.*",
+                    Mode = TelegramClient.Models.FilterPatternMode.Include,
+                }
+            ];
+
+            var message = CreateMessageWithDocument(fileSizeBytes: 1024, filename: "movie_720p.mkv");
+            var result = stub.CheckDownloadPolicy(chat, message);
+            result.IsSuccess.Should().BeFalse();
+        }
+
         private static Message CreateMessageWithDocument(long fileSizeBytes, string filename)
         {
             var document = new Document

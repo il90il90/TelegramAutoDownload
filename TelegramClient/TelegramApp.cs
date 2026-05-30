@@ -269,28 +269,16 @@ namespace TelegramClient
                                 OnEnqueued?.Invoke(chat.Name, liveMsg.ID, textPluginPreview);
                         }
 
-                        // Filter regex also applies to message text: if a text-only message
-                        // (no downloadable media) matches any pattern, it is captured and
-                        // saved as a .txt file with the End Icon reaction.
+                        // Filter regex: Include patterns capture matching text as a .txt file.
                         if (previewName == null
                             && textPluginPreview == null
-                            && !string.IsNullOrEmpty(liveMsg.message)
-                            && chat.IgnoreFileByRegex.Count > 0)
+                            && ShouldCaptureTextMessage(liveMsg, chat))
                         {
-                            foreach (var pattern in chat.IgnoreFileByRegex)
-                            {
-                                if (System.Text.RegularExpressions.Regex.IsMatch(
-                                        liveMsg.message, pattern,
-                                        System.Text.RegularExpressions.RegexOptions.IgnoreCase))
-                                {
-                                    var snippet = liveMsg.message.Length > 45
-                                        ? liveMsg.message[..45] + "…"
-                                        : liveMsg.message;
-                                    capturedTextPreview = $"📝 {snippet}";
-                                    OnEnqueued?.Invoke(chat.Name, liveMsg.ID, capturedTextPreview);
-                                    break;
-                                }
-                            }
+                            var snippet = liveMsg.message!.Length > 45
+                                ? liveMsg.message[..45] + "…"
+                                : liveMsg.message;
+                            capturedTextPreview = $"📝 {snippet}";
+                            OnEnqueued?.Invoke(chat.Name, liveMsg.ID, capturedTextPreview);
                         }
                     }
 
@@ -524,18 +512,12 @@ namespace TelegramClient
                                     GetTextPluginQueuePreview(m) != null)
                         .ToList();
 
-                    // Text-only messages that match a Filter regex pattern → save as .txt capture file.
-                    var textCaptureMessages = chatDto.IgnoreFileByRegex.Count > 0
-                        ? rawMessages
-                            .Where(m => m.media == null &&
-                                        !urlMessages.Contains(m) &&
-                                        !string.IsNullOrEmpty(m.message) &&
-                                        chatDto.IgnoreFileByRegex.Any(p =>
-                                            System.Text.RegularExpressions.Regex.IsMatch(
-                                                m.message, p,
-                                                System.Text.RegularExpressions.RegexOptions.IgnoreCase)))
-                            .ToList()
-                        : [];
+                    // Text-only messages that match an Include filter pattern → save as .txt capture file.
+                    var textCaptureMessages = rawMessages
+                        .Where(m => m.media == null &&
+                                    !urlMessages.Contains(m) &&
+                                    ShouldCaptureTextMessage(m, chatDto))
+                        .ToList();
 
                     // Enqueue native media messages + text captures in the UI
                     foreach (var msg in mediaMessages)
@@ -798,12 +780,7 @@ namespace TelegramClient
                     OnStarted?.Invoke(chatDto.Name, msg.ID);
 
                     ResultExecute result;
-                    var isTextCapture = preview == null && msg.media == null && chatDto.IgnoreFileByRegex.Count > 0 &&
-                        !string.IsNullOrEmpty(msg.message) &&
-                        chatDto.IgnoreFileByRegex.Any(p =>
-                            System.Text.RegularExpressions.Regex.IsMatch(
-                                msg.message, p,
-                                System.Text.RegularExpressions.RegexOptions.IgnoreCase));
+                    var isTextCapture = preview == null && ShouldCaptureTextMessage(msg, chatDto);
 
                     if (isTextCapture)
                         result = await SaveCapturedTextAsync(msg, chatDto).ConfigureAwait(false);
@@ -866,6 +843,9 @@ namespace TelegramClient
                 Muted            = source.Muted,
                 Download         = new Download { Videos = true, Photos = true, Music = true, Files = true },
                 DownloadFromSize = source.DownloadFromSize,
+                FilterPatterns = source.FilterPatterns
+                    .Select(p => new FilterPatternRule { Pattern = p.Pattern, Mode = p.Mode })
+                    .ToList(),
                 IgnoreFileByRegex = new List<string>(source.IgnoreFileByRegex),
                 EnabledPlugins   = plugins,
                 YtdlpQuality     = source.YtdlpQuality,
@@ -1131,14 +1111,17 @@ namespace TelegramClient
                 return true;
             if (GetTextPluginQueuePreview(msg) != null)
                 return true;
-            if (msg.media == null && chat.IgnoreFileByRegex.Count > 0 && !string.IsNullOrEmpty(msg.message) &&
-                chat.IgnoreFileByRegex.Any(p =>
-                    System.Text.RegularExpressions.Regex.IsMatch(
-                        msg.message, p,
-                        System.Text.RegularExpressions.RegexOptions.IgnoreCase)))
+            if (ShouldCaptureTextMessage(msg, chat))
                 return true;
             return false;
         }
+
+        private static bool ShouldCaptureTextMessage(Message msg, ChatDto chat) =>
+            msg.media == null &&
+            !string.IsNullOrEmpty(msg.message) &&
+            FilterPatternHelper.ShouldCaptureText(
+                msg.message,
+                FilterPatternHelper.GetPatterns(chat).ToList());
 
         /// <summary>
         /// Returns true if the message's media type is enabled in the chat's download settings.
