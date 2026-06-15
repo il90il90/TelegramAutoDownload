@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using FluentAssertions;
+using TelegramAutoDownload;
 using TelegramClient;
 using TelegramClient.Models;
 using Xunit;
@@ -14,6 +15,38 @@ namespace TelegramAutoDownload.Tests
     /// </summary>
     public class FilterDialogPatternValidationTests
     {
+        [Theory]
+        [InlineData("Include", FilterPatternMode.Include)]
+        [InlineData("include", FilterPatternMode.Include)]
+        [InlineData("Exclude", FilterPatternMode.Exclude)]
+        [InlineData("exclude", FilterPatternMode.Exclude)]
+        public void PatternEntry_ModeLabel_UpdatesMode(string modeLabel, FilterPatternMode expectedMode)
+        {
+            var entry = new PatternEntry { Pattern = @"(?i).*1080p.*" };
+            entry.ModeLabel = modeLabel;
+            entry.Mode.Should().Be(expectedMode);
+            entry.ModeLabel.Should().Be(expectedMode == FilterPatternMode.Include ? "Include" : "Exclude");
+        }
+
+        [Fact]
+        public void PatternEntry_SavePreservesIncludeMode()
+        {
+            var patterns = new List<PatternEntry>
+            {
+                new() { Pattern = @"(?i).*1080p.*", Mode = FilterPatternMode.Include },
+                new() { Pattern = @"(?i).*720p.*", Mode = FilterPatternMode.Exclude },
+            };
+
+            var saved = patterns
+                .Where(p => !string.IsNullOrWhiteSpace(p.Pattern) && p.IsValid)
+                .Select(p => new FilterPatternRule { Pattern = p.Pattern, Mode = p.Mode })
+                .ToList();
+
+            saved.Should().HaveCount(2);
+            saved.Should().Contain(p => p.Pattern == @"(?i).*1080p.*" && p.Mode == FilterPatternMode.Include);
+            saved.Should().Contain(p => p.Pattern == @"(?i).*720p.*" && p.Mode == FilterPatternMode.Exclude);
+        }
+
         [Theory]
         [InlineData(".*720p.*",           true)]
         [InlineData(@"(?i).*\.exe$",      true)]

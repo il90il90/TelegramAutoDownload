@@ -139,6 +139,7 @@
                                             </Ellipse>
                                             <!-- Include / Exclude -->
                                             <ComboBox Grid.Column="1"
+                                                      SelectedValuePath="Content"
                                                       SelectedValue="{Binding ModeLabel, UpdateSourceTrigger=PropertyChanged}"
                                                       VerticalContentAlignment="Center"
                                                       FontSize="11" Margin="0,0,4,0"
