@@ -19,15 +19,29 @@ Every `gh release create` or `gh release upload` command **must** include:
 # 2. Publish
 dotnet publish TelegramAutoDownload/TelegramAutoDownload.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o publish/
 
-# 3. Create ZIP
+# 3. Authenticode sign (REQUIRED for Smart App Control / SmartScreen — see scripts/sign-release.ps1)
+$env:CODE_SIGN_PFX = "C:\path\to\cert.pfx"
+$env:CODE_SIGN_PASSWORD = "..."
+.\scripts\sign-release.ps1
+
+# 4. Create ZIP (after signing so portable build is signed too)
 Compress-Archive -Path publish/* -DestinationPath "TelegramAutoDownload_vX.X.X_Portable.zip" -Force
 
-# 4. Compile installer (REQUIRED — never skip)
-& "C:\InnoSetup\ISCC.exe" installer/setup.iss
+# 5. Compile installer (REQUIRED — never skip; /DSignRelease when cert env vars are set)
+if ($env:CODE_SIGN_PFX) { & "C:\InnoSetup\ISCC.exe" /DSignRelease installer/setup.iss }
+else { & "C:\InnoSetup\ISCC.exe" installer/setup.iss }
 
-# 5. Release with BOTH files (never release with only one)
+# 6. Release with BOTH files (never release with only one)
 gh release create vX.X.X "TelegramAutoDownload_vX.X.X_Portable.zip" "TelegramAutoDownload_vX.X.X_Setup.exe" --title "vX.X.X" --notes "..."
 ```
+
+## Code signing (Smart App Control)
+
+Windows **Smart App Control** blocks unsigned apps with no verified publisher. Releases must be Authenticode-signed:
+
+1. Obtain an **OV or EV** code signing certificate (e.g. Certum, Sectigo, DigiCert). EV builds reputation faster.
+2. Set `CODE_SIGN_PFX` and `CODE_SIGN_PASSWORD` before `sign-release.ps1` and ISCC `/DSignRelease`.
+3. Open-source projects can apply for free signing via [SignPath](https://signpath.io/).
 
 ## Never do
 

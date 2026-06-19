@@ -1,0 +1,114 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    env:
+      SIGNPATH_ENABLED: ${{ vars.SIGNPATH_ENABLED }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Publish
+        run: >
+          dotnet publish TelegramAutoDownload/TelegramAutoDownload.csproj
+          -c Release -r win-x64 --self-contained true
+          -p:PublishSingleFile=true -o publish/
+
+      - name: Read version
+        id: version
+        shell: pwsh
+        run: |
+          $v = (Select-String -Path TelegramAutoDownload/AppVersion.cs -Pattern 'Current = "(.+)"').Matches[0].Groups[1].Value
+          "version=$v" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      - name: Upload unsigned portable binaries
+        if: env.SIGNPATH_ENABLED == 'true'
+        id: upload-portable-unsigned
+        uses: actions/upload-artifact@v4
+        with:
+          name: portable-unsigned
+          path: publish/
+
+      - name: Sign portable binaries
+        if: env.SIGNPATH_ENABLED == 'true'
+        uses: signpath/github-action-submit-signing-request@v2
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ secrets.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          artifact-configuration-slug: portable
+          github-artifact-id: ${{ steps.upload-portable-unsigned.outputs.artifact-id }}
+          wait-for-completion: true
+          output-artifact-directory: publish-signed
+
+      - name: Replace publish with signed output
+        if: env.SIGNPATH_ENABLED == 'true'
+        shell: pwsh
+        run: |
+          Remove-Item -Recurse -Force publish
+          Move-Item publish-signed publish
+
+      - name: Create portable ZIP
+        shell: pwsh
+        run: |
+          $zip = "TelegramAutoDownload_v${{ steps.version.outputs.version }}_Portable.zip"
+          Compress-Archive -Path publish/* -DestinationPath $zip -Force
+
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+
+      - name: Build installer
+        run: '& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer/setup.iss'
+
+      - name: Upload unsigned installer
+        if: env.SIGNPATH_ENABLED == 'true'
+        id: upload-installer-unsigned
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer-unsigned
+          path: TelegramAutoDownload_v*_Setup.exe
+
+      - name: Sign installer
+        if: env.SIGNPATH_ENABLED == 'true'
+        uses: signpath/github-action-submit-signing-request@v2
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ secrets.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          artifact-configuration-slug: installer
+          github-artifact-id: ${{ steps.upload-installer-unsigned.outputs.artifact-id }}
+          wait-for-completion: true
+          output-artifact-directory: signed-installer
+          parameters: |
+            version: "${{ steps.version.outputs.version }}"
+
+      - name: Copy signed installer
+        if: env.SIGNPATH_ENABLED == 'true'
+        shell: pwsh
+        run: |
+          $signed = Get-ChildItem signed-installer -Filter "TelegramAutoDownload_v*_Setup.exe" | Select-Object -First 1
+          if (-not $signed) { throw "Signed installer not found" }
+          Copy-Item $signed.FullName -Destination . -Force
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            TelegramAutoDownload_v*_Portable.zip
+            TelegramAutoDownload_v*_Setup.exe
+          generate_release_notes: true

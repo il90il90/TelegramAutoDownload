@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.9.6] - 2026-06-19
+
+### Added
+
+- **Code signing infrastructure** — `scripts/sign-release.ps1` for Authenticode signing; SignPath GitHub Actions workflow (`.github/workflows/release.yml`) for automated signed releases once approved
+- **SignPath artifact configs** — `.signpath/` definitions for portable ZIP and Inno Setup installer signing
+
+### Notes
+
+- Windows **Smart App Control** may block unsigned builds. If blocked, disable Smart App Control temporarily (Windows Security → App & browser control) until signed releases are available via SignPath Foundation
+
 ## [2.9.4] - 2026-05-24
 
 ### Added

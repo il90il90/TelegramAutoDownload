@@ -1,11 +1,17 @@
 #define AppName "Telegram Auto Download"
-#define AppVersion "2.9.5"
+#define AppVersion "2.9.6"
 #define AppPublisher "TelegramAutoDownload"
 #define AppURL "https://github.com/il90il90/TelegramAutoDownload"
 #define AppExeName "TelegramAutoDownload.exe"
 #define SourceDir "..\publish"
 #define OutputDir ".."
 #define OutputName "TelegramAutoDownload_v" + AppVersion + "_Setup"
+
+; Pass /DSignRelease to ISCC when CODE_SIGN_PFX is configured (see scripts/sign-file.ps1).
+#ifdef SignRelease
+SignTool=release $f
+SignedUninstaller=yes
+#endif
 
 [Setup]
 AppId={{A3F2C8E1-4D7B-4E9A-B5C0-1234567890AB}
@@ -38,6 +44,11 @@ MinVersion=10.0.17763
 ; Require .NET 8 Desktop Runtime
 CloseApplications=force
 CloseApplicationsFilter=*TelegramAutoDownload.exe*
+
+#ifdef SignRelease
+[SignTools]
+Name: "release"; Command: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{src}\..\scripts\sign-file.ps1"" ""$f"""; SignToolMinVersion: 0
+#endif
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"

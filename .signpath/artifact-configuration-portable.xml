@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Portable ZIP: sign main exe, runtime DLLs, and plugin DLLs -->
+<artifact-configuration xmlns="http://signpath.io/artifact-configuration/v1">
+  <zip-file>
+    <pe-file path="TelegramAutoDownload.exe">
+      <authenticode-sign/>
+    </pe-file>
+    <pe-file path="*.dll" max-matches="unbounded">
+      <authenticode-sign/>
+    </pe-file>
+    <directory path="Plugins">
+      <pe-file path="**/*.dll" max-matches="unbounded">
+        <authenticode-sign/>
+      </pe-file>
+    </directory>
+  </zip-file>
+</artifact-configuration>
