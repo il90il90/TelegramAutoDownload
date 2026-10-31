@@ -11,13 +11,16 @@ permissions:
 
 jobs:
   release:
-    runs-on: windows-latest
+    runs-on: [self-hosted, Windows, local-ci]
     env:
       SIGNPATH_ENABLED: ${{ vars.SIGNPATH_ENABLED }}
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-dotnet@v4
+        env:
+          # The local runner (NETWORK SERVICE) cannot write C:\Program Files\dotnet.
+          DOTNET_INSTALL_DIR: ${{ runner.environment == 'self-hosted' && 'C:\GitHub-Runners\cache\dotnet' || '' }}
         with:
           dotnet-version: "8.0.x"
 
@@ -69,6 +72,7 @@ jobs:
           Compress-Archive -Path publish/* -DestinationPath $zip -Force
 
       - name: Install Inno Setup
+        if: runner.environment == 'github-hosted'
         run: choco install innosetup --no-progress -y
 
       - name: Build installer
