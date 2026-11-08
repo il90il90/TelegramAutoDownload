@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   release:
-    runs-on: [self-hosted, Windows, local-ci]
+    runs-on: windows-latest
     env:
       SIGNPATH_ENABLED: ${{ vars.SIGNPATH_ENABLED }}
     steps:
